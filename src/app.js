@@ -110,7 +110,7 @@ function renderDeck(){
 function cellContent(lane,col){
  const d=game.defenders.find(x=>x.lane===lane&&x.col===col),lock=game.locks.some(x=>x.lane===lane&&x.col===col);
  let inner=lock?'<span class="locked-cell">🚫</span>':"";
- if(d)inner+=`<span class="defender ${d.shieldHp>0?"shielded":""} ${game.time<d.disabledUntil?"disabled":""} ${game.time-(d.lastShotAt??-10)<.22?"firing":""}"><span class="sprite">${art(d.id,"board-illustration")}</span><small>${E(d.name.split(" ")[0])}</small><span class="health" style="width:${Math.max(0,d.hp/d.maxHp)*96}%"></span></span>`;
+ if(d)inner+=`<span class="defender ${d.shieldHp>0?"shielded":""} ${game.time<d.disabledUntil?"disabled":""} ${game.time-(d.lastShotAt??-10)<.22?"firing":""} ${game.time-d.placedAt<.28?"placing":""}"><span class="sprite">${art(d.id,"board-illustration")}</span><small>${E(d.name.split(" ")[0])}</small><span class="health" style="width:${Math.max(0,d.hp/d.maxHp)*96}%"></span></span>`;
  return inner;
 }
 function renderPlay(){
@@ -142,7 +142,7 @@ function renderPlay(){
  <div class="field-wrap ${level.special.blackout?"blackout":""} ${level.special.fog?"fog":""}" data-world="${level.world+1}">
  <div class="skyline" aria-hidden="true">${landscape(level.world,"scenery")}</div>
  <div class="board-frame"><div class="house-strip">${guards}</div><div class="board" role="grid" aria-label="Поле оборони, 5 рядків і 9 колонок">
- ${cells}<div class="projectile-layer" aria-hidden="true">${shots}</div><div class="enemy-layer" aria-hidden="true">${foes}</div><div class="tokens-layer">${tokens}</div><div class="vfx-layer" aria-hidden="true">${fx}</div></div></div></div>
+ ${cells}<div class="projectile-layer" aria-hidden="true">${shots}</div><div class="particle-layer" aria-hidden="true"></div><div class="enemy-layer" aria-hidden="true">${foes}</div><div class="tokens-layer">${tokens}</div><div class="vfx-layer" aria-hidden="true">${fx}</div></div></div></div>
  <div class="game-bottom"><span>🛡️ Захищено рядків: ${5-game.usedGuards.filter(Boolean).length}/5 · Схемників: ${game.enemies.length} · Пострілів: ${activeAttackers} · Залишилось: ${remaining}</span>
  <span>⌨️ 1–8: картка · Стрілки: клітинка · Enter: поставити · Пробіл: зібрати · P: пауза</span></div>
  </section><div class="owl-message" aria-live="polite"><div class="face" aria-hidden="true">🦉</div><div><strong>Сова Юся</strong>${E(toast||game.lastHint)}</div></div></main>`);
@@ -189,8 +189,8 @@ function syncGameFrame(){
    cell.innerHTML=html;cell.dataset.content=html;
   }
  }
- const board=$(".board"),layer=$(".enemy-layer"),shotLayer=$(".projectile-layer"),tokenLayer=$(".tokens-layer"),fxLayer=$(".vfx-layer");
- if(!board||!layer||!shotLayer||!tokenLayer||!fxLayer)return;
+ const board=$(".board"),layer=$(".enemy-layer"),shotLayer=$(".projectile-layer"),particleLayer=$(".particle-layer"),tokenLayer=$(".tokens-layer"),fxLayer=$(".vfx-layer");
+ if(!board||!layer||!shotLayer||!particleLayer||!tokenLayer||!fxLayer)return;
  const alive=new Set();
  for(const e of game.enemies){
   const id=String(e.uid);alive.add(id);
@@ -244,6 +244,22 @@ function syncGameFrame(){
    sound(newest.kind==="beam"?1160:newest.kind==="dossier"?240:newest.kind==="chain"?410:680,.055);
   }
  }
+
+ const pieces=new Set();
+ for(const p of game.particles){
+  const id=String(p.uid);pieces.add(id);
+  let el=particleLayer.querySelector('[data-particle="'+id+'"]');
+  if(!el){
+   el=document.createElement("span");
+   el.className="combat-particle particle-"+p.kind;
+   el.dataset.particle=id;el.setAttribute("aria-hidden","true");
+   particleLayer.append(el);
+  }
+  el.style.left=p.x*100/9+"%";el.style.top=p.row*20+"%";
+  el.style.opacity=String(Math.max(0,1-p.age/p.ttl));
+  el.style.transform="translate(-50%,-50%) rotate("+(p.spin*p.age)+"deg)";
+ }
+ for(const el of Array.from(particleLayer.children))if(!pieces.has(el.dataset.particle))el.remove();
  const tokens=new Set();
  for(const t of game.tokens){
   const id=String(t.uid);tokens.add(id);

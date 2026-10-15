@@ -177,3 +177,22 @@ body.reduced-motion .projectile{transition:none!important}
   77%{opacity:1;transform:translate(-50%,-50%) scale(1)}
   100%{opacity:0;transform:translate(-50%,-75%) scale(1.02)}
 }
+
+/* Simulation-bound impact fragments; no third-party particle package or images. */
+.particle-layer{position:absolute;inset:0;pointer-events:none;overflow:visible;z-index:7}
+.combat-particle{position:absolute;width:7px;height:7px;border-radius:50%;pointer-events:none;will-change:left,top,opacity;transition:left 34ms linear,top 34ms linear}
+.combat-particle.particle-ink{background:#286e96;border:1px solid #a8eff6;box-shadow:0 0 7px #2a9dc0}
+.combat-particle.particle-paper{width:9px;height:6px;border-radius:2px;background:#fff6dc;border:1px solid #ad8967;box-shadow:0 0 5px #ffe49d}
+.combat-particle.particle-ice{width:7px;height:9px;background:#bcefff;border:1px solid #5eacd7;box-shadow:0 0 7px #74d7ff}
+.combat-particle.particle-gold{width:8px;height:8px;border-radius:3px;background:#ffe18a;box-shadow:0 0 7px #ffce5e}
+.combat-particle.particle-cyan{background:#cbfeff;box-shadow:0 0 8px 3px #7de5fb}
+.combat-particle.particle-spark{width:5px;height:11px;border-radius:3px;background:#ffe2a6;box-shadow:0 0 8px #e9bb6b}
+.defender.placing{animation:placement-spring .26s cubic-bezier(.14,.85,.35,1.2)}
+@keyframes placement-spring{
+  0%{transform:translateY(-20px) scale(.78);opacity:.4}
+  72%{transform:translateY(3px) scale(1.09);opacity:1}
+  100%{transform:translateY(0) scale(1)}
+}
+body.reduced-motion .defender.placing{animation:none}
+body.reduced-motion .combat-particle{display:none}
+@media(prefers-reduced-motion:reduce){.combat-particle{display:none}}
