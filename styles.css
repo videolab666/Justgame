@@ -342,3 +342,44 @@ body.reduced-motion .placement-preview{transition:none}
 @keyframes hydra-sway{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(7deg)}}
 @media(prefers-reduced-motion:reduce){.enemy .enemy-illustration,.defender.hurt .board-illustration{animation:none!important}}
 body.reduced-motion .enemy .enemy-illustration,body.reduced-motion .defender.hurt .board-illustration{animation:none!important}
+
+/* Small independent arm pivot over the original illustration: recoil driven by engine time. */
+.defender{isolation:isolate}
+.defender .sprite{z-index:1}
+.defender .attack-arm{
+ position:absolute;right:-7%;top:43%;width:43%;height:12px;
+ transform-origin:10% 50%;opacity:0;pointer-events:none;z-index:3;
+ display:flex;align-items:center;justify-content:flex-end
+}
+.attack-hand{position:absolute;left:1px;width:63%;height:11px;border:2px solid #39728b;border-radius:8px 5px 5px 8px;background:#76a8b6;box-shadow:0 2px #356181}
+.attack-hand:after{content:"";position:absolute;right:-3px;top:-3px;width:10px;height:11px;background:#f2c79a;border-radius:50%;border:1px solid #ba907b}
+.attack-item{position:absolute;right:0;top:-10px;width:17px;height:21px;transform:rotate(25deg);border:2px solid #ad785b;border-radius:3px;background:#fff6d9;box-shadow:0 1px 3px #334c6580;display:grid;place-items:center;font-size:13px;color:#217187;font-weight:900}
+.attack-item:after{content:"✓"}
+.defender[data-kind="lobber"] .attack-item:after,.defender[data-kind="splash"] .attack-item:after{content:"§";color:#8c5578}
+.defender[data-tool="enforcement"] .attack-hand{background:#d5ac86;border-color:#907260}
+.defender[data-tool="digital"] .attack-item{background:#9de5ed;border-color:#388b9c}
+.defender[data-tool="expert"] .attack-item{background:#b1f1e2;border-color:#399a98}
+.defender[data-tool="expert"] .attack-item:after{content:"⌕"}
+.defender[data-kind="slow"] .attack-item{border-radius:50%;background:#b6e8ff;border-color:#5e91b9}
+.defender[data-kind="slow"] .attack-item:after{content:"❄";color:#2b86ac}
+.defender.firing .attack-arm{opacity:1;animation:arm-stamp .25s cubic-bezier(.25,.85,.4,1) both}
+.defender[data-kind="lobber"].firing .attack-arm,
+.defender[data-kind="splash"].firing .attack-arm{animation:arm-throw .35s ease-out both}
+@keyframes arm-stamp{
+  0%{transform:translate(-9px,7px) rotate(52deg);opacity:0}
+  25%{transform:translate(2px,-5px) rotate(-12deg);opacity:1}
+  70%{transform:translate(7px,2px) rotate(14deg);opacity:1}
+  100%{transform:translate(-3px,3px) rotate(35deg);opacity:0}
+}
+@keyframes arm-throw{
+  0%{transform:translate(-12px,12px) rotate(85deg);opacity:0}
+  40%{transform:translate(3px,-10px) rotate(-55deg);opacity:1}
+  100%{transform:translate(8px,1px) rotate(14deg);opacity:0}
+}
+.fallen-layer{position:absolute;inset:0;pointer-events:none;z-index:6;overflow:visible}
+.fallen-defender{position:absolute;width:9%;height:17%;will-change:transform,opacity;pointer-events:none;filter:grayscale(.5) drop-shadow(0 3px 5px #323e4b86)}
+.fallen-defender .game-art{height:100%;width:100%;object-fit:contain}
+@media(max-width:620px){.defender .attack-arm{height:7px}.defender .attack-hand{height:7px;border-width:1px}.defender .attack-item{width:11px;height:14px;top:-6px;font-size:9px;border-width:1px}}
+@media(prefers-reduced-motion:reduce){.defender.firing .attack-arm{display:none}.fallen-layer{display:none}}
+body.reduced-motion .defender.firing .attack-arm{display:none}
+body.reduced-motion .fallen-layer{display:none}

@@ -543,7 +543,10 @@ function enemyTurn(g,e,delta){
      blocker.confusedUntil=g.time+8;e.specialUntil=g.time+13;e.contactTime=0;effect(g,"bribe",e.lane,e.x,"ЗАГРОЗА ДОСТУПУ");
     }
    }
-   if(e.trait==="suicide"){const dealt=Math.min(blocker.shieldHp,150);blocker.shieldHp-=dealt;blocker.hp-=150-dealt;removeEnemy(g,e);return;}
+   if(e.trait==="suicide"){const dealt=Math.min(blocker.shieldHp,150);blocker.shieldHp-=dealt;blocker.hp-=150-dealt;
+    blocker.lastDamagedAt=g.time;
+    if(blocker.hp<=0)removeDefender(g,blocker,"down");
+    removeEnemy(g,e);return;}
    let dmg=e.trait==="giant"?2500:100*delta;
    if(blocker.shieldHp>0){const absorbed=Math.min(blocker.shieldHp,dmg);blocker.shieldHp-=absorbed;dmg-=absorbed;}
    blocker.hp-=dmg;
