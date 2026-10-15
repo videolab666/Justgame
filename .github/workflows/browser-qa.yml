@@ -1,0 +1,34 @@
+name: Visual browser QA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "styles.css"
+      - "assets/**"
+      - "scripts/browser-smoke.mjs"
+
+permissions:
+  contents: read
+
+jobs:
+  chrome-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Browser screenshots and real interaction check
+        run: node scripts/browser-smoke.mjs
+      - name: Upload screenshots for visual review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: justgame-browser-screenshots
+          path: screenshots/*.png
+          if-no-files-found: ignore
+          retention-days: 14
