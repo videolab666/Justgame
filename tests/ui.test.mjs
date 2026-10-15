@@ -20,7 +20,7 @@ function createUI(source){
  const noImports=source.replace(/^import .*?;\s*$/gm,'');
  const symbols={...data,...engine,...tactics,Soundtrack,document,window,localStorage,requestAnimationFrame,fetch};
  const load=new Function(...Object.keys(symbols),
-  noImports+';return {action,goLevel,startGame,setView,html:()=>root.innerHTML,game:()=>game,mode:()=>view};');
+  noImports+';return {action,goLevel,startGame,setView,finish,html:()=>root.innerHTML,game:()=>game,mode:()=>view};');
  return load(...Object.values(symbols));
 }
 const source=await readFile(new URL('../src/app.js',import.meta.url),'utf8');
@@ -78,4 +78,31 @@ test("music volume and mute are separate from hit sounds",()=>{
  assert.match(ui.html(),/Фонова музика/);
  assert.match(ui.html(),/Гучність музики/);
  assert.match(ui.html(),/Звукові ефекти/);
+});
+
+test("completed level shows victory animation BEFORE results and allows skip",()=>{
+ const ui=createUI(source);
+ ui.goLevel(0,1);ui.startGame();
+ ui.game().phase="won";
+ ui.finish();
+ assert.equal(ui.mode(),"outro");
+ assert.match(ui.html(),/СХЕМУ ЗУПИНЕНО/);
+ assert.match(ui.html(),/outro-stars/);
+ assert.match(ui.html(),/assets\/yusya.svg/);
+ assert.doesNotMatch(ui.html(),/class="stat-row"/);
+ ui.action("skip-outro",{});
+ assert.equal(ui.mode(),"result");
+ assert.match(ui.html(),/Права захищено/);
+});
+test("lost level shows distinct defeat animation BEFORE score screen",()=>{
+ const ui=createUI(source);
+ ui.goLevel(0,1);ui.startGame();
+ ui.game().phase="lost";
+ ui.finish();
+ assert.equal(ui.mode(),"outro");
+ assert.match(ui.html(),/ОБОРОНУ ПРОРВАНО/);
+ assert.match(ui.html(),/outro-defeat/);
+ ui.action("skip-outro",{});
+ assert.equal(ui.mode(),"result");
+ assert.match(ui.html(),/Схема прорвалася/);
 });
