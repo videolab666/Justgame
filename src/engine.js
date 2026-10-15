@@ -31,7 +31,7 @@ export function makeWavePlan(level,seed=0){
 export function makeGame(level,deck,mode="normal",settings={},challenge=null){
  const game={
   level,deck:[...deck],mode,settings,challenge,phase:"playing",time:0,elapsed:0,seal:(mode==="young"?300:level.startingSeals)+(settings.careerBonus||0),
-  defenders:[],enemies:[],tokens:[],locks:[],effects:[],plan:makeWavePlan(level),
+  defenders:[],enemies:[],tokens:[],locks:[],effects:[],projectiles:[],plan:makeWavePlan(level),
   spawned:0,serial:1,nextSky:7,cooldowns:Object.fromEntries(deck.map(id=>[id,0])),
   usedGuards:[false,false,false,false,false],breaches:0,defenderLosses:0,created:0,kills:0,
   stageWave:0,maxWave:level.waves,bossGuardReady:false,bossGuardUsed:false,
@@ -169,7 +169,7 @@ export function place(g,id,lane,col){
   effect(g,"sweep",lane,col+.5,"ПРАВНИЧА ДОПОМОГА");return {ok:true};
  }
  g.defenders.push({uid:uid(g),id,name:u.name,icon:u.icon,kind:u.kind,tool:u.tool,lane,col,
- hp:u.hp,maxHp:u.hp,shieldHp:0,timer:0,placedAt:g.time,disabledUntil:0,confusedUntil:0});
+ hp:u.hp,maxHp:u.hp,shieldHp:0,timer:0,placedAt:g.time,disabledUntil:0,confusedUntil:0,lastShotAt:-10});
  effect(g,"plant",lane,col+.5,"+");
  return {ok:true};
 }
@@ -200,7 +200,7 @@ export function damageEnemy(g,e,raw,tool=null,extra=1){
  if(e.id==="tentacle"&&tool!=="integrity")mult*=.5;
  let n=Math.max(0,raw*mult*extra);
  if(e.shield>0 && tool!=="enforcement"){const absorbed=Math.min(e.shield,n);e.shield-=absorbed;n-=absorbed;}
- e.hp-=n;e.lastHitTool=tool;
+ e.hp-=n;e.lastHitTool=tool;if(n>0)e.lastHitAt=g.time;
  if(n>0&&Math.random()<.24)effect(g,"damage",e.lane,e.x,mult>=1.5?"✔ ×"+mult:mult<1?"×"+mult:"");
  if(e.id==="boss"){
   const prev=e.phase;e.phase=e.hp>e.maxHp*.7?1:e.hp>e.maxHp*.35?2:3;
@@ -250,6 +250,109 @@ export function useGuard(g,lane,automatic=false){
  effect(g,"guard",lane,3.5,"ЗАБОРОНА");
  return true;
 }
+
+const SHOT_STYLES={
+ shooter:{kind:"stamp",speed:6.8,arc:0},
+ intern:{kind:"stamp",speed:5.8,arc:0},
+ air:{kind:"clip",speed:6.5,arc:0},
+ slow:{kind:"chain",speed:6,arc:0},
+ lobber:{kind:"writ",speed:4.4,arc:.95},
+ splash:{kind:"dossier",speed:3.7,arc:1.2},
+ global:{kind:"dove",speed:4,arc:1.65},
+ sniper:{kind:"beam",speed:100,arc:0}
+};
+const pSource=p=>({kind:p.sourceKind,tool:p.tool});
+/** Each projectile has a simulation-space position (grid columns; fractional row).
+ * Hit detection is resolved on impact rather than at firing time.
+ * No renderer or DOM dependencies are needed for testing.
+ */
+export function fireProjectile(g,d,target,raw,bonus=1){
+ const style=SHOT_STYLES[d.kind]||SHOT_STYLES.shooter;
+ const sourceX=d.col+.78,targetX=target.x,fromRow=d.lane+.5,toRow=target.lane+.5;
+ const ballistic=style.arc>0;
+ const shot={
+  uid:uid(g),kind:style.kind,sourceKind:d.kind,sourceUid:d.uid,
+  lane:d.lane,tool:d.tool,damage:raw,bonus,targetUid:target.uid,
+  x:sourceX,row:fromRow,startX:sourceX,startRow:fromRow,
+  endX:targetX,endRow:toRow,age:0,
+  duration:ballistic?Math.max(.5,Math.min(1.5,Math.hypot(targetX-sourceX,(toRow-fromRow)*1.25)/style.speed)):
+   Math.max(.18,(targetX-sourceX)/style.speed),
+  speed:style.speed,arc:style.arc,ballistic,
+  cosmetic:style.kind==="beam"
+ };
+ if(shot.cosmetic){
+  // A laser scan affects the enemy instantly; the visible beam is brief.
+  shot.duration=.2;
+  damageEnemy(g,target,raw,d.tool,bonus);
+  effect(g,"scan",target.lane,target.x,"ЕКСПЕРТИЗА");
+ }
+ g.projectiles.push(shot);
+ // A modest ceiling protects low-end mobile browsers during endless mode.
+ if(g.projectiles.length>160)g.projectiles.splice(0,g.projectiles.length-160);
+ d.lastShotAt=g.time;
+ effect(g,"muzzle",d.lane,sourceX,"");
+ return shot;
+}
+function hitProjectile(g,p,e){
+ if(!g.enemies.includes(e))return;
+ if(p.sourceKind==="slow"){
+  e.frozenUntil=Math.max(e.frozenUntil,g.time+(e.scheme==="debt"?3:6));
+  e.stunUntil=Math.max(e.stunUntil,e.scheme==="debt"?g.time+3:e.stunUntil);
+ }
+ if(p.sourceKind==="sniper"&&!e.reveal)e.reveal=true;
+ if(p.sourceKind==="splash"){
+  for(const other of [...g.enemies])
+   if(Math.abs(other.lane-e.lane)<=1&&Math.abs(other.x-e.x)<=1.25)
+    damageEnemy(g,other,p.damage,p.tool,p.bonus);
+ }else damageEnemy(g,e,p.damage,p.tool,p.bonus);
+ const word=p.kind==="chain"?"ОБМЕЖЕНО":p.kind==="clip"?"АКТИВИ":p.kind==="dossier"?"ПОСТАНОВА":"";
+ effect(g,"impact-"+p.kind,e.lane,e.x,word);
+}
+/** Sweep fast-moving shots across their full step, so no enemy is skipped at 2x speed.
+ * Ballistic shots follow their target until the predicted impact. Dead targets produce
+ * a harmless miss, never phantom damage on a different lane.
+ */
+export function advanceProjectiles(g,delta){
+ if(!g.projectiles?.length)return;
+ for(let i=g.projectiles.length-1;i>=0;i--){
+  const p=g.projectiles[i];
+  p.age+=delta;
+  if(p.cosmetic){
+   if(p.age>=p.duration)g.projectiles.splice(i,1);
+   continue;
+  }
+  const target=g.enemies.find(e=>e.uid===p.targetUid);
+  if(p.ballistic){
+   const t=Math.min(1,p.age/p.duration);
+   if(target&&target.hp>0){
+    p.endX=target.x;p.endRow=target.lane+.5;
+   }
+   p.x=p.startX+(p.endX-p.startX)*t;
+   p.row=p.startRow+(p.endRow-p.startRow)*t-p.arc*4*t*(1-t);
+   if(t>=1){
+    if(target&&canTarget(g,pSource(p),target))hitProjectile(g,p,target);
+    else effect(g,"miss",Math.max(0,Math.min(4,p.endRow-.5)),p.endX,"");
+    g.projectiles.splice(i,1);
+   }
+   continue;
+  }
+  const oldX=p.x;
+  p.x+=p.speed*delta;
+  // Resolve the first enemy crossed by the stamp, not an enemy behind it.
+  const first=g.enemies
+   .filter(e=>e.lane===p.lane&&e.hp>0&&
+       e.x>=oldX-.38&&e.x<=p.x+.38&&canTarget(g,pSource(p),e))
+   .sort((a,b)=>a.x-b.x)[0];
+  if(first){
+   p.x=first.x;
+   hitProjectile(g,p,first);
+   g.projectiles.splice(i,1);
+  }else if(p.x>=9.8||p.age>3){
+   g.projectiles.splice(i,1);
+  }
+ }
+}
+
 function attack(g,d,delta){
  if(g.time<d.disabledUntil||g.time<d.confusedUntil)return;
  const spec=UNIT_BY_ID[d.id];
@@ -303,15 +406,12 @@ function attack(g,d,delta){
   if(hidden.length){for(const safe of hidden)safe.reveal=true;g.lastHint="Активи виявлено! Тепер знищіть сейфи-офшори.";effect(g,"reveal",d.lane,d.col+.5,"ЗНАЙДЕНО АКТИВИ");}
  }
  const e=candidates[0];if(!e)return;
- let raw=d.kind==="intern"&&g.time-d.placedAt>=60?20:spec.damage;
- if(d.kind==="slow"){
-  e.frozenUntil=Math.max(e.frozenUntil,g.time+(e.scheme==="debt"?3:6));
- }
- if(d.kind==="sniper"&&!e.reveal){e.reveal=true;}
- if(d.kind==="splash"){
-  for(const target of [...g.enemies])if(Math.abs(target.lane-e.lane)<=1&&Math.abs(target.x-e.x)<=1.25)damageEnemy(g,target,raw,d.tool,bonus);
- }else damageEnemy(g,e,raw,d.tool,bonus);
- effect(g,"shot",e.lane,e.x,d.kind==="slow"?"ОБМЕЖЕНО":d.kind==="sniper"?"ЕКСПЕРТИЗА":"ПЕРЕВІРЕНО");
+ const raw=d.kind==="intern"&&g.time-d.placedAt>=60?20:spec.damage;
+ if(d.id==="senior"){
+  // Two real stamps (not a single fake double-damage animation).
+  fireProjectile(g,d,e,raw/2,bonus);
+  fireProjectile(g,d,e,raw/2,bonus);
+ }else fireProjectile(g,d,e,raw,bonus);
  d.timer=spec.interval||2;
 }
 function defeat(g,e){
@@ -418,13 +518,14 @@ export function tick(g,delta){
  }
  for(const d of [...g.defenders])attack(g,d,delta);
  for(const e of [...g.enemies])if(g.enemies.includes(e))enemyTurn(g,e,delta);
+ advanceProjectiles(g,delta);
  if(g.finalSurvivalUntil&&g.time<g.finalSurvivalUntil&&g.time>=g.nextSurvivalSpawn){
   const ids=["schemer","phisher","briber","alimony","caller","usb"];
   const ix=Math.floor((g.finalSurvivalUntil-g.time)*2)%ids.length;
   spawn(g,ids[Math.abs(ix)],Math.floor(Math.random()*5),9.3);
   g.nextSurvivalSpawn=g.time+2.6;
  }
- if(g.phase==="playing"&&g.spawned===g.plan.length&&g.enemies.length===0&&g.time>=g.plan[g.plan.length-1].time+2){
+ if(g.phase==="playing"&&g.spawned===g.plan.length&&g.enemies.length===0&&g.projectiles.length===0&&g.time>=g.plan[g.plan.length-1].time+2){
   if(g.challenge?.kind==="endless"){
    queueEndlessWave(g,g.maxWave+1);
    g.lastHint="🦉 Хвилю "+g.stageWave+" відбито. Готуйтесь до наступної!";
