@@ -151,7 +151,7 @@ function renderDeck(){
 function cellContent(lane,col){
  const d=game.defenders.find(x=>x.lane===lane&&x.col===col),lock=game.locks.some(x=>x.lane===lane&&x.col===col);
  let inner=lock?'<span class="locked-cell">🚫</span>':"";
- if(d)inner+=`<span class="defender ${d.shieldHp>0?"shielded":""} ${game.time<d.disabledUntil?"disabled":""} ${game.time-(d.lastShotAt??-10)<.22?"firing":""} ${game.time-d.placedAt<.28?"placing":""}"><span class="sprite">${art(d.id,"board-illustration")}</span><small>${E(d.name.split(" ")[0])}</small><span class="health" style="width:${Math.max(0,d.hp/d.maxHp)*96}%"></span></span>`;
+ if(d)inner+=`<span class="defender ${d.shieldHp>0?"shielded":""} ${game.time<d.disabledUntil?"disabled":""} ${game.time-(d.lastShotAt??-10)<.22?"firing":""} ${game.time-d.placedAt<.28?"placing":""} ${game.time-(d.lastDamagedAt??-10)<.22?"hurt":""}"><span class="sprite">${art(d.id,"board-illustration")}</span><small>${E(d.name.split(" ")[0])}</small><span class="health" style="width:${Math.max(0,d.hp/d.maxHp)*96}%"></span></span>`;
  return inner;
 }
 function renderPlay(){
@@ -166,7 +166,7 @@ function renderPlay(){
   cells+=`<button type="button" role="gridcell" data-act="cell" data-lane="${lane}" data-col="${col}" class="cell ${active?"":"out"} ${focus.lane===lane&&focus.col===col?"cursor":""}" ${active?"":"disabled"} aria-label="Ряд ${lane+1}, колонка ${col+1}">${cellContent(lane,col)}</button>`;
  }
  const tokens=game.tokens.map(t=>`<button class="token" type="button" aria-label="Зібрати 25 печаток" data-act="collect" data-id="${t.uid}" style="left:${(t.col+.3)*100/9}%;top:${(t.lane+.15)*100/5}%">✦</button>`).join("");
- const foes=game.enemies.map(e=>`<div data-enemy="${e.uid}" title="${E(e.name)}" class="enemy ${e.trait==="flying"?"flying":""} ${game.time-(e.lastHitAt??-10)<.18?"taking-hit":""} ${e.trait==="disguised_jump"&&!e.reveal?"disguised":""} ${game.time<e.frozenUntil?"frozen":""} ${e.id==="boss"?"boss":""}" style="left:${e.x*100/9}%;top:${e.lane*20+.35}%">
+ const foes=game.enemies.map(e=>`<div data-enemy="${e.uid}" title="${E(e.name)}" data-trait="${E(e.trait)}" class="enemy ${e.trait==="flying"?"flying":""} ${game.time-(e.attackUntil??-10)<0?"attacking":""} ${game.time-(e.lastHitAt??-10)<.18?"taking-hit":""} ${e.trait==="disguised_jump"&&!e.reveal?"disguised":""} ${game.time<e.frozenUntil?"frozen":""} ${e.id==="boss"?"boss":""}" style="left:${e.x*100/9}%;top:${e.lane*20+.35}%">
  <div class="enemy-inner"><span class="kind">${TYPES[e.scheme].icon}</span><span class="eicon">${art(bossPartArt(e.id==="boss"?level.bossData.id:e.id),"enemy-illustration")}</span><span class="hp-track"><b style="width:${Math.max(0,e.hp/e.maxHp)*100}%"></b></span></div></div>`).join("");
  const shots=game.projectiles.map(p=>`<span class="projectile shot-${p.kind}" data-projectile="${p.uid}" aria-hidden="true"></span>`).join("");
  const fx=game.effects.map(e=>`<span data-fx="${e.id}" style="position:absolute;left:${e.x*100/9}%;top:${e.lane*20+1}%;font-size:12px;font-weight:900;color:#fdfbf3;text-shadow:1px 2px #174563,0 0 5px #173752;white-space:nowrap">${E(e.text)}</span>`).join("");
@@ -242,7 +242,7 @@ function syncGameFrame(){
   let el=layer.querySelector('[data-enemy="'+id+'"]');
   if(!el){
    el=document.createElement("div");el.className="enemy";
-   el.dataset.enemy=id;el.title=e.name;el.innerHTML='<div class="enemy-inner"><span class="kind"></span><span class="eicon"></span><span class="hp-track"><b></b></span></div>';
+   el.dataset.enemy=id;el.dataset.trait=e.trait;el.title=e.name;el.innerHTML='<div class="enemy-inner"><span class="kind"></span><span class="eicon"></span><span class="hp-track"><b></b></span></div>';
    const im=document.createElement("img");im.className="game-art enemy-illustration";
    im.alt="";im.draggable=false;im.decoding="async";im.src="./assets/sprites/"+encodeURIComponent(bossPartArt(e.id==="boss"?level.bossData.id:e.id))+".svg";
    el.querySelector(".eicon").append(im);layer.append(el);
@@ -250,6 +250,7 @@ function syncGameFrame(){
   el.style.left=(e.x*100/9)+"%";el.style.top=(e.lane*20+.35)+"%";
   el.classList.toggle("flying",e.trait==="flying"||e.air);
   el.classList.toggle("taking-hit",game.time-(e.lastHitAt??-10)<.18);
+  el.classList.toggle("attacking",game.time<(e.attackUntil??-10));
   el.classList.toggle("frozen",game.time<e.frozenUntil);
   el.classList.toggle("disguised",!e.reveal);
   el.classList.toggle("boss",e.id==="boss");

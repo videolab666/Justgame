@@ -312,3 +312,33 @@ body.reduced-motion .placement-preview{transition:none}
  .field-wrap .guard{min-height:36px}
  .field-wrap .cell{touch-action:manipulation}
 }
+
+/* Readable enemy intent and individual motion, with accessibility fallbacks. */
+.defender.hurt .board-illustration{animation:unit-flinch .23s ease-out}
+.defender.hurt{box-shadow:0 0 0 3px #fd918f,0 0 15px #f55761a3}
+.enemy.attacking .enemy-illustration{animation:enemy-bite .32s ease-in-out}
+.enemy[data-trait="flying"] .enemy-illustration{animation:float-raider 2.2s ease-in-out infinite}
+.enemy[data-trait="burrow"] .enemy-inner{filter:brightness(.82) drop-shadow(0 4px 6px #455c6d78)}
+.enemy[data-trait="burrow"] .enemy-illustration{animation:burrow-crawl 2s ease-in-out infinite;transform-origin:50% 90%}
+.enemy[data-trait="jump"] .enemy-illustration,.enemy[data-trait="disguised_jump"] .enemy-illustration{animation:schemer-sneak 1.4s ease-in-out infinite}
+.enemy[data-trait="hack"] .enemy-illustration{animation:hacker-glitch 2.8s steps(4,end) infinite}
+.enemy[data-trait="bribe"] .enemy-illustration,.enemy[data-trait="call"] .enemy-illustration{animation:schemer-sneak 1.5s ease-in-out infinite}
+.enemy[data-trait="giant"] .enemy-illustration{animation:giant-stomp 1.9s ease-in-out infinite}
+.enemy[data-trait="hydra_head"] .enemy-illustration{animation:hydra-sway 2s ease-in-out infinite}
+.enemy[data-trait="tentacle"] .enemy-illustration{animation:hydra-sway 1.6s ease-in-out infinite}
+.enemy[data-trait="neutral"] .enemy-inner{filter:saturate(.6);background:#e1edf0;border-color:#7fabb4}
+.battle-fx.fx-hit{color:#ffdf8e;text-shadow:0 1px 1px #5d4555,0 0 6px #fff6b0}
+.battle-fx.fx-seize,.battle-fx.fx-bribe{color:#ff9fb0}
+.battle-fx.fx-phish{color:#a6eaff}
+.battle-fx.fx-phase{color:#fff1af;font-size:clamp(13px,1.8vw,20px)}
+.battle-fx.fx-regrow{color:#dbb8fa;font-size:clamp(12px,1.6vw,18px)}
+@keyframes unit-flinch{0%{transform:translateX(0);filter:none}35%{transform:translateX(-5px);filter:brightness(1.7)}70%{transform:translateX(3px);filter:brightness(1.15)}100%{transform:translateX(0);filter:none}}
+@keyframes enemy-bite{0%,100%{transform:translateX(0) rotate(0)}35%{transform:translateX(-13%) rotate(-8deg)}65%{transform:translateX(-7%) rotate(-3deg)}}
+@keyframes float-raider{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-9px) rotate(5deg)}}
+@keyframes burrow-crawl{0%,100%{transform:translateY(8px) scaleY(.85)}40%{transform:translateY(2px) scaleY(.95)}}
+@keyframes schemer-sneak{0%,100%{transform:translateY(1px) rotate(-3deg)}50%{transform:translateY(-4px) rotate(5deg)}}
+@keyframes hacker-glitch{0%,84%,100%{filter:none;transform:translate(0,0)}85%{filter:hue-rotate(50deg);transform:translateX(-2px)}88%{filter:hue-rotate(-55deg);transform:translateX(3px)}91%{filter:none;transform:translate(0,0)}}
+@keyframes giant-stomp{0%,100%{transform:translateY(0) rotate(-3deg)}45%{transform:translateY(-7px) rotate(2deg)}60%{transform:translateY(3px) rotate(3deg)}}
+@keyframes hydra-sway{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(7deg)}}
+@media(prefers-reduced-motion:reduce){.enemy .enemy-illustration,.defender.hurt .board-illustration{animation:none!important}}
+body.reduced-motion .enemy .enemy-illustration,body.reduced-motion .defender.hurt .board-illustration{animation:none!important}

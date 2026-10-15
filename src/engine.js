@@ -175,7 +175,11 @@ export function place(g,id,lane,col){
 }
 function removeEnemy(g,e,silent=false){
  const idx=g.enemies.indexOf(e);if(idx>=0)g.enemies.splice(idx,1);
- if(!silent){g.kills++;effect(g,"hit",e.lane,e.x,"АНУЛЬОВАНО");}
+ if(!silent){
+  g.kills++;
+  effect(g,"hit",e.lane,e.x,e.id==="boss"?"СХЕМУ ЗУПИНЕНО":"АНУЛЬОВАНО");
+  emitBurst(g,e.scheme,e.lane,e.x,e.id==="boss"?14:8);
+ }
  g.locks=g.locks.filter(l=>l.enemyUid!==e.uid);
  if(e.id==="boss"&&g.level.world===3&&!g.finalSurvivalUntil){
   g.finalSurvivalUntil=g.time+30;g.nextSurvivalSpawn=g.time+2;
@@ -257,7 +261,7 @@ export function useGuard(g,lane,automatic=false){
  */
 export function emitBurst(g,kind,lane,x,count=6){
  if(g.settings?.reducedMotion)return;
- const palette={stamp:"ink",chain:"ice",writ:"paper",dossier:"paper",clip:"spark",dove:"gold",beam:"cyan",mine:"gold",guard:"gold",blast:"spark",sweep:"paper"};
+ const palette={stamp:"ink",chain:"ice",writ:"paper",dossier:"paper",clip:"spark",dove:"gold",beam:"cyan",mine:"gold",guard:"gold",blast:"spark",sweep:"paper",forgery:"paper",cyber:"cyan",debt:"gold",corruption:"paper",bureaucracy:"ink"};
  const variant=palette[kind]||"ink";
  const amount=Math.min(14,Math.max(0,count));
  for(let i=0;i<amount;i++){
@@ -520,6 +524,7 @@ function enemyTurn(g,e,delta){
    let dmg=e.trait==="giant"?2500:100*delta;
    if(blocker.shieldHp>0){const absorbed=Math.min(blocker.shieldHp,dmg);blocker.shieldHp-=absorbed;dmg-=absorbed;}
    blocker.hp-=dmg;
+   if(dmg>0){blocker.lastDamagedAt=g.time;e.attackUntil=g.time+.36;}
    if(blocker.kind==="wall"&&blocker.id==="notary"&&e.scheme==="forgery")damageEnemy(g,e,10*delta,"notary");
    if(blocker.hp<=0){g.defenders.splice(g.defenders.indexOf(blocker),1);g.defenderLosses++;effect(g,"down",blocker.lane,blocker.col+.5,"ЗАХИСНИК");}
   }
