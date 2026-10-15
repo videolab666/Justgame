@@ -132,7 +132,14 @@ try{
  console.log("Browser UI + projectile smoke test passed",JSON.stringify({boardSize,mobile}));
 }finally{
  socket?.close();
- browser?.kill("SIGTERM");
+ if(browser){
+  const stopped=new Promise(ok=>{
+   if(browser.exitCode!==null)ok();
+   else browser.once("exit",ok);
+  });
+  browser.kill("SIGTERM");
+  await Promise.race([stopped,delay(3000)]);
+ }
  await new Promise(ok=>server.close(ok));
- await rm(profile,{recursive:true,force:true});
+ await rm(profile,{recursive:true,force:true,maxRetries:10,retryDelay:180});
 }
