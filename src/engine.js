@@ -122,6 +122,33 @@ export function canTarget(g,d,e){
  if(e.id==="hacker"&&d.tool==="notary")return false;
  return true;
 }
+
+/** Explain a ranged defender's firing status without affecting simulation.
+ * Presented in the tile tooltip so "not shooting" has a discoverable reason.
+ */
+export function explainFiring(g,d){
+ if(!d||!["shooter","intern","lobber","splash","air","slow","sniper","global"].includes(d.kind))return "";
+ if(g.time<d.disabledUntil)return "Не стріляє: тимчасово заблоковано здібністю противника.";
+ if(g.time<d.confusedUntil)return "Не стріляє: захисника дезорієнтовано.";
+ let nearby=g.enemies.filter(e=>e.hp>0);
+ if(["shooter","intern","lobber","splash","air","slow"].includes(d.kind)){
+  const inRow=nearby.filter(e=>e.lane===d.lane);
+  nearby=inRow.filter(e=>e.x>d.col+.45);
+  if(!nearby.length)return inRow.length?
+   "Вороги вже позаду захисника: він стріляє тільки праворуч.":
+   "Очікує на ворогів у своєму ряду.";
+ }
+ if(d.kind==="sniper")nearby=nearby.filter(e=>Math.abs(e.x-(d.col+.5))<=3.5);
+ if(!nearby.length)return "Цілі поза зоною досяжності.";
+ if(nearby.some(e=>canTarget(g,d,e)))return g.time-(d.lastShotAt??-20)<.38?
+  "Постріл виконано: снаряд летить до цілі.":"Ціль є, захисник готовий до атаки.";
+ if(nearby.every(e=>e.trait==="flying"||e.air))return "Не вражає повітряні цілі: потрібні спеціальні захисники.";
+ if(nearby.every(e=>e.trait==="burrow"))return "Ціль під землею: потрібен виконавець або арешт майна.";
+ if(g.level.special.fog&&nearby.every(e=>e.x>5.5))return "Туман приховує противника: потрібне виявлення або зближення.";
+ if(nearby.some(e=>!e.reveal))return "Замаскована ціль: спершу використайте Сповіщення.";
+ return "Цю ціль не можна атакувати вибраним інструментом.";
+}
+
 export function availablePlacement(g,id,lane,col){
  const u=UNIT_BY_ID[id];if(!u||!g.deck.includes(id))return "Картка не у вашій колоді.";
  if(g.phase!=="playing")return "Гру завершено.";

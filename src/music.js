@@ -51,7 +51,8 @@ export class Soundtrack{
  }
  setScene(scene,world=this.world,intensity=0){
   const w=Math.max(0,Math.min(3,world|0));
-  if(scene!==this.scene||w!==this.world){this.scene=scene;this.world=w;this.step=0;this.next=(this.ctx?.currentTime||0)+.06;}
+  if(scene!==this.scene||w!==this.world){this.scene=scene;this.world=w;this.step=0;this.next=(this.ctx?.currentTime||0)+.06;
+   if(this.bus)this.bus.gain.setTargetAtTime(scene==="silent"?0:this.enabled?this.volume*.42:0,this.ctx.currentTime,.07);}
   this.intensity=intensity;
  }
  tick(){

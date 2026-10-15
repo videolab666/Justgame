@@ -1,5 +1,5 @@
 import {UNITS,UNIT_BY_ID,ENEMIES,ENEMY_BY_ID,WORLDS,TYPES,TOOLS,FACTS,UNLOCK_REWARDS,MINI_LEVELS,STORY,getLevel,levelId,unlockedUnits,levelUnlocked} from "./data.js";
-import {makeGame,tick,place,collectToken,collectAll,currentProgress,scoreStars,selectAdvice,useGuard,availablePlacement} from "./engine.js";
+import {makeGame,tick,place,collectToken,collectAll,currentProgress,scoreStars,selectAdvice,useGuard,availablePlacement,explainFiring} from "./engine.js";
 import {getThreat,getEncounterThreats,getCounterAdvice} from "./tactics.js";
 import {Soundtrack} from "./music.js";
 const root=document.getElementById("app");
@@ -242,6 +242,7 @@ function syncGameFrame(){
   }
   const sprite=cell.querySelector(".defender");
   if(sprite&&d){
+   cell.title=d.name+" — "+(explainFiring(game,d)||"Підтримка оборони.");
    sprite.classList.toggle("firing",game.time-(d.lastShotAt??-10)<.38);
    sprite.classList.toggle("placing",game.time-d.placedAt<.28);
    sprite.classList.toggle("hurt",game.time-(d.lastDamagedAt??-10)<.22);
@@ -716,7 +717,7 @@ function loop(ts){
  }
  if(view==="outro"&&!document.hidden){
   outroElapsed+=delta;
-  if(outroElapsed>=(save.settings.reducedMotion?.6:4))setView("result");
+  if(outroElapsed>=(save.settings.reducedMotion?2.5:4))setView("result");
  }
  // Audio follows gameplay: menus, pause/help dialogs and hidden tabs never
  // continue scheduling new backing-track notes in the background.
