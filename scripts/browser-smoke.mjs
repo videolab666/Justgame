@@ -39,18 +39,24 @@ const output=join(root,"screenshots");
 let browser=null,socket=null;
 const failures=[];
 try{
+ // Browser startup may be delayed on a GitHub runner busy with three jobs.
+ // Capture stderr and allow up to 40s instead of reporting a false game failure.
+ let chromeErrors="";
  browser=spawn(chromePath(),["--headless=new","--no-sandbox","--disable-dev-shm-usage",
-  "--disable-background-timer-throttling","--no-first-run","--no-default-browser-check",
-  "--remote-debugging-port=0","--user-data-dir="+profile,"--window-size=1440,900",
-  origin+"/"],{stdio:"ignore"});
+  "--disable-background-timer-throttling","--disable-gpu","--disable-extensions",
+  "--no-first-run","--no-default-browser-check","--remote-debugging-port=0",
+  "--user-data-dir="+profile,"--window-size=1440,900",origin+"/"],
+  {stdio:["ignore","ignore","pipe"]});
+ browser.stderr.on("data",chunk=>{chromeErrors=(chromeErrors+String(chunk)).slice(-4500);});
  let port=null;
- for(let i=0;i<80;i++){
+ for(let i=0;i<200;i++){
   try{
    const raw=await readFile(join(profile,"DevToolsActivePort"),"utf8");
    port=Number(raw.split("\n")[0]);break;
-  }catch{await delay(150);}
+  }catch{await delay(200);}
+  if(browser.exitCode!==null)break;
  }
- if(!port)throw Error("Chrome DevTools never started");
+ if(!port)throw Error("Chrome DevTools never started (exit="+browser.exitCode+"): "+chromeErrors);
  let page=null;
  for(let i=0;i<55;i++){
   try{const tabs=await (await fetch("http://127.0.0.1:"+port+"/json/list")).json();
