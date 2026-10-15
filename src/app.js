@@ -1,6 +1,7 @@
 import {UNITS,UNIT_BY_ID,ENEMIES,ENEMY_BY_ID,WORLDS,TYPES,TOOLS,FACTS,UNLOCK_REWARDS,MINI_LEVELS,STORY,getLevel,levelId,unlockedUnits,levelUnlocked} from "./data.js";
 import {makeGame,tick,place,collectToken,collectAll,currentProgress,scoreStars,selectAdvice,useGuard,availablePlacement} from "./engine.js";
 import {getThreat,getEncounterThreats,getCounterAdvice} from "./tactics.js";
+import {Soundtrack} from "./music.js";
 const root=document.getElementById("app");
 const KEY="just-oborona-progress-v1";
 let audioContext=null;
@@ -18,9 +19,11 @@ function sound(freq=640,duration=.085){
   osc.start();osc.stop(audioContext.currentTime+duration);
  }catch{/* audio optional */}
 }
-const defaults={completed:{},settings:{sound:false,autoCollect:false,reducedMotion:window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches||false,highContrast:false,largeText:false},mode:"normal"};
+const defaults={completed:{},settings:{sound:false,music:true,musicVolume:40,autoCollect:false,reducedMotion:window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches||false,highContrast:false,largeText:false},mode:"normal"};
 function readStore(){try{const saved=JSON.parse(localStorage.getItem(KEY));return { ...defaults,...saved,completed:saved?.completed||{},settings:{...defaults.settings,...saved?.settings}};}catch{return structuredClone(defaults);}}
 let save=readStore();
+const soundtrack=new Soundtrack();
+soundtrack.configure(save.settings.music,save.settings.musicVolume);
 let view="home",world=0,stage=1,level=getLevel(0,1),deck=[],selected="registrar",game=null;
 let challenge=null,outroElapsed=0;
 let latestShotSound=0,lastShotSfxAt=-10;
@@ -178,7 +181,7 @@ function renderPlay(){
  <div class="game-top"><div class="seal-pill">✦ ${Math.floor(game.seal)}</div>
  <div class="game-meta"><strong>${E(level.id)} · ${E(level.name)} ${status} · Хвиля ${game.stageWave}/${game.maxWave}</strong>
  <div class="progress-track"><div class="progress-fill" data-game-progress style="width:${progress}%"></div></div></div>
- <div class="game-controls">${btn("speed",speed===1?"▶ ×1":speed===2?"▶▶ ×2":"▶ ½","btn btn-quiet")}${btn("pause","⏸","btn btn-quiet","aria-label=\"Пауза\"")}</div></div>
+ <div class="game-controls">${btn("speed",speed===1?"▶ ×1":speed===2?"▶▶ ×2":"▶ ½","btn btn-quiet")}${btn("music-toggle",save.settings.music?"♫":"♪̸","btn btn-quiet",'aria-label="Фонова музика" aria-pressed="'+save.settings.music+'"')}${btn("pause","⏸","btn btn-quiet","aria-label=\"Пауза\"")}</div></div>
  <div class="cardbar" aria-label="Колода захисників">${cards}</div>
  <div class="selected-help" aria-live="off"><span>↘ <strong data-selected-name>${E(UNIT_BY_ID[selected]?.name||"Захисник")}</strong></span><span data-selected-desc>${E(UNIT_BY_ID[selected]?.desc||"Оберіть клітинку для захисту.")}</span></div>
  <div class="field-wrap ${level.special.blackout?"blackout":""} ${level.special.fog?"fog":""}" data-world="${level.world+1}">
@@ -417,7 +420,9 @@ function renderAlmanac(){
 }
 function renderSettings(){
  return wrapper(`<main class="main" style="max-width:830px;margin:0 auto"><h1 class="section-title">Налаштування</h1>
- <div class="panel">${[["sound","Звукові ефекти"],["autoCollect","Автоматично збирати печатки"],["reducedMotion","Менше руху та ефектів"],["highContrast","Висококонтрастний режим"],["largeText","Збільшити текст"]].map(([id,label])=>`<label class="setting-row"><strong>${label}</strong><input type="checkbox" data-setting="${id}" ${save.settings[id]?"checked":""}></label>`).join("")}
+ <div class="panel">${[["sound","Звукові ефекти"],["music","Фонова музика"],["autoCollect","Автоматично збирати печатки"],["reducedMotion","Менше руху та ефектів"],["highContrast","Висококонтрастний режим"],["largeText","Збільшити текст"]].map(([id,label])=>`<label class="setting-row"><strong>${label}</strong><input type="checkbox" data-setting="${id}" ${save.settings[id]?"checked":""}></label>`).join("")}
+ <label class="setting-row"><strong>Гучність музики: <output data-volume-label>${save.settings.musicVolume}%</output></strong><input type="range" min="0" max="100" step="5" data-volume value="${save.settings.musicVolume}" aria-label="Гучність музики"></label>
+ <p class="notice">Чотири оригінальні музичні теми світів; звук запускається після дії гравця. Можна окремо вимкнути музику і ефекти.</p>
  <p class="notice">Налаштування та прогрес зберігаються тільки у вашому браузері. Дані на сервер не передаються.</p>
  <div class="dialog-actions">${btn("back","← Назад","btn btn-dark")}${btn("reset","🗑️ Скинути прогрес","btn btn-danger")}</div></div></main>`);
 }
@@ -527,7 +532,10 @@ function render(){
  updatePlacementPreview();
  if(view==="play"&&py>0)window.scrollTo?.(px,py);
 }
-function setView(v){view=v;modal="";toast="";render();}
+function setView(v){
+ view=v;modal="";toast="";render();
+ soundtrack.setScene(v==="play"?"battle":v==="outro"?"outro":"silent",world);
+}
 function goLevel(w,s){
  challenge=null;
  world=w;stage=s;level=getLevel(world,stage);mini=null;shownEnd=false;chooseSuggested();
@@ -552,6 +560,7 @@ function finish(){
   const id=level.id;save.completed[id]=Math.max(scoreStars(game),save.completed[id]||0);persist();
  }
  outroElapsed=0;
+ soundtrack.jingle(game.phase==="won");
  setView("outro");
 }
 function nextLevel(){
@@ -602,6 +611,14 @@ function action(name,el){
  if(name==="retry"){if(level.mini){startMini();setView("mini");}else startGame();return;}
  if(name==="next-level"){nextLevel();return;}
  if(name==="skip-outro"){setView("result");return;}
+ if(name==="music-toggle"){
+  save.settings.music=!save.settings.music;persist();
+  soundtrack.configure(save.settings.music,save.settings.musicVolume);
+  if(save.settings.music)soundtrack.unlock();
+  const b=root.querySelector?.('[data-act="music-toggle"]');
+  if(b){b.textContent=save.settings.music?"♫":"♪̸";b.setAttribute("aria-pressed",String(save.settings.music));}
+  return;
+ }
  if(name==="almanac"){modalReturn=view;setView("almanac");return;}
  if(name==="settings"){modalReturn=view;setView("settings");return;}
  if(name==="back"){
@@ -626,12 +643,34 @@ root.addEventListener("pointerover",e=>{
   updatePlacementPreview();
  }
 });
-root.addEventListener("click",e=>{const el=e.target.closest("[data-act]");if(el&&!el.disabled){action(el.dataset.act,el);}});
+root.addEventListener("click",e=>{
+ const el=e.target.closest("[data-act]");
+ if(el&&!el.disabled){
+  action(el.dataset.act,el);
+  // The game starts audio within a trusted user event; no autoplay at page load.
+  if(view==="play"&&save.settings.music){soundtrack.unlock();soundtrack.setScene("battle",world);}
+ }
+});
 root.addEventListener("change",e=>{
- if(e.target.matches("[data-setting]")){save.settings[e.target.dataset.setting]=e.target.checked;persist();if(game)game.settings=save.settings;render();}
+ if(e.target.matches("[data-setting]")){
+  save.settings[e.target.dataset.setting]=e.target.checked;persist();
+  if(game)game.settings=save.settings;
+  if(e.target.dataset.setting==="music"){
+   soundtrack.configure(save.settings.music,save.settings.musicVolume);
+   if(save.settings.music)soundtrack.unlock();
+  }
+  render();
+ }
  if(e.target.name==="mode"){save.mode=e.target.value;persist();}
 });
-root.addEventListener("input",e=>{if(e.target.id==="almanac-search"){almanacQuery=e.target.value;const pos=e.target.selectionStart;render();const n=document.getElementById("almanac-search");n?.focus();n?.setSelectionRange(pos,pos);}});
+root.addEventListener("input",e=>{
+ if(e.target.matches("[data-volume]")){
+  save.settings.musicVolume=Number(e.target.value);persist();
+  soundtrack.configure(save.settings.music,save.settings.musicVolume);
+  const label=root.querySelector?.("[data-volume-label]");if(label)label.textContent=e.target.value+"%";
+  return;
+ }
+ if(e.target.id==="almanac-search"){almanacQuery=e.target.value;const pos=e.target.selectionStart;render();const n=document.getElementById("almanac-search");n?.focus();n?.setSelectionRange(pos,pos);}});
 document.addEventListener("keydown",e=>{
  if(e.target instanceof HTMLInputElement)return;
  if(e.key==="Escape"&&modal){modal="";render();return;}
@@ -656,6 +695,7 @@ function loop(ts){
  if(!prevTs)prevTs=ts;
  const delta=Math.min((ts-prevTs)/1000,.1);prevTs=ts;
  if(view==="play"&&game?.phase==="playing"&&!modal&&!document.hidden){
+  soundtrack.setScene("battle",world,Math.min(1,game.stageWave/Math.max(1,game.maxWave)));
   tick(game,delta*speed);
   if(game.phase!=="playing"){finish();}
   else if(ts-lastRender>34){lastRender=ts;syncGameFrame();}
@@ -664,6 +704,7 @@ function loop(ts){
   outroElapsed+=delta;
   if(outroElapsed>=(save.settings.reducedMotion?.6:4))setView("result");
  }
+ soundtrack.tick();
  requestAnimationFrame(loop);
 }
 render();
