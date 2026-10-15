@@ -206,7 +206,7 @@ function syncGameFrame(){
   const kind=el.querySelector(".kind");if(kind.textContent!==TYPES[e.scheme].icon)kind.textContent=TYPES[e.scheme].icon;
   el.querySelector(".hp-track b").style.width=Math.max(0,e.hp/e.maxHp)*100+"%";
  }
- for(const el of layer.children)if(!alive.has(el.dataset.enemy))el.remove();
+ for(const el of Array.from(layer.children))if(!alive.has(el.dataset.enemy))el.remove();
  const tokens=new Set();
  for(const t of game.tokens){
   const id=String(t.uid);tokens.add(id);
@@ -214,7 +214,7 @@ function syncGameFrame(){
   if(!el){el=document.createElement("button");el.type="button";el.className="token";el.textContent="✦";el.dataset.act="collect";el.dataset.id=id;el.setAttribute("aria-label","Зібрати 25 печаток");tokenLayer.append(el);}
   el.style.left=(t.col+.3)*100/9+"%";el.style.top=(t.lane+.15)*20+"%";
  }
- for(const el of tokenLayer.children)if(!tokens.has(el.dataset.id))el.remove();
+ for(const el of Array.from(tokenLayer.children))if(!tokens.has(el.dataset.id))el.remove();
  const fxs=new Set();
  for(const fx of game.effects){
   const id=String(fx.id);fxs.add(id);
@@ -225,7 +225,7 @@ function syncGameFrame(){
   el.style.left=fx.x*100/9+"%";el.style.top=fx.lane*20+1+"%";
   el.style.opacity=Math.min(1,fx.ttl*2);
  }
- for(const el of fxLayer.children)if(!fxs.has(el.dataset.fx))el.remove();
+ for(const el of Array.from(fxLayer.children))if(!fxs.has(el.dataset.fx))el.remove();
  for(const guard of root.querySelectorAll(".house-strip .guard")){
   const lane=+guard.dataset.lane,manual=level.boss&&level.world===0&&game.bossGuardReady&&game.enemies.some(e=>e.id==="boss"&&e.lane===lane&&e.phase===3);
   guard.disabled=game.usedGuards[lane]||!manual;guard.classList.toggle("used",game.usedGuards[lane]);
@@ -391,7 +391,7 @@ function action(name,el){
  }
  if(name==="worlds"){game=null;challenge=null;setView("worlds");return;}
  if(name==="world"){const i=Number(el.dataset.world);if(levelUnlocked(i,1,save.completed)){world=i;setView("levels");}return;}
- if(name==="levels"){game=null;setView("levels");return;}
+ if(name==="levels"){game=null;if(challenge){challenge=null;setView("worlds");}else setView("levels");return;}
  if(name==="level"){const st=Number(el.dataset.stage);if(levelUnlocked(world,st,save.completed))goLevel(world,st);return;}
  if(name==="start"){startGame();return;}
  if(name==="unit"){
@@ -417,7 +417,10 @@ function action(name,el){
  if(name==="next-level"){nextLevel();return;}
  if(name==="almanac"){modalReturn=view;setView("almanac");return;}
  if(name==="settings"){modalReturn=view;setView("settings");return;}
- if(name==="back"){setView(modalReturn==="play"&&game?.phase==="playing"?"play":modalReturn||"home");return;}
+ if(name==="back"){
+  const target=modalReturn==="play"&&game?.phase==="playing"?"play":modalReturn||"home";
+  setView(target);return;
+ }
  if(name==="tab-units"){almanacTab="units";render();return;}
  if(name==="tab-enemies"){almanacTab="enemies";render();return;}
  if(name==="detail"){detail={id:el.dataset.id,kind:el.dataset.kind};modal="detail";render();return;}

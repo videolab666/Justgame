@@ -29,6 +29,8 @@ jobs:
           node-version: '22'
       - name: Run game regression tests
         run: npm test
+      - name: Validate original SVG artwork
+        run: python3 scripts/validate_art.py
       - name: Build isolated public website
         run: node scripts/build-site.mjs
       - name: Configure Pages
