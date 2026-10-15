@@ -212,3 +212,103 @@ body.reduced-motion .combat-particle{display:none}
 @media(max-width:620px){.selected-help{font-size:11px;padding:5px 8px;gap:4px 8px}.placement-preview.preview-valid:after{font-size:10px;padding:1px}}
 body.reduced-motion .placement-preview{transition:none}
 @media(prefers-reduced-motion:reduce){.placement-preview{transition:none}}
+
+/* Stable battle geometry: a fixed 9-by-5 grid ratio independent of incoming enemies,
+   overlays, sound settings, floating text or the counter legend. */
+.game-shell{width:100%;max-width:1200px;margin:0 auto}
+.game-top{display:grid;grid-template-columns:max-content minmax(0,1fr) max-content;gap:12px;min-height:67px;align-items:center}
+.game-meta{min-width:0;overflow:hidden}
+.game-meta strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:21px}
+.game-controls{flex-wrap:nowrap}
+.game-top .seal-pill{min-width:92px;text-align:center;font-variant-numeric:tabular-nums}
+.cardbar{height:139px;align-items:flex-start;overflow-y:hidden}
+.cardbar .unit-card{height:117px;min-height:117px;max-height:117px}
+.selected-help{height:52px;min-height:52px;overflow:hidden;align-content:center}
+.selected-help span:last-child{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;flex:1;min-width:100px}
+.field-wrap{box-sizing:border-box;width:100%;max-width:100%;overflow:hidden}
+.field-wrap .board-frame{display:grid;grid-template-columns:clamp(28px,4vw,50px) minmax(0,1fr);min-height:0!important;height:auto!important;align-items:stretch}
+.field-wrap .board{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));grid-template-rows:repeat(5,minmax(0,1fr));width:100%;height:auto;min-height:0!important;min-width:0;aspect-ratio:2 / 1;align-self:start;overflow:hidden}
+.field-wrap .board > .cell{min-height:0!important;min-width:0;height:100%;align-self:stretch;overflow:visible}
+.field-wrap .house-strip{grid-template-rows:repeat(5,minmax(0,1fr));min-height:0}
+.field-wrap .guard{min-height:0;height:min(60%,46px);width:clamp(22px,3.4vw,37px);min-width:0}
+.field-wrap .enemy-layer,.field-wrap .particle-layer,.field-wrap .projectile-layer,.field-wrap .vfx-layer,.field-wrap .tokens-layer{inset:0}
+.field-wrap .enemy-layer{overflow:visible}
+.field-wrap .skyline{height:70px;min-height:70px}
+/* Below-field inspector: opening a tip never reflows or changes the battlefield. */
+.threat-legend{margin:15px auto 4px;max-width:1200px;padding:13px 15px 12px;border:2px solid #b6d7cd;background:linear-gradient(150deg,#f4f9eb,#e0f1eb);border-radius:19px;box-shadow:0 5px 13px #1f5e7440;color:#21465e}
+.threat-heading{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:10px}
+.threat-heading strong{font-size:18px;font-weight:950;display:block}
+.threat-heading small{display:block;font-size:12px;color:#4e6e75;margin-top:2px}
+.threat-heading .btn{white-space:nowrap;flex:0 0 auto;font-size:12px;padding:8px 11px}
+.threat-list{display:flex;gap:9px;overflow-x:auto;overflow-y:hidden;max-width:100%;scrollbar-width:thin;scroll-snap-type:x proximity;padding:4px 3px 8px}
+.threat-chip{scroll-snap-align:start;flex:0 0 204px;min-width:0;min-height:84px;height:84px;border:2px solid #b7d2d4;border-radius:14px;background:linear-gradient(120deg,#ffffff,#eef1ed);display:flex;align-items:center;text-align:left;gap:6px;color:#22485d;position:relative;padding:4px 7px 4px 3px;transition:transform .12s,box-shadow .12s;overflow:hidden;cursor:pointer}
+.threat-chip:hover{border-color:#5b9ba2;transform:translateY(-2px);box-shadow:0 4px 12px #23536b2b}
+.threat-chip:focus-visible{outline:3px solid #d1a44b;outline-offset:2px}
+.threat-portrait{width:60px;height:76px;flex:0 0 60px;display:grid;place-items:center;background:radial-gradient(circle,#d7dfe9,#f2f5e8 72%);border-radius:10px}
+.threat-illustration{height:73px;width:59px;object-fit:contain}
+.threat-copy{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:4px;justify-content:center}
+.threat-copy strong{font-size:12px;line-height:1.13;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.threat-copy small{font-size:11px;color:#637987}
+.threat-copy em{font-style:normal;font-size:10px;font-weight:700;color:#23748b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.threat-active{position:absolute;right:3px;top:3px;border-radius:8px;background:#dce8e8;color:#57727a;font-size:11px;font-weight:900;min-width:19px;line-height:20px;text-align:center;font-variant-numeric:tabular-nums}
+.threat-active.is-active{background:#df7083;color:#fff;box-shadow:0 0 0 2px #fff}
+.threat-disclaimer{font-size:11px;color:#607a80;margin:5px 0 0}
+.threat-compact{margin:0;max-width:100%;padding:10px 7px}
+.threat-compact .threat-heading{align-items:flex-start;flex-direction:column;gap:7px}
+.threat-compact .threat-heading .btn{width:100%}
+.threat-compact .threat-list{flex-direction:column;max-height:380px;overflow-y:auto;overflow-x:hidden}
+.threat-compact .threat-chip{width:100%;flex:0 0 78px;height:78px}
+.threat-compact .threat-portrait{height:70px}
+.threat-compact .threat-illustration{height:67px}
+.deck-threat-box{margin-bottom:10px}
+.dialog:has(.counter-header){width:min(700px,100%)}
+.counter-header{min-height:116px;position:relative;padding-left:114px;display:flex;flex-direction:column;justify-content:center}
+.counter-header-art{position:absolute;left:0;top:0;background:radial-gradient(circle,#e5f1e9,#fffaea);border:2px solid #bbd5d1;border-radius:17px;width:102px;height:108px;display:grid;place-items:center}
+.counter-header-art .detail-art{max-width:96px;max-height:103px}
+.counter-header h2{font-size:clamp(22px,3vw,31px);margin:6px 0 8px}
+.counter-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:12px}
+.counter-row{border:1px solid #bfd8d8;background:#f3f8ed;border-radius:13px;min-height:83px;padding:5px 8px;display:flex;align-items:center;gap:7px;min-width:0}
+.counter-art{flex:0 0 55px;width:55px;height:67px}
+.counter-art .counter-illustration{height:65px;width:55px}
+.counter-row div{min-width:0;flex:1}
+.counter-row strong{display:block;font-size:12px;line-height:1.24}
+.counter-row small{display:block;color:#516c76;font-size:10px;line-height:1.5}
+.counter-row .counter-state{font-weight:900;color:#397c89}
+.counter-row .btn{padding:6px 8px;font-size:11px;flex:0 0 auto}
+@media(max-width:850px){
+ .game-shell{max-width:100%}
+ .game-top{gap:6px}
+ .selected-help{height:57px;min-height:57px}
+ .field-wrap .skyline{height:49px;min-height:49px}
+ .cardbar{height:129px}
+ .cardbar .unit-card{height:109px;min-height:109px;max-height:109px}
+}
+@media(max-width:620px){
+ .game-top{grid-template-columns:max-content minmax(0,1fr) max-content;min-height:55px;gap:4px}
+ .game-meta strong{font-size:11px;min-height:16px}
+ .game-top .seal-pill{min-width:51px}
+ .game-controls .btn{font-size:11px;padding:4px 6px}
+ .cardbar{height:119px}
+ .cardbar .unit-card{height:100px;min-height:100px;max-height:100px}
+ .selected-help{height:58px;min-height:58px;font-size:10px}
+ .field-wrap .skyline{height:39px;min-height:39px}
+ .field-wrap .guard{font-size:13px}
+ .threat-heading{flex-direction:column;align-items:flex-start;gap:8px}
+ .threat-heading .btn{width:100%}
+ .threat-chip{flex-basis:176px;height:77px;min-height:77px}
+ .threat-portrait{width:51px;height:68px;flex-basis:51px}
+ .threat-illustration{width:50px;height:65px}
+ .counter-list{grid-template-columns:1fr}
+ .counter-header{padding-left:92px;min-height:95px}
+ .counter-header-art{width:82px;height:88px}
+}
+@media(max-width:580px) and (orientation:portrait){
+ /* Maintain >= 48px-ish touch targets via horizontal viewport scrolling,
+    instead of shrinking cells and letting the grid deform. */
+ .field-wrap{overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin}
+ .field-wrap .skyline{min-width:564px}
+ .field-wrap .board-frame{min-width:564px}
+ .field-wrap .board{aspect-ratio:2/1}
+ .field-wrap .guard{min-height:36px}
+ .field-wrap .cell{touch-action:manipulation}
+}
