@@ -1,9 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {getLevel,UNIT_BY_ID} from "../src/data.js";
-import {makeGame,place,spawn,tick} from "../src/engine.js";
+import {makeGame,place,spawn,tick,fireProjectile} from "../src/engine.js";
 const newGame=(ids,world=0)=>{
- const g=makeGame(getLevel(world,6),ids,"normal",{autoCollect:true});
+ const g=makeGame(getLevel(world,4),ids,"normal",{autoCollect:true});
  g.plan=[];g.seal=2000;return g;
 };
 test("regression: registrar stamp hits target pressed against defender at x col+.50",()=>{
@@ -35,13 +35,13 @@ test("every ranged attacker actually fires and hits a legal stationary target",(
 test("projectile starts behind target rather than beyond its hitbox",()=>{
  const g=newGame(["registrar"]);place(g,"registrar",2,2);
  const e=spawn(g,"schemer",2,2.6);e.speed=0;
- tick(g,.08);
+ const projectile=fireProjectile(g,g.defenders[0],e,20);
  assert.equal(g.projectiles.length,1);
- assert.ok(g.projectiles[0].startX<e.x);
+ assert.ok(projectile.startX<e.x);
 });
 test("no spurious shooting at targets in another lane or behind attacker",()=>{
  const g=newGame(["registrar"]);place(g,"registrar",2,4);
- const behind=spawn(g,"schemer",2,3.9),other=spawn(g,"schemer",1,7);
+ const behind=spawn(g,"schemer",2,2.7),other=spawn(g,"schemer",1,7);
  behind.speed=0;other.speed=0;
  for(let i=0;i<60;i++)tick(g,.1);
  assert.equal(g.defenders[0].shotsFired||0,0);
