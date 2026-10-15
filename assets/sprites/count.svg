@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 144" role="img" aria-label="Оригінальний мультяшний персонаж"><defs>
+ <linearGradient id="coat" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#86527e"/><stop offset="1" stop-color="#653652"/></linearGradient>
+ <linearGradient id="paper" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#fff9eb"/><stop offset="1" stop-color="#eadac0"/></linearGradient>
+ <filter id="ds" x="-35%" width="170%" y="-35%" height="170%"><feDropShadow dx="1" dy="3" stdDeviation="3" flood-color="#133e5d" flood-opacity=".22"/></filter></defs>
+ <ellipse cx="64" cy="135" rx="45" ry="7" fill="#173f5a" opacity=".18"/>
+ <g filter="url(#ds)"><ellipse cx="64" cy="95" rx="42" ry="42" fill="#8d5a82" stroke="#633d70" stroke-width="6"/><circle cx="64" cy="55" r="34" fill="#d7ada6" stroke="#795469" stroke-width="4"/><rect x="34" y="3" width="63" height="42" rx="3" fill="#573951"/><rect x="22" y="36" width="87" height="9" rx="2" fill="#573951"/><circle cx="53" cy="56" r="5" fill="#49374e"/><circle cx="78" cy="56" r="5" fill="#49374e"/><path d="M48 78Q64 92 81 78" fill="none" stroke="#765565" stroke-width="5"/><circle cx="63" cy="114" r="14" fill="#efce82" stroke="#ab8349" stroke-width="5"/></g></svg>

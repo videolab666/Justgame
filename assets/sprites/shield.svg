@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 144" role="img" aria-label="Оригінальний мультяшний персонаж"><defs>
+ <linearGradient id="coat" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#008a88"/><stop offset="1" stop-color="#154c6c"/></linearGradient>
+ <linearGradient id="paper" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#fff9eb"/><stop offset="1" stop-color="#eadac0"/></linearGradient>
+ <filter id="ds" x="-35%" width="170%" y="-35%" height="170%"><feDropShadow dx="1" dy="3" stdDeviation="3" flood-color="#133e5d" flood-opacity=".22"/></filter></defs>
+ <ellipse cx="64" cy="135" rx="45" ry="7" fill="#173f5a" opacity=".18"/>
+ <g filter="url(#ds)"><g transform="translate(64 80)"><path d="M0 -30Q24 -25 23 -10 23 10 0 29 -23 10 -23 -10 -24 -25 0 -30Z" fill="#75d4e4" stroke="#2b81a5" stroke-width="5"/><path d="m-10 1 7 7 15-19" fill="none" stroke="#fffce9" stroke-width="5" stroke-linecap="round"/></g></g></svg>
