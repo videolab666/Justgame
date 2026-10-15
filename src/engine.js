@@ -31,7 +31,7 @@ export function makeWavePlan(level,seed=0){
 export function makeGame(level,deck,mode="normal",settings={},challenge=null){
  const game={
   level,deck:[...deck],mode,settings,challenge,phase:"playing",time:0,elapsed:0,seal:(mode==="young"?300:level.startingSeals)+(settings.careerBonus||0),
-  defenders:[],enemies:[],tokens:[],locks:[],effects:[],projectiles:[],particles:[],plan:makeWavePlan(level),
+  defenders:[],enemies:[],tokens:[],locks:[],effects:[],projectiles:[],particles:[],fallen:[],plan:makeWavePlan(level),
   spawned:0,serial:1,nextSky:7,cooldowns:Object.fromEntries(deck.map(id=>[id,0])),
   usedGuards:[false,false,false,false,false],breaches:0,defenderLosses:0,created:0,kills:0,
   stageWave:0,maxWave:level.waves,bossGuardReady:false,bossGuardUsed:false,
@@ -173,6 +173,29 @@ export function place(g,id,lane,col){
  effect(g,"plant",lane,col+.5,"+");
  return {ok:true};
 }
+
+/** Short lived fallen-defender ghosts let players see *where* a unit was destroyed.
+ * They are cosmetic, bounded and never affect hit detection.
+ */
+export function removeDefender(g,d,reason="down"){
+ const idx=g.defenders.indexOf(d);
+ if(idx<0)return false;
+ g.defenders.splice(idx,1);g.defenderLosses++;
+ if(!g.settings.reducedMotion){
+  g.fallen.push({uid:uid(g),id:d.id,lane:d.lane,col:d.col,ttl:.75,age:0,reason});
+  if(g.fallen.length>25)g.fallen.shift();
+ }
+ effect(g,reason,d.lane,d.col+.5,reason==="seize"?"ЗАХОПЛЕНО":"ЗАХИСНИК ВИБУВ");
+ emitBurst(g,"paper",d.lane,d.col+.5,11);
+ return true;
+}
+export function advanceFallen(g,dt){
+ for(let i=g.fallen.length-1;i>=0;i--){
+  g.fallen[i].age+=dt;
+  if(g.fallen[i].age>=g.fallen[i].ttl)g.fallen.splice(i,1);
+ }
+}
+
 function removeEnemy(g,e,silent=false){
  const idx=g.enemies.indexOf(e);if(idx>=0)g.enemies.splice(idx,1);
  if(!silent){
@@ -509,7 +532,7 @@ function enemyTurn(g,e,delta){
    e.jumped=true;e.x-=1.35;effect(g,"jump",e.lane,e.x,"СТРИБОК");
   }else if(e.trait==="seize"&&!g.locks.some(x=>x.lane===blocker.lane&&x.col===blocker.col)){
    g.locks.push({lane:blocker.lane,col:blocker.col,enemyUid:e.uid,lost:{...blocker}});
-   g.defenders.splice(g.defenders.indexOf(blocker),1);g.defenderLosses++;
+   removeDefender(g,blocker,"seize");
    effect(g,"seize",e.lane,e.x,"ФАЛЬШИВИЙ ЗАПИС");
   }else{
    if(e.trait==="phish"&&g.time>e.specialUntil&&!blocker.shieldHp){blocker.disabledUntil=g.time+5;e.specialUntil=g.time+10;effect(g,"phish",e.lane,e.x,"ФІШИНГ");}
@@ -526,7 +549,7 @@ function enemyTurn(g,e,delta){
    blocker.hp-=dmg;
    if(dmg>0){blocker.lastDamagedAt=g.time;e.attackUntil=g.time+.36;}
    if(blocker.kind==="wall"&&blocker.id==="notary"&&e.scheme==="forgery")damageEnemy(g,e,10*delta,"notary");
-   if(blocker.hp<=0){g.defenders.splice(g.defenders.indexOf(blocker),1);g.defenderLosses++;effect(g,"down",blocker.lane,blocker.col+.5,"ЗАХИСНИК");}
+   if(blocker.hp<=0)removeDefender(g,blocker,"down");
   }
  }else{
   e.x-=move;
@@ -559,6 +582,7 @@ export function tick(g,delta){
  for(const e of [...g.enemies])if(g.enemies.includes(e))enemyTurn(g,e,delta);
  advanceProjectiles(g,delta);
  advanceParticles(g,delta);
+ advanceFallen(g,delta);
  if(g.finalSurvivalUntil&&g.time<g.finalSurvivalUntil&&g.time>=g.nextSurvivalSpawn){
   const ids=["schemer","phisher","briber","alimony","caller","usb"];
   const ix=Math.floor((g.finalSurvivalUntil-g.time)*2)%ids.length;
