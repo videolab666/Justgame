@@ -1,0 +1,62 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {getLevel} from '../src/data.js';
+import {makeGame,spawn,place,tick,damageEnemy} from '../src/engine.js';
+
+test('Graph debt boss is invulnerable until offshore safes are discovered and destroyed',()=>{
+ const g=makeGame(getLevel(1,10),['executor']);
+ g.plan=[];g.seal=3000;
+ const boss=spawn(g,'boss',2,8);
+ const safes=g.enemies.filter(x=>x.id==='offshore_safe');
+ assert.equal(safes.length,4);
+ assert.ok(safes.every(x=>!x.reveal));
+ const before=boss.hp;
+ damageEnemy(g,boss,2000,'enforcement');assert.equal(boss.hp,before);
+ place(g,'executor',0,2);
+ tick(g,.13);
+ assert.ok(safes.every(x=>x.reveal));
+ for(const s of safes)damageEnemy(g,s,900,'enforcement');
+ assert.equal(g.enemies.some(x=>x.id==='offshore_safe'),false);
+ damageEnemy(g,boss,2000,'enforcement');
+ assert.ok(boss.hp<before);
+});
+test('five corrupt tentacles protect the boss head',()=>{
+ const g=makeGame(getLevel(2,10),['whistleblower']);
+ g.plan=[];
+ const boss=spawn(g,'boss',2,8);
+ const parts=g.enemies.filter(x=>x.id==='tentacle');
+ assert.equal(parts.length,5);
+ damageEnemy(g,boss,400,'integrity');
+ const withParts=boss.maxHp-boss.hp;
+ for(const part of parts)damageEnemy(g,part,2000,'integrity');
+ assert.equal(g.enemies.some(x=>x.id==='tentacle'),false);
+ const old=boss.hp;
+ damageEnemy(g,boss,400,'integrity');
+ assert.ok(old-boss.hp>withParts);
+});
+test('Hydra heads multiply if finished by a non-digital tool',()=>{
+ const g=makeGame(getLevel(3,10),['twofactor']);
+ g.plan=[];
+ const boss=spawn(g,'boss',2,8);
+ assert.equal(boss.maxHp,8000);
+ assert.equal(g.enemies.filter(x=>x.trait==='hydra_head').length,3);
+ const head=g.enemies.find(x=>x.id==='hydra_phish');
+ const old=boss.hp;
+ damageEnemy(g,boss,500,'digital');
+ assert.equal(boss.hp,old);
+ damageEnemy(g,head,20000,'registry');
+ const after=g.enemies.filter(x=>x.trait==='hydra_head');
+ assert.equal(after.length,4);
+ assert.equal(after.some(x=>x.uid===head.uid),false);
+ damageEnemy(g,after[0],20000,'digital');
+ assert.equal(g.enemies.filter(x=>x.trait==='hydra_head').length,3);
+});
+test('Hydra body death initiates final survival timer rather than instant campaign victory',()=>{
+ const g=makeGame(getLevel(3,10),['twofactor']);
+ g.plan=[];
+ const boss=spawn(g,'boss',2,7);
+ for(const part of [...g.enemies].filter(x=>x.trait==='hydra_head'))damageEnemy(g,part,20000,'digital');
+ damageEnemy(g,boss,20000,'digital');
+ assert.ok(g.finalSurvivalUntil>=g.time+29);
+ assert.ok(g.lastHint.includes('30 секунд'));
+});

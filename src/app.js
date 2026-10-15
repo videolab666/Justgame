@@ -123,7 +123,7 @@ function renderPlay(){
   cells+=`<button type="button" role="gridcell" data-act="cell" data-lane="${lane}" data-col="${col}" class="cell ${active?"":"out"} ${focus.lane===lane&&focus.col===col?"cursor":""}" ${active?"":"disabled"} aria-label="Ряд ${lane+1}, колонка ${col+1}">${cellContent(lane,col)}</button>`;
  }
  const tokens=game.tokens.map(t=>`<button class="token" type="button" aria-label="Зібрати 25 печаток" data-act="collect" data-id="${t.uid}" style="left:${(t.col+.3)*100/9}%;top:${(t.lane+.15)*100/5}%">✦</button>`).join("");
- const foes=game.enemies.map(e=>`<div data-enemy="${e.uid}" class="enemy ${e.trait==="flying"?"flying":""} ${e.trait==="disguised_jump"&&!e.reveal?"disguised":""} ${game.time<e.frozenUntil?"frozen":""} ${e.id==="boss"?"boss":""}" style="left:${e.x*100/9}%;top:${e.lane*20+.35}%">
+ const foes=game.enemies.map(e=>`<div data-enemy="${e.uid}" title="${E(e.name)}" class="enemy ${e.trait==="flying"?"flying":""} ${e.trait==="disguised_jump"&&!e.reveal?"disguised":""} ${game.time<e.frozenUntil?"frozen":""} ${e.id==="boss"?"boss":""}" style="left:${e.x*100/9}%;top:${e.lane*20+.35}%">
  <div class="enemy-inner"><span class="kind">${TYPES[e.scheme].icon}</span><span class="eicon">${art(bossPartArt(e.id==="boss"?level.bossData.id:e.id),"enemy-illustration")}</span><span class="hp-track"><b style="width:${Math.max(0,e.hp/e.maxHp)*100}%"></b></span></div></div>`).join("");
  const fx=game.effects.map(e=>`<span data-fx="${e.id}" style="position:absolute;left:${e.x*100/9}%;top:${e.lane*20+1}%;font-size:12px;font-weight:900;color:#fdfbf3;text-shadow:1px 2px #174563,0 0 5px #173752;white-space:nowrap">${E(e.text)}</span>`).join("");
  const guards=Array.from({length:5},(_,l)=>{
@@ -194,7 +194,7 @@ function syncGameFrame(){
   let el=layer.querySelector('[data-enemy="'+id+'"]');
   if(!el){
    el=document.createElement("div");el.className="enemy";
-   el.dataset.enemy=id;el.innerHTML='<div class="enemy-inner"><span class="kind"></span><span class="eicon"></span><span class="hp-track"><b></b></span></div>';
+   el.dataset.enemy=id;el.title=e.name;el.innerHTML='<div class="enemy-inner"><span class="kind"></span><span class="eicon"></span><span class="hp-track"><b></b></span></div>';
    const im=document.createElement("img");im.className="game-art enemy-illustration";
    im.alt="";im.draggable=false;im.decoding="async";im.src="./assets/sprites/"+encodeURIComponent(bossPartArt(e.id==="boss"?level.bossData.id:e.id))+".svg";
    el.querySelector(".eicon").append(im);layer.append(el);
