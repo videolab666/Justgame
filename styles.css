@@ -6,3 +6,10 @@ a{color:#135f94}a:hover{text-decoration-thickness:3px}.screen{max-width:1440px;m
 @media(max-width:620px){.hero h1{font-size:47px}.hero-copy{padding:26px}.hero-art{min-height:180px}.world-grid{grid-template-columns:1fr}.level-grid{grid-template-columns:repeat(2,1fr)}.game-shell{padding:5px;border-radius:12px}.game-top{gap:6px}.game-meta{min-width:120px}.seal-pill{font-size:16px;padding:5px 9px}.game-controls button{padding:5px}.cardbar .unit-card{min-width:79px;width:79px}.board-frame{grid-template-columns:26px 1fr}.cell{min-height:40px}.guard{min-width:21px;min-height:28px;font-size:14px;border-radius:5px}.enemy-inner{border-width:1px;min-width:21px;padding:1px}.enemy .eicon{font-size:18px}.skyline{height:40px}.token{width:34px;height:34px;font-size:18px}.enemy .kind{top:-11px}.brand strong{font-size:19px}.brand-icon{font-size:24px}.header .nav{gap:4px}.header .nav .btn{padding:5px 8px;font-size:12px}}
 body.high-contrast{--paper:#fff;--outline:#174f65}body.high-contrast .cell{border-color:#587e68}body.high-contrast .enemy-inner{border-width:3px}body.large-text{font-size:19px}
 @media(max-width:700px) and (orientation:portrait){.portrait-tip{display:block;background:#f1cf83;color:#183d57;text-align:center;padding:8px;font-weight:700}}
+
+/* Local vector artwork, optional reduced motion, and stage weather cues. */
+.hero-owl{width:74%;max-width:305px;object-fit:contain;top:6%;left:10%}
+.field-wrap.fog .board::after{content:"";position:absolute;left:59%;right:0;top:0;bottom:0;background:linear-gradient(90deg,transparent,#d0d8db85,#dde1e0a8);z-index:4;pointer-events:none}
+.field-wrap.blackout:after{content:"";position:absolute;inset:0;background:#061e3470;box-shadow:inset 0 0 70px #061c40;pointer-events:none;z-index:6}
+body.reduced-motion *,body.reduced-motion *:before,body.reduced-motion *:after{animation:none!important;transition:none!important}
+@media print{body{background:white}.header,.footline,.dialog-actions,.nav{display:none!important}.dialog{border:0;box-shadow:none}.overlay{position:static;background:white}.screen{display:none}}

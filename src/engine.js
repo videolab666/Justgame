@@ -285,7 +285,7 @@ function enemyTurn(g,e,delta){
  if(e.trait==="giant"&&!e.spawnedMinions&&e.hp<e.maxHp*.5){
   e.spawnedMinions=true;spawn(g,"schemer",e.lane,Math.max(.9,e.x-2));
  }
- if(blocker&&!["burrow","flying","neutral"].includes(e.trait)){
+ if(blocker&&!e.air&&!["burrow","flying","neutral"].includes(e.trait)){
   if(["jump","disguised_jump"].includes(e.trait)&&!e.jumped&&blocker.id!=="notary_office"){
    e.jumped=true;e.x-=1.35;effect(g,"jump",e.lane,e.x,"СТРИБОК");
   }else if(e.trait==="seize"&&!g.locks.some(x=>x.lane===blocker.lane&&x.col===blocker.col)){

@@ -2,7 +2,22 @@ import {UNITS,UNIT_BY_ID,ENEMIES,ENEMY_BY_ID,WORLDS,TYPES,TOOLS,FACTS,UNLOCK_REW
 import {makeGame,tick,place,collectToken,collectAll,currentProgress,scoreStars,selectAdvice,useGuard,availablePlacement} from "./engine.js";
 const root=document.getElementById("app");
 const KEY="just-oborona-progress-v1";
-const defaults={completed:{},settings:{autoCollect:false,reducedMotion:window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches||false,highContrast:false,largeText:false},mode:"normal"};
+let audioContext=null;
+function sound(freq=640,duration=.085){
+ if(!save.settings.sound)return;
+ try{
+  const AC=window.AudioContext||window.webkitAudioContext;
+  if(!AC)return;
+  audioContext=audioContext||new AC();
+  const osc=audioContext.createOscillator(),gain=audioContext.createGain();
+  osc.type="sine";osc.frequency.setValueAtTime(freq,audioContext.currentTime);
+  gain.gain.setValueAtTime(.035,audioContext.currentTime);
+  gain.gain.exponentialRampToValueAtTime(.0001,audioContext.currentTime+duration);
+  osc.connect(gain).connect(audioContext.destination);
+  osc.start();osc.stop(audioContext.currentTime+duration);
+ }catch{/* audio optional */}
+}
+const defaults={completed:{},settings:{sound:false,autoCollect:false,reducedMotion:window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches||false,highContrast:false,largeText:false},mode:"normal"};
 function readStore(){try{const saved=JSON.parse(localStorage.getItem(KEY));return { ...defaults,...saved,completed:saved?.completed||{},settings:{...defaults.settings,...saved?.settings}};}catch{return structuredClone(defaults);}}
 let save=readStore();
 let view="home",world=0,stage=1,level=getLevel(0,1),deck=[],selected="registrar",game=null;
@@ -31,7 +46,7 @@ function renderHome(){
  <p>Схемники атакують майно, бізнес та державні реєстри. Створи оборону з реєстраторів, нотаріусів, виконавців і цифрових інструментів!</p>
  <div class="hero-actions">${btn("worlds","▶ Почати пригоду","btn btn-primary")}${btn("almanac","📖 Пізнати інструменти","btn btn-dark")}</div>
  <div class="stat-row"><span>⭐ ${totalStars()} зірок</span><span>🎓 ${rank()}</span></div>
- </div><div class="hero-art" aria-hidden="true"><div class="hero-bubbles">🛡️ ✦ 📜</div><div class="hero-owl">🦉</div><div class="hero-paper">ПЕРЕВІРЕНО ✔</div></div></section>
+ </div><div class="hero-art" aria-hidden="true"><div class="hero-bubbles">🛡️ ✦ 📜</div><img class="hero-owl" src="./assets/yusya.svg" alt=""><div class="hero-paper">ПЕРЕВІРЕНО ✔</div></div></section>
  <section class="main"><div class="eyebrow">Підказка від Юсі</div><h2 class="section-title">Знай правильний інструмент!</h2>
  <div class="world-grid">${WORLDS.map((w,i)=>`<button class="world-card" data-act="world" data-world="${i}"><span class="world-emoji">${w.emoji}</span><strong>${w.name}</strong><p>${w.subtitle}</p></button>`).join("")}</div></section>`);
 }
@@ -113,7 +128,7 @@ function renderPlay(){
  <div class="progress-track"><div class="progress-fill" style="width:${progress}%"></div></div></div>
  <div class="game-controls">${btn("speed",speed===1?"▶ ×1":speed===2?"▶▶ ×2":"▶ ½","btn btn-quiet")}${btn("pause","⏸","btn btn-quiet","aria-label=\"Пауза\"")}</div></div>
  <div class="cardbar" aria-label="Колода захисників">${cards}</div>
- <div class="field-wrap ${level.special.blackout?"blackout":""}">
+ <div class="field-wrap ${level.special.blackout?"blackout":""} ${level.special.fog?"fog":""}">
  <div class="skyline" aria-hidden="true">${level.world===0?"🏘️ 🌉 🌳 🏠":level.world===1?"🏭 ⚙️ 🏗️ 🏭":level.world===2?"🏛️ 🌳 🏤 🌳":"💾 ◇ 🖥️ ◇"}</div>
  <div class="board-frame"><div class="house-strip">${guards}</div><div class="board" role="grid" aria-label="Поле оборони, 5 рядків і 9 колонок">
  ${cells}<div class="enemy-layer" aria-hidden="true">${foes}</div><div class="tokens-layer">${tokens}</div><div class="vfx-layer" aria-hidden="true">${fx}</div></div></div></div>
@@ -147,7 +162,7 @@ function renderAlmanac(){
 }
 function renderSettings(){
  return wrapper(`<main class="main" style="max-width:830px;margin:0 auto"><h1 class="section-title">Налаштування</h1>
- <div class="panel">${[["autoCollect","Автоматично збирати печатки"],["reducedMotion","Менше руху та ефектів"],["highContrast","Висококонтрастний режим"],["largeText","Збільшити текст"]].map(([id,label])=>`<label class="setting-row"><strong>${label}</strong><input type="checkbox" data-setting="${id}" ${save.settings[id]?"checked":""}></label>`).join("")}
+ <div class="panel">${[["sound","Звукові ефекти"],["autoCollect","Автоматично збирати печатки"],["reducedMotion","Менше руху та ефектів"],["highContrast","Висококонтрастний режим"],["largeText","Збільшити текст"]].map(([id,label])=>`<label class="setting-row"><strong>${label}</strong><input type="checkbox" data-setting="${id}" ${save.settings[id]?"checked":""}></label>`).join("")}
  <p class="notice">Налаштування та прогрес зберігаються тільки у вашому браузері. Дані на сервер не передаються.</p>
  <div class="dialog-actions">${btn("back","← Назад","btn btn-dark")}${btn("reset","🗑️ Скинути прогрес","btn btn-danger")}</div></div></main>`);
 }
@@ -244,6 +259,7 @@ function startGame(){
 }
 function finish(){
  if(!game||shownEnd)return;
+ sound(game.phase==="won"?880:180,.25);
  shownEnd=true;
  if(game.phase==="won"){const id=level.id;save.completed[id]=Math.max(scoreStars(game),save.completed[id]||0);persist();}
  setView("result");
@@ -272,10 +288,11 @@ function action(name,el){
   focus={lane:Number(el.dataset.lane),col:Number(el.dataset.col)};
   const result=place(game,selected,focus.lane,focus.col);
   toast=result.ok?`${UNIT_BY_ID[selected].name}: додано на поле.`:result.error;
+  if(result.ok)sound(540,.09);
   render();return;
  }
- if(name==="collect"&&game){collectToken(game,Number(el.dataset.id));toast="Отримано 25 печаток довіри!";render();return;}
- if(name==="guard"&&game){const ok=useGuard(game,Number(el.dataset.lane));toast=ok?"Заборону застосовано!":"У босовій справі дочекайтеся фінальної фази.";render();return;}
+ if(name==="collect"&&game){collectToken(game,Number(el.dataset.id));sound(950,.12);toast="Отримано 25 печаток довіри!";render();return;}
+ if(name==="guard"&&game){const ok=useGuard(game,Number(el.dataset.lane));if(ok)sound(260,.24);toast=ok?"Заборону застосовано!":"У босовій справі дочекайтеся фінальної фази.";render();return;}
  if(name==="speed"){speed=speed===1?2:speed===2?.5:1;render();return;}
  if(name==="pause"){modal="pause";render();return;}
  if(name==="retry"){if(level.mini){startMini();setView("mini");}else startGame();return;}
@@ -328,4 +345,8 @@ function loop(ts){
  requestAnimationFrame(loop);
 }
 render();
+fetch("./content/facts.uk.json",{cache:"no-cache"})
+ .then(r=>{if(!r.ok)throw Error("No local facts file");return r.json();})
+ .then(body=>{if(body?.entries)for(const [k,v] of Object.entries(body.entries))if(Object.hasOwn(FACTS,k)&&typeof v==="string"&&v.length<600)FACTS[k]=v;if(view==="almanac"||modal==="detail")render();})
+ .catch(()=>{/* Built-in provisional facts remain available offline. */});
 requestAnimationFrame(loop);
