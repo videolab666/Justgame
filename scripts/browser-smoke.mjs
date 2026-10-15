@@ -120,6 +120,18 @@ try{
  await js('document.querySelector(".board > .cell[data-lane=\\"2\\"][data-col=\\"2\\"]").click()');
  await waitFor('!!document.querySelector(".board .defender")');
  await screenshot("02-board-with-defender");
+
+ const musicButton=await js('!!document.querySelector("[data-act=music-toggle]")');
+ if(!musicButton)throw Error("Music toggle missing from battle controls");
+ const musicInitially=await js('document.querySelector("[data-act=music-toggle]").getAttribute("aria-pressed")');
+ if(musicInitially!=="true")throw Error("Music should be enabled for new games");
+ await js('document.querySelector("[data-act=music-toggle]").click()');
+ const muted=await js('document.querySelector("[data-act=music-toggle]").getAttribute("aria-pressed")');
+ if(muted!=="false")throw Error("Music toggle cannot mute");
+ await js('document.querySelector("[data-act=music-toggle]").click()');
+ const unmuted=await js('document.querySelector("[data-act=music-toggle]").getAttribute("aria-pressed")');
+ if(unmuted!=="true")throw Error("Music toggle cannot unmute");
+
  await waitFor('document.querySelectorAll(".enemy").length>0',28000);
  await waitFor('document.querySelectorAll(".projectile").length>0',11000);
  await screenshot("03-shots-and-enemies");

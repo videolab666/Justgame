@@ -662,7 +662,7 @@ root.addEventListener("click",e=>{
  if(el&&!el.disabled){
   action(el.dataset.act,el);
   // The game starts audio within a trusted user event; no autoplay at page load.
-  if(view==="play"&&save.settings.music){soundtrack.unlock();soundtrack.setScene("battle",world);}
+  if(view==="play"&&!modal&&save.settings.music){soundtrack.unlock();soundtrack.setScene("battle",world);}
  }
 });
 root.addEventListener("change",e=>{
@@ -718,6 +718,11 @@ function loop(ts){
   outroElapsed+=delta;
   if(outroElapsed>=(save.settings.reducedMotion?.6:4))setView("result");
  }
+ // Audio follows gameplay: menus, pause/help dialogs and hidden tabs never
+ // continue scheduling new backing-track notes in the background.
+ const audibleBattle=view==="play"&&game?.phase==="playing"&&!modal&&!document.hidden;
+ soundtrack.setScene(audibleBattle?"battle":view==="outro"?"outro":"silent",world,
+  audibleBattle?Math.min(1,game.stageWave/Math.max(1,game.maxWave)):0);
  soundtrack.tick();
  requestAnimationFrame(loop);
 }
