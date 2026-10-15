@@ -6,8 +6,8 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 paths = sorted((ROOT / "assets").rglob("*.svg"))
 errors = []
-if len(paths) < 53:
-    errors.append(f"Expected 53 game vector files, got {len(paths)}")
+if len(paths) < 58:
+    errors.append(f"Expected 58 game vector files, got {len(paths)}")
 for path in paths:
     try:
         tree = ET.parse(path)

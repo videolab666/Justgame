@@ -25,7 +25,7 @@ let challenge=null;
 let modal="",modalReturn="",almanacTab="units",almanacQuery="",detail=null,mini=null,focus={lane:2,col:2},speed=1,toast="",lastRender=0,prevTs=0,shownEnd=false;
 const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
 const E=escapeHtml;
-const bossPartArt=(id)=>({offshore_safe:"mine",tentacle:"octopus",hydra_phish:"hydra",hydra_call:"hydra",hydra_malware:"hydra"}[id]||id);
+const bossPartArt=(id)=>id;
 const art=(id,cls="")=>`<img class="game-art ${cls}" src="./assets/sprites/${encodeURIComponent(id)}.svg" alt="" draggable="false" loading="eager" decoding="async">`;
 const landscape=(w,cls="")=>`<img class="world-art ${cls}" src="./assets/worlds/world-${w+1}.svg" alt="" loading="lazy">`;
 const btn=(action,label,classes="btn",props="")=>`<button type="button" class="${classes}" data-act="${action}" ${props}>${label}</button>`;
