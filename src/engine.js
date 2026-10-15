@@ -61,7 +61,7 @@ export function queueEndlessWave(game,n){
  return amount;
 }
 const uid=g=>g.serial++;
-function effect(g,kind,lane,x,text=""){g.effects.push({id:uid(g),kind,lane,x,ttl:.7,text});if(g.effects.length>35)g.effects.shift();}
+function effect(g,kind,lane,x,text="",ttl=.7){g.effects.push({id:uid(g),kind,lane,x,ttl,text});if(g.effects.length>35)g.effects.shift();}
 export function spawn(g,id,lane,x=9.3){
  const parts={
   offshore_safe:{name:"Сейф-офшор",icon:"🔒",scheme:"debt",hp:800,speed:0,trait:"offshore_safe",tip:"Сховані активи потребують виявлення."},
@@ -409,8 +409,10 @@ function attack(g,d,delta){
  const raw=d.kind==="intern"&&g.time-d.placedAt>=60?20:spec.damage;
  if(d.id==="senior"){
   // Two real stamps (not a single fake double-damage animation).
-  fireProjectile(g,d,e,raw/2,bonus);
-  fireProjectile(g,d,e,raw/2,bonus);
+  const top=fireProjectile(g,d,e,raw/2,bonus);
+  const bottom=fireProjectile(g,d,e,raw/2,bonus);
+  top.row=top.startRow=d.lane+.35;
+  bottom.row=bottom.startRow=d.lane+.65;
  }else fireProjectile(g,d,e,raw,bonus);
  d.timer=spec.interval||2;
 }
@@ -510,7 +512,10 @@ export function tick(g,delta){
  }
  while(g.spawned<g.plan.length&&g.plan[g.spawned].time<=g.time){
   const action=g.plan[g.spawned++];
-  g.stageWave=Math.max(g.stageWave,action.wave);
+  if(action.wave>g.stageWave){
+   g.stageWave=action.wave;
+   effect(g,"wave",2,4.5,action.wave===g.maxWave?"ВЕЛИКА СХЕМА!":"ХВИЛЯ "+action.wave,2.1);
+  }
   spawn(g,action.id,action.lane);
   if(action.id==="usb"&&g.level.stage>=7){
    for(let i=1;i<5;i++)spawn(g,"usb",action.lane,9.3+i*.32);

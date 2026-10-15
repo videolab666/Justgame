@@ -158,3 +158,22 @@ body.reduced-motion .enemy{transition:none}
 body.reduced-motion .defender .board-illustration,body.reduced-motion .enemy .enemy-illustration,
 body.reduced-motion .token,body.reduced-motion .guard{animation:none!important}
 body.reduced-motion .projectile{transition:none!important}
+
+/* A deliberate wave signal rather than an endless stream of tiny HUD text. */
+.battle-fx.fx-wave{
+  z-index:25;font-size:clamp(17px,2.8vw,32px);color:#ffe9a5;
+  background:linear-gradient(115deg,#123751eb,#296c7de8);
+  border:3px solid #e5bc61;border-radius:14px;padding:8px 20px;
+  box-shadow:0 7px 22px #133956b5,0 0 16px #f3d38860;
+  text-shadow:0 2px #714f2a,0 0 8px #f7d4819c;
+  animation:wave-arrival 2s ease-out both;
+  transform:translate(-50%,-50%);
+}
+.battle-fx.fx-wave::after{display:none}
+@keyframes wave-arrival{
+  0%{opacity:0;transform:translate(-50%,-50%) scale(.6)}
+  16%{opacity:1;transform:translate(-50%,-50%) scale(1.07)}
+  28%{transform:translate(-50%,-50%) scale(1)}
+  77%{opacity:1;transform:translate(-50%,-50%) scale(1)}
+  100%{opacity:0;transform:translate(-50%,-75%) scale(1.02)}
+}

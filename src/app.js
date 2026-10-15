@@ -221,9 +221,10 @@ function syncGameFrame(){
   let el=shotLayer.querySelector('[data-projectile="'+id+'"]');
   if(!el){
    el=document.createElement("span");el.className="projectile shot-"+p.kind;
-   el.dataset.projectile=id;el.setAttribute("aria-hidden","true");
-   el.textContent=shotKinds[p.kind]||"✦";shotLayer.append(el);
+   el.dataset.projectile=id;el.setAttribute("aria-hidden","true");shotLayer.append(el);
   }
+  const symbol=shotKinds[p.kind]??"✦";
+  if(el.textContent!==symbol)el.textContent=symbol;
   if(p.kind==="beam"){
    const dx=(p.endX-p.startX)*pxPerCol,dy=(p.endRow-p.startRow)*pxPerRow;
    el.style.left=p.startX*100/9+"%";el.style.top=p.startRow*20+"%";
