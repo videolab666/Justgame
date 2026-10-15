@@ -154,7 +154,7 @@ function renderDeck(){
 function cellContent(lane,col){
  const d=game.defenders.find(x=>x.lane===lane&&x.col===col),lock=game.locks.some(x=>x.lane===lane&&x.col===col);
  let inner=lock?'<span class="locked-cell">🚫</span>':"";
- if(d)inner+=`<span data-tool="${E(d.tool||"none")}" data-kind="${E(d.kind)}" class="defender ${d.shieldHp>0?"shielded":""} ${game.time<d.disabledUntil?"disabled":""} ${game.time-(d.lastShotAt??-10)<.22?"firing":""} ${game.time-d.placedAt<.28?"placing":""} ${game.time-(d.lastDamagedAt??-10)<.22?"hurt":""}"><span class="sprite">${art(d.id,"board-illustration")}</span>${["shooter","intern","lobber","splash","air","slow","sniper","global"].includes(d.kind)?'<span class="attack-arm" aria-hidden="true"><span class="attack-hand"></span><span class="attack-item"></span></span>':""}<small>${E(d.name.split(" ")[0])}</small><span class="health" style="width:${Math.max(0,d.hp/d.maxHp)*96}%"></span></span>`;
+ if(d)inner+=`<span data-tool="${E(d.tool||"none")}" data-kind="${E(d.kind)}" class="defender ${d.shieldHp>0?"shielded":""} ${game.time<d.disabledUntil?"disabled":""} ${game.time-(d.lastShotAt??-10)<.38?"firing":""} ${game.time-d.placedAt<.28?"placing":""} ${game.time-(d.lastDamagedAt??-10)<.22?"hurt":""}"><span class="sprite">${art(d.id,"board-illustration")}</span>${["shooter","intern","lobber","splash","air","slow","sniper","global"].includes(d.kind)?'<span class="attack-arm" aria-hidden="true"><span class="attack-hand"></span><span class="attack-item"></span></span>':""}<small>${E(d.name.split(" ")[0])}</small><span class="health" style="width:${Math.max(0,d.hp/d.maxHp)*96}%"></span></span>`;
  return inner;
 }
 function renderPlay(){
@@ -232,9 +232,23 @@ function syncGameFrame(){
  }
  for(const cell of root.querySelectorAll(".board > .cell")){
   const row=+cell.dataset.lane,col=+cell.dataset.col;
-  const html=cellContent(row,col);
-  if(cell.dataset.content!==html){
-   cell.innerHTML=html;cell.dataset.content=html;
+  const d=game.defenders.find(x=>x.lane===row&&x.col===col);
+  const lock=game.locks.find(x=>x.lane===row&&x.col===col);
+  const key=(d?d.uid+":"+d.id:"empty")+":"+(lock?lock.enemyUid??"locked":"free");
+  // Replace the original illustration only when an occupant changes.
+  // Replacing it every 34ms interrupted recoil and hurt animations.
+  if(cell.dataset.renderKey!==key){
+   cell.innerHTML=cellContent(row,col);cell.dataset.renderKey=key;
+  }
+  const sprite=cell.querySelector(".defender");
+  if(sprite&&d){
+   sprite.classList.toggle("firing",game.time-(d.lastShotAt??-10)<.38);
+   sprite.classList.toggle("placing",game.time-d.placedAt<.28);
+   sprite.classList.toggle("hurt",game.time-(d.lastDamagedAt??-10)<.22);
+   sprite.classList.toggle("disabled",game.time<d.disabledUntil||game.time<d.confusedUntil);
+   sprite.classList.toggle("shielded",d.shieldHp>0);
+   const bar=sprite.querySelector(".health");
+   if(bar)bar.style.width=Math.max(0,d.hp/d.maxHp)*96+"%";
   }
  }
  const board=$(".board"),layer=$(".enemy-layer"),fallenLayer=$(".fallen-layer"),shotLayer=$(".projectile-layer"),particleLayer=$(".particle-layer"),tokenLayer=$(".tokens-layer"),fxLayer=$(".vfx-layer");
@@ -387,7 +401,7 @@ function renderOutro(){
  '<div class="outro-curtain"><div class="outro-eyebrow">'+(won?"✦ СПРАВУ ВИКОНАНО ✦":"⚠️ ТРИВОГА НА ПОЛІ")+'</div>'+
  '<h1 class="outro-title">'+(won?"СХЕМУ ЗУПИНЕНО!":"ОБОРОНУ ПРОРВАНО")+'</h1>'+
  '<p class="outro-subtitle">'+(won?"Права родини захищено. Юся святкує перемогу!":"Захисники відступили, але ще можна повернутися сильнішими.")+'</p>'+
- '<div class="outro-characters"><div class="outro-character outro-hero">'+art("yusya","outro-yusya")+'</div>'+
+ '<div class="outro-characters"><div class="outro-character outro-hero">'+'<img class="game-art outro-yusya" src="./assets/yusya.svg" alt="Сова Юся" draggable="false">'+'</div>'+
  '<span class="outro-center">'+(won?"🏆":"🛡️")+'</span><div class="outro-character outro-villain">'+art(foeId,"outro-enemy")+'</div></div>'+
  starsArt+'<div class="outro-progress" aria-hidden="true"><span></span></div>'+
  btn("skip-outro","Переглянути статистику →","btn btn-primary")+'</div></main>');

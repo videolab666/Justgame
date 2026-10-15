@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import * as data from '../src/data.js';
 import * as tactics from '../src/tactics.js';
+import {Soundtrack} from '../src/music.js';
 import * as engine from '../src/engine.js';
 
 function createUI(source){
@@ -17,7 +18,7 @@ function createUI(source){
  const requestAnimationFrame=()=>{};
  const fetch=async()=>{throw Error('No external fetch in UI smoke test')};
  const noImports=source.replace(/^import .*?;\s*$/gm,'');
- const symbols={...data,...engine,...tactics,document,window,localStorage,requestAnimationFrame,fetch};
+ const symbols={...data,...engine,...tactics,Soundtrack,document,window,localStorage,requestAnimationFrame,fetch};
  const load=new Function(...Object.keys(symbols),
   noImports+';return {action,goLevel,startGame,setView,html:()=>root.innerHTML,game:()=>game,mode:()=>view};');
  return load(...Object.values(symbols));
@@ -61,4 +62,20 @@ test('pause, settings and almanac can render',()=>{
  assert.match(game.html(),/Альманах Юсі/);
  game.action('settings',{});
  assert.match(game.html(),/Автоматично збирати печатки/);
+});
+
+test("ending cinematic precedes statistics, player can skip",()=>{
+ const ui=createUI(source);
+ ui.goLevel(0,1);ui.startGame();
+ assert.match(source,/setView\("outro"\)/);
+ assert.match(source,/skip-outro/);
+ assert.match(source,/outroElapsed/);
+ assert.match(source,/result:renderResult,outro:renderOutro/);
+});
+test("music volume and mute are separate from hit sounds",()=>{
+ const ui=createUI(source);
+ ui.setView("settings");
+ assert.match(ui.html(),/Фонова музика/);
+ assert.match(ui.html(),/Гучність музики/);
+ assert.match(ui.html(),/Звукові ефекти/);
 });
