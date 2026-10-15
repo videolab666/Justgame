@@ -28,9 +28,9 @@ export function makeWavePlan(level,seed=0){
  if(level.id==="3-5")list.push({time:13+(waves-1)*41+19,id:"mini_boss",lane:2,wave:waves});
  return list.sort((a,b)=>a.time-b.time);
 }
-export function makeGame(level,deck,mode="normal",settings={}){
- return {
-  level,deck:[...deck],mode,settings,phase:"playing",time:0,elapsed:0,seal:mode==="young"?300:level.startingSeals,
+export function makeGame(level,deck,mode="normal",settings={},challenge=null){
+ const game={
+  level,deck:[...deck],mode,settings,challenge,phase:"playing",time:0,elapsed:0,seal:(mode==="young"?300:level.startingSeals)+(settings.careerBonus||0),
   defenders:[],enemies:[],tokens:[],locks:[],effects:[],plan:makeWavePlan(level),
   spawned:0,serial:1,nextSky:7,cooldowns:Object.fromEntries(deck.map(id=>[id,0])),
   usedGuards:[false,false,false,false,false],breaches:0,defenderLosses:0,created:0,kills:0,
@@ -38,6 +38,27 @@ export function makeGame(level,deck,mode="normal",settings={}){
   lastThreat:null,lastHint:level.tutorial||"Підбирайте інструменти до типу правової загрози.",
   miniBonus:0
  };
+ if(challenge?.kind==="daily")game.plan=makeWavePlan(level,challenge.seed);
+ if(challenge?.kind==="endless"){
+  game.plan=[];game.maxWave=1;queueEndlessWave(game,1);
+ }
+ return game;
+}
+export function queueEndlessWave(game,n){
+ // Density follows the GDD's B(n) growth while preserving a mobile-safe spawn cap.
+ const danger=Math.floor(4+3*n+.6*n*n);
+ const amount=Math.min(34,danger);
+ const pool=ENEMIES.filter(e=>e.trait!=="neutral"&&e.trait!=="giant"&&e.id!=="queue"&&e.threat<=2+Math.floor(n/2));
+ const choices=pool.length?pool:[ENEMY_BY_ID.schemer];
+ const start=(game.plan.length?game.plan[game.plan.length-1].time+20:12);
+ let seed=(game.challenge?.seed||2026)+n*7919;
+ function random(){seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;}
+ for(let i=0;i<amount;i++){
+  const enemy=choices[Math.floor(random()*choices.length)];
+  game.plan.push({time:start+i*(n>7?1.05:1.8),id:enemy.id,lane:Math.floor(random()*5),wave:n});
+ }
+ game.maxWave=n;
+ return amount;
 }
 const uid=g=>g.serial++;
 function effect(g,kind,lane,x,text=""){g.effects.push({id:uid(g),kind,lane,x,ttl:.7,text});if(g.effects.length>35)g.effects.shift();}
@@ -335,7 +356,12 @@ export function tick(g,delta){
  }
  for(const d of [...g.defenders])attack(g,d,delta);
  for(const e of [...g.enemies])if(g.enemies.includes(e))enemyTurn(g,e,delta);
- if(g.phase==="playing"&&g.spawned===g.plan.length&&g.enemies.length===0&&g.time>=g.plan[g.plan.length-1].time+2){g.phase="won";}
+ if(g.phase==="playing"&&g.spawned===g.plan.length&&g.enemies.length===0&&g.time>=g.plan[g.plan.length-1].time+2){
+  if(g.challenge?.kind==="endless"){
+   queueEndlessWave(g,g.maxWave+1);
+   g.lastHint="🦉 Хвилю "+g.stageWave+" відбито. Готуйтесь до наступної!";
+  }else g.phase="won";
+ }
 }
 export function currentProgress(g){return g.plan.length?Math.min(100,Math.round(100*g.spawned/g.plan.length)):100;}
 export function scoreStars(g){

@@ -21,6 +21,7 @@ const defaults={completed:{},settings:{sound:false,autoCollect:false,reducedMoti
 function readStore(){try{const saved=JSON.parse(localStorage.getItem(KEY));return { ...defaults,...saved,completed:saved?.completed||{},settings:{...defaults.settings,...saved?.settings}};}catch{return structuredClone(defaults);}}
 let save=readStore();
 let view="home",world=0,stage=1,level=getLevel(0,1),deck=[],selected="registrar",game=null;
+let challenge=null;
 let modal="",modalReturn="",almanacTab="units",almanacQuery="",detail=null,mini=null,focus={lane:2,col:2},speed=1,toast="",lastRender=0,prevTs=0,shownEnd=false;
 const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
 const E=escapeHtml;
@@ -46,7 +47,7 @@ function renderHome(){
  <div class="eyebrow">40 справ · 4 світи · захисти свої права</div>
  <h1>Юст-<span>Оборона</span><br>Захисти домівку!</h1>
  <p>Схемники атакують майно, бізнес та державні реєстри. Створи оборону з реєстраторів, нотаріусів, виконавців і цифрових інструментів!</p>
- <div class="hero-actions">${btn("worlds","▶ Почати пригоду","btn btn-primary")}${btn("almanac","📖 Пізнати інструменти","btn btn-dark")}</div>
+ <div class="hero-actions">${btn("worlds","▶ Почати пригоду","btn btn-primary")}${btn("daily","📅 Справа дня","btn btn-dark")}${btn("endless","♾️ Нескінченна облога","btn")}</div>
  <div class="stat-row"><span>⭐ ${totalStars()} зірок</span><span>🎓 ${rank()}</span></div>
  </div><div class="hero-art" aria-hidden="true"><div class="hero-bubbles">🛡️ ✦ 📜</div><img class="hero-owl" src="./assets/yusya.svg" alt=""><div class="hero-paper">ПЕРЕВІРЕНО ✔</div></div></section>
  <section class="main"><div class="eyebrow">Підказка від Юсі</div><h2 class="section-title">Знай правильний інструмент!</h2>
@@ -69,8 +70,9 @@ function renderLevels(){
  return wrapper(`<main class="main"><div class="eyebrow">${w.emoji} Світ ${world+1} з 4</div><h1 class="section-title">${E(w.name)}: ${E(w.subtitle)}</h1><p class="hint">🦉 ${E(STORY[world])}</p><div class="level-grid" style="margin-top:20px">${items}</div>
  <div class="dialog-actions">${btn("worlds","← До карти","btn btn-quiet")}</div></main>`);
 }
+function slotLimit(){return 8+(totalStars()>=15?1:0)+(totalStars()>=60?1:0);}
 function chooseSuggested(){
- const unlocked=unlockedUnits(save.completed),max=8;
+ const unlocked=challenge?UNITS:unlockedUnits(save.completed),max=slotLimit();
  const recommend=[
   ["registrar","cnap","notary","notification","senior","mine","commission","archive"],
   ["executor","cnap","limitation","trustee","private_executor","station","notary","registrar"],
@@ -88,13 +90,13 @@ function unitCard(u,{selected=false,disabled=false,cooldown=0}={}){
  <small>⏱ ${u.cooldown} с</small>${cooldown>.2?`<span class="cooldown">${Math.ceil(cooldown)}</span>`:""}</button>`;
 }
 function renderDeck(){
- const avail=unlockedUnits(save.completed);const disabled=level.activeLanes.length===1&&level.stage===1;
+ const avail=challenge?UNITS:unlockedUnits(save.completed);const disabled=level.activeLanes.length===1&&level.stage===1;
  const types=[...new Set(level.enemies.map(id=>ENEMY_BY_ID[id]?.scheme).filter(Boolean))];
  const warns=types.filter(s=>!deck.some(id=>UNIT_BY_ID[id]?.tool&& (TOOLS[UNIT_BY_ID[id].tool]?.multipliers[Object.keys(TYPES).indexOf(s)]||0)>=1.5));
- return wrapper(`<main class="main"><div class="eyebrow">Справа ${level.id} · ${WORLDS[world].name}</div><h1 class="section-title">${E(level.name)}</h1>
+ return wrapper(`<main class="main"><div class="eyebrow">${challenge?"Особливий режим":"Справа "+level.id+" · "+WORLDS[world].name}</div><h1 class="section-title">${E(level.name)}</h1>
  <div class="split"><section><div class="panel"><h3>📂 Оберіть захисників</h3><p class="muted">Візьміть від 1 до 8 карток. Для встановлення потрібно заробляти печатки.</p>
  <div class="deck-grid">${avail.map(u=>unitCard(u,{selected:deck.includes(u.id)})).join("")}</div></div>
- <div class="deck-summary"><span><strong>${deck.length}/8</strong> карток у справі</span>${btn("start","▶ Розпочати оборону","btn btn-primary",deck.length?'':'disabled')}</div></section>
+ <div class="deck-summary"><span><strong>${deck.length}/${slotLimit()}</strong> карток у справі</span>${btn("start","▶ Розпочати оборону","btn btn-primary",deck.length?'':'disabled')}</div></section>
  <aside class="panel"><h3>🕵️ Хто наступає?</h3><div style="display:grid;gap:10px">${level.enemies.map(id=>{const e=ENEMY_BY_ID[id];return `<div> <span class="tag">${TYPES[e.scheme].icon} ${TYPES[e.scheme].name}</span> <strong>${e.icon} ${E(e.name)}</strong></div>`;}).join("")}</div>
  <p class="hint" style="margin-top:16px">${warns.length?"🦉 Порада: у колоді бракує ефективних інструментів для деяких типів схем.":"🦉 Гарний вибір! Комбінуйте економіку, стіни та атакувальні картки."}</p>
  <p class="muted">${level.special.blackout?"🌙 Блекаут: потрібна зарядна станція.":""} ${level.special.fog?"🌫️ Туман приховує частину поля.":""}</p>
@@ -235,16 +237,18 @@ function syncGameFrame(){
 function renderResult(){
  const success=game?.phase==="won",stars=success?scoreStars(game):0;
  const e=game?.lastThreat;
- const text=success?"Захисники впоралися. Ви зберегли права родини!":`Прорвався ${e?.name||"схемник"}. Спробуйте іншу колоду та інструмент захисту.`;
+ const text=game?.challenge?.kind==="endless"
+  ?`Відбито хвиль: ${Math.max(0,game.stageWave-1)}. Особистий рекорд: ${save.endlessBest||0}.`
+  :success?"Захисники впоралися. Ви зберегли права родини!":`Прорвався ${e?.name||"схемник"}. Спробуйте іншу колоду та інструмент захисту.`;
  const reward=UNLOCK_REWARDS[level.id]?UNIT_BY_ID[UNLOCK_REWARDS[level.id]]:null;
  return wrapper(`<main class="main" style="max-width:830px;margin:0 auto"><div class="panel" style="text-align:center;padding:36px">
- <div class="large-emoji">${success?"🏆":"📰"}</div><div class="eyebrow">${success?"Справу розглянуто":"Юстиційний вісник"}</div>
- <h1 class="section-title">${success?"Права захищено!":"Схема прорвалася!"}</h1><p>${E(text)}</p>
+ <div class="large-emoji">${success?"🏆":"📰"}</div><div class="eyebrow">${challenge?"Особливий режим":success?"Справу розглянуто":"Юстиційний вісник"}</div>
+ <h1 class="section-title">${game?.challenge?.kind==="endless"?"Кінець облоги":success?"Права захищено!":"Схема прорвалася!"}</h1><p>${E(text)}</p>
  ${success?`<div class="stars">${"★".repeat(stars)}${"☆".repeat(3-stars)}</div><p>${reward?"Нова картка: "+reward.icon+" "+E(reward.name):"Відкрито наступну справу та сторінку Альманаху."}</p>`:""}
  <div class="hint" style="text-align:left;margin-top:20px"><strong>📘 Як це в житті:</strong><p>${E(e?.tip||FACTS.general)}</p>
  <small>Юридична інформація має бути перевірена перед офіційним релізом.</small></div>
- <div class="dialog-actions" style="justify-content:center">${btn("retry","↻ Спробувати ще","btn btn-quiet")}${btn("levels","🗺️ До рівнів","btn btn-dark")}${success?btn("next-level","Наступна справа →","btn btn-primary"):""}
- ${success&&level.id==="4-10"?btn("certificate","🎓 Сертифікат","btn btn-primary"):""}</div>
+ <div class="dialog-actions" style="justify-content:center">${btn("retry","↻ Спробувати ще","btn btn-quiet")}${btn("levels","🗺️ До рівнів","btn btn-dark")}${success&&!challenge?btn("next-level","Наступна справа →","btn btn-primary"):""}
+ ${success&&!challenge&&level.id==="4-10"?btn("certificate","🎓 Сертифікат","btn btn-primary"):""}</div>
  </div></main>`);
 }
 function renderAlmanac(){
@@ -343,13 +347,14 @@ function render(){
 }
 function setView(v){view=v;modal="";toast="";render();}
 function goLevel(w,s){
+ challenge=null;
  world=w;stage=s;level=getLevel(world,stage);mini=null;shownEnd=false;chooseSuggested();
  if(level.mini){startMini();setView("mini");}
  else setView("deck");
 }
 function startGame(){
  if(!deck.length)return;
- game=makeGame(level,deck,save.mode,save.settings);selected=deck[0];shownEnd=false;
+ game=makeGame(level,deck,save.mode,{...save.settings,careerBonus:totalStars()>=35?25:0},challenge);selected=deck[0];shownEnd=false;
  game.lastHint=level.tutorial||`Світ ${world+1}. Захистіть будівлю, використовуючи відповідні інструменти.`;
  setView("play");
 }
@@ -357,7 +362,13 @@ function finish(){
  if(!game||shownEnd)return;
  sound(game.phase==="won"?880:180,.25);
  shownEnd=true;
- if(game.phase==="won"){const id=level.id;save.completed[id]=Math.max(scoreStars(game),save.completed[id]||0);persist();}
+ if(game.challenge?.kind==="endless"){
+  save.endlessBest=Math.max(save.endlessBest||0,game.stageWave-1);persist();
+ }else if(game.challenge?.kind==="daily"){
+  if(game.phase==="won"){save.dailyScores=save.dailyScores||{};save.dailyScores[game.challenge.date]=Math.max(scoreStars(game),save.dailyScores[game.challenge.date]||0);persist();}
+ }else if(game.phase==="won"){
+  const id=level.id;save.completed[id]=Math.max(scoreStars(game),save.completed[id]||0);persist();
+ }
  setView("result");
 }
 function nextLevel(){
@@ -366,8 +377,19 @@ function nextLevel(){
  else setView("worlds");
 }
 function action(name,el){
- if(name==="home"){game=null;setView("home");return;}
- if(name==="worlds"){game=null;setView("worlds");return;}
+ if(name==="home"){game=null;challenge=null;setView("home");return;}
+ if(name==="daily"||name==="endless"){
+  const date=new Date().toISOString().slice(0,10);
+  const seed=Number(date.replaceAll("-",""));
+  challenge={kind:name,date,seed};
+  world=name==="daily"?seed%4:0;
+  stage=6;level=getLevel(world,stage);
+  level={...level,id:name,name:name==="daily"?"Справа дня · "+date:"Нескінченна облога",mini:null,boss:false,bossData:null,
+   activeLanes:[0,1,2,3,4],special:{blackout:false,fog:false,deadline:false,restricted:false},
+   startingSeals:name==="endless"?350:250};
+  chooseSuggested();setView("deck");return;
+ }
+ if(name==="worlds"){game=null;challenge=null;setView("worlds");return;}
  if(name==="world"){const i=Number(el.dataset.world);if(levelUnlocked(i,1,save.completed)){world=i;setView("levels");}return;}
  if(name==="levels"){game=null;setView("levels");return;}
  if(name==="level"){const st=Number(el.dataset.stage);if(levelUnlocked(world,st,save.completed))goLevel(world,st);return;}
@@ -376,7 +398,7 @@ function action(name,el){
   const id=el.dataset.unit;
   if(view==="deck"){
    if(deck.includes(id)&&deck.length>1)deck=deck.filter(x=>x!==id);
-   else if(!deck.includes(id)&&deck.length<8)deck.push(id);
+   else if(!deck.includes(id)&&deck.length<slotLimit())deck.push(id);
   }else if(view==="play"){selected=id;}
   render();return;
  }
