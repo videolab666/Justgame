@@ -22,6 +22,7 @@ function readStore(){try{const saved=JSON.parse(localStorage.getItem(KEY));retur
 let save=readStore();
 let view="home",world=0,stage=1,level=getLevel(0,1),deck=[],selected="registrar",game=null;
 let challenge=null;
+let latestShotSound=0,lastShotSfxAt=-10;
 let modal="",modalReturn="",almanacTab="units",almanacQuery="",detail=null,mini=null,focus={lane:2,col:2},speed=1,toast="",lastRender=0,prevTs=0,shownEnd=false;
 const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
 const E=escapeHtml;
@@ -109,12 +110,13 @@ function renderDeck(){
 function cellContent(lane,col){
  const d=game.defenders.find(x=>x.lane===lane&&x.col===col),lock=game.locks.some(x=>x.lane===lane&&x.col===col);
  let inner=lock?'<span class="locked-cell">🚫</span>':"";
- if(d)inner+=`<span class="defender ${d.shieldHp>0?"shielded":""} ${game.time<d.disabledUntil?"disabled":""}"><span class="sprite">${art(d.id,"board-illustration")}</span><small>${E(d.name.split(" ")[0])}</small><span class="health" style="width:${Math.max(0,d.hp/d.maxHp)*96}%"></span></span>`;
+ if(d)inner+=`<span class="defender ${d.shieldHp>0?"shielded":""} ${game.time<d.disabledUntil?"disabled":""} ${game.time-(d.lastShotAt??-10)<.22?"firing":""}"><span class="sprite">${art(d.id,"board-illustration")}</span><small>${E(d.name.split(" ")[0])}</small><span class="health" style="width:${Math.max(0,d.hp/d.maxHp)*96}%"></span></span>`;
  return inner;
 }
 function renderPlay(){
  if(!game)return renderHome();
  const remaining=game.plan.length-game.spawned,progress=currentProgress(game),status=game.phase!=="playing"?" · Завершено":"";
+ const activeAttackers=game.projectiles?.length||0;
  const cards=deck.map((id,i)=>{const u=UNIT_BY_ID[id],cd=game.cooldowns[id]||0,afford=game.seal>=u.cost;
  return `<button type="button" data-act="unit" data-unit="${id}" class="unit-card ${selected===id?"selected":""}" ${cd>0?"disabled":""} title="${E(u.name)} — клавіша ${i+1}" aria-label="${E(u.name)}, ціна ${u.cost}"><span class="cost">🟡${u.cost}</span><span class="glyph">${art(u.id,"card-illustration")}</span><strong>${E(u.name)}</strong>${cd>.2?`<span class="cooldown">${Math.ceil(cd)}</span>`:""}<small>${afford?"Готово":"Бракує 🟡"}</small></button>`;}).join("");
  let cells="";
@@ -123,8 +125,9 @@ function renderPlay(){
   cells+=`<button type="button" role="gridcell" data-act="cell" data-lane="${lane}" data-col="${col}" class="cell ${active?"":"out"} ${focus.lane===lane&&focus.col===col?"cursor":""}" ${active?"":"disabled"} aria-label="Ряд ${lane+1}, колонка ${col+1}">${cellContent(lane,col)}</button>`;
  }
  const tokens=game.tokens.map(t=>`<button class="token" type="button" aria-label="Зібрати 25 печаток" data-act="collect" data-id="${t.uid}" style="left:${(t.col+.3)*100/9}%;top:${(t.lane+.15)*100/5}%">✦</button>`).join("");
- const foes=game.enemies.map(e=>`<div data-enemy="${e.uid}" title="${E(e.name)}" class="enemy ${e.trait==="flying"?"flying":""} ${e.trait==="disguised_jump"&&!e.reveal?"disguised":""} ${game.time<e.frozenUntil?"frozen":""} ${e.id==="boss"?"boss":""}" style="left:${e.x*100/9}%;top:${e.lane*20+.35}%">
+ const foes=game.enemies.map(e=>`<div data-enemy="${e.uid}" title="${E(e.name)}" class="enemy ${e.trait==="flying"?"flying":""} ${game.time-(e.lastHitAt??-10)<.18?"taking-hit":""} ${e.trait==="disguised_jump"&&!e.reveal?"disguised":""} ${game.time<e.frozenUntil?"frozen":""} ${e.id==="boss"?"boss":""}" style="left:${e.x*100/9}%;top:${e.lane*20+.35}%">
  <div class="enemy-inner"><span class="kind">${TYPES[e.scheme].icon}</span><span class="eicon">${art(bossPartArt(e.id==="boss"?level.bossData.id:e.id),"enemy-illustration")}</span><span class="hp-track"><b style="width:${Math.max(0,e.hp/e.maxHp)*100}%"></b></span></div></div>`).join("");
+ const shots=game.projectiles.map(p=>`<span class="projectile shot-${p.kind}" data-projectile="${p.uid}" aria-hidden="true"></span>`).join("");
  const fx=game.effects.map(e=>`<span data-fx="${e.id}" style="position:absolute;left:${e.x*100/9}%;top:${e.lane*20+1}%;font-size:12px;font-weight:900;color:#fdfbf3;text-shadow:1px 2px #174563,0 0 5px #173752;white-space:nowrap">${E(e.text)}</span>`).join("");
  const guards=Array.from({length:5},(_,l)=>{
   const manual=level.boss&&level.world===0&&game.bossGuardReady&&game.enemies.some(e=>e.id==="boss"&&e.lane===l&&e.phase===3);
@@ -136,11 +139,11 @@ function renderPlay(){
  <div class="progress-track"><div class="progress-fill" data-game-progress style="width:${progress}%"></div></div></div>
  <div class="game-controls">${btn("speed",speed===1?"▶ ×1":speed===2?"▶▶ ×2":"▶ ½","btn btn-quiet")}${btn("pause","⏸","btn btn-quiet","aria-label=\"Пауза\"")}</div></div>
  <div class="cardbar" aria-label="Колода захисників">${cards}</div>
- <div class="field-wrap ${level.special.blackout?"blackout":""} ${level.special.fog?"fog":""}">
+ <div class="field-wrap ${level.special.blackout?"blackout":""} ${level.special.fog?"fog":""}" data-world="${level.world+1}">
  <div class="skyline" aria-hidden="true">${landscape(level.world,"scenery")}</div>
  <div class="board-frame"><div class="house-strip">${guards}</div><div class="board" role="grid" aria-label="Поле оборони, 5 рядків і 9 колонок">
- ${cells}<div class="enemy-layer" aria-hidden="true">${foes}</div><div class="tokens-layer">${tokens}</div><div class="vfx-layer" aria-hidden="true">${fx}</div></div></div></div>
- <div class="game-bottom"><span>🛡️ Захищено рядків: ${5-game.usedGuards.filter(Boolean).length}/5 · Схемників: ${game.enemies.length} · Залишилось: ${remaining}</span>
+ ${cells}<div class="projectile-layer" aria-hidden="true">${shots}</div><div class="enemy-layer" aria-hidden="true">${foes}</div><div class="tokens-layer">${tokens}</div><div class="vfx-layer" aria-hidden="true">${fx}</div></div></div></div>
+ <div class="game-bottom"><span>🛡️ Захищено рядків: ${5-game.usedGuards.filter(Boolean).length}/5 · Схемників: ${game.enemies.length} · Пострілів: ${activeAttackers} · Залишилось: ${remaining}</span>
  <span>⌨️ 1–8: картка · Стрілки: клітинка · Enter: поставити · Пробіл: зібрати · P: пауза</span></div>
  </section><div class="owl-message" aria-live="polite"><div class="face" aria-hidden="true">🦉</div><div><strong>Сова Юся</strong>${E(toast||game.lastHint)}</div></div></main>`);
 }
@@ -157,7 +160,7 @@ function syncGameFrame(){
  waveEl.textContent=level.id+" · "+level.name+" · Хвиля "+game.stageWave+"/"+game.maxWave;
  bar.style.width=currentProgress(game)+"%";
  const first=$(".game-bottom > span");
- if(first)first.textContent="🛡️ Захищено рядків: "+(5-game.usedGuards.filter(Boolean).length)+"/5 · Схемників: "+game.enemies.length+" · Залишилось: "+(game.plan.length-game.spawned);
+ if(first)first.textContent="🛡️ Захищено рядків: "+(5-game.usedGuards.filter(Boolean).length)+"/5 · Схемників: "+game.enemies.length+" · Пострілів: "+game.projectiles.length+" · Залишилось: "+(game.plan.length-game.spawned);
  const hint=$(".owl-message > div:last-child");
  if(hint){
   const msg=toast||game.lastHint;
@@ -186,8 +189,8 @@ function syncGameFrame(){
    cell.innerHTML=html;cell.dataset.content=html;
   }
  }
- const board=$(".board"),layer=$(".enemy-layer"),tokenLayer=$(".tokens-layer"),fxLayer=$(".vfx-layer");
- if(!board||!layer||!tokenLayer||!fxLayer)return;
+ const board=$(".board"),layer=$(".enemy-layer"),shotLayer=$(".projectile-layer"),tokenLayer=$(".tokens-layer"),fxLayer=$(".vfx-layer");
+ if(!board||!layer||!shotLayer||!tokenLayer||!fxLayer)return;
  const alive=new Set();
  for(const e of game.enemies){
   const id=String(e.uid);alive.add(id);
@@ -201,6 +204,7 @@ function syncGameFrame(){
   }
   el.style.left=(e.x*100/9)+"%";el.style.top=(e.lane*20+.35)+"%";
   el.classList.toggle("flying",e.trait==="flying"||e.air);
+  el.classList.toggle("taking-hit",game.time-(e.lastHitAt??-10)<.18);
   el.classList.toggle("frozen",game.time<e.frozenUntil);
   el.classList.toggle("disguised",!e.reveal);
   el.classList.toggle("boss",e.id==="boss");
@@ -208,6 +212,37 @@ function syncGameFrame(){
   el.querySelector(".hp-track b").style.width=Math.max(0,e.hp/e.maxHp)*100+"%";
  }
  for(const el of Array.from(layer.children))if(!alive.has(el.dataset.enemy))el.remove();
+
+ const shotKinds={stamp:"✓",clip:"⌁",chain:"❄",writ:"§",dossier:"▣",dove:"✉",beam:""};
+ const shotsAlive=new Set();
+ const pxPerCol=board.clientWidth/9,pxPerRow=board.clientHeight/5;
+ for(const p of game.projectiles){
+  const id=String(p.uid);shotsAlive.add(id);
+  let el=shotLayer.querySelector('[data-projectile="'+id+'"]');
+  if(!el){
+   el=document.createElement("span");el.className="projectile shot-"+p.kind;
+   el.dataset.projectile=id;el.setAttribute("aria-hidden","true");
+   el.textContent=shotKinds[p.kind]||"✦";shotLayer.append(el);
+  }
+  if(p.kind==="beam"){
+   const dx=(p.endX-p.startX)*pxPerCol,dy=(p.endRow-p.startRow)*pxPerRow;
+   el.style.left=p.startX*100/9+"%";el.style.top=p.startRow*20+"%";
+   el.style.width=Math.hypot(dx,dy)+"px";
+   el.style.transform="translateY(-50%) rotate("+Math.atan2(dy,dx)*180/Math.PI+"deg)";
+   el.style.opacity=String(Math.max(0,1-p.age/p.duration));
+  }else{
+   el.style.left=p.x*100/9+"%";el.style.top=p.row*20+"%";
+   el.style.transform="translate(-50%,-50%)";
+  }
+ }
+ for(const el of Array.from(shotLayer.children))if(!shotsAlive.has(el.dataset.projectile))el.remove();
+ if(save.settings.sound&&game.projectiles.length){
+  const newest=game.projectiles[game.projectiles.length-1];
+  if(newest.uid!==latestShotSound&&game.time-lastShotSfxAt>.14){
+   latestShotSound=newest.uid;lastShotSfxAt=game.time;
+   sound(newest.kind==="beam"?1160:newest.kind==="dossier"?240:newest.kind==="chain"?410:680,.055);
+  }
+ }
  const tokens=new Set();
  for(const t of game.tokens){
   const id=String(t.uid);tokens.add(id);
@@ -223,6 +258,7 @@ function syncGameFrame(){
   if(!el){
    el=document.createElement("span");el.dataset.fx=id;el.className="battle-fx";el.textContent=fx.text;fxLayer.append(el);
   }
+  el.className="battle-fx fx-"+fx.kind;
   el.style.left=fx.x*100/9+"%";el.style.top=fx.lane*20+1+"%";
   el.style.opacity=Math.min(1,fx.ttl*2);
  }
@@ -355,7 +391,7 @@ function goLevel(w,s){
 }
 function startGame(){
  if(!deck.length)return;
- game=makeGame(level,deck,save.mode,{...save.settings,careerBonus:totalStars()>=35?25:0},challenge);selected=deck[0];shownEnd=false;
+ game=makeGame(level,deck,save.mode,{...save.settings,careerBonus:totalStars()>=35?25:0},challenge);selected=deck[0];shownEnd=false;latestShotSound=0;lastShotSfxAt=-10;
  game.lastHint=level.tutorial||`Світ ${world+1}. Захистіть будівлю, використовуючи відповідні інструменти.`;
  setView("play");
 }
@@ -462,7 +498,7 @@ function loop(ts){
  if(view==="play"&&game?.phase==="playing"&&!modal&&!document.hidden){
   tick(game,delta*speed);
   if(game.phase!=="playing"){finish();}
-  else if(ts-lastRender>66){lastRender=ts;syncGameFrame();}
+  else if(ts-lastRender>34){lastRender=ts;syncGameFrame();}
  }
  requestAnimationFrame(loop);
 }
