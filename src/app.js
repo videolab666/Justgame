@@ -22,7 +22,7 @@ const defaults={completed:{},settings:{sound:false,autoCollect:false,reducedMoti
 function readStore(){try{const saved=JSON.parse(localStorage.getItem(KEY));return { ...defaults,...saved,completed:saved?.completed||{},settings:{...defaults.settings,...saved?.settings}};}catch{return structuredClone(defaults);}}
 let save=readStore();
 let view="home",world=0,stage=1,level=getLevel(0,1),deck=[],selected="registrar",game=null;
-let challenge=null;
+let challenge=null,outroElapsed=0;
 let latestShotSound=0,lastShotSfxAt=-10;
 let selectedThreat="schemer";
 let modal="",modalReturn="",almanacTab="units",almanacQuery="",detail=null,mini=null,focus={lane:2,col:2},speed=1,toast="",lastRender=0,prevTs=0,shownEnd=false;
@@ -372,6 +372,23 @@ function syncGameFrame(){
  const fog=$(".field-wrap");
  if(fog&&level.special.fog)fog.classList.toggle("fog-cleared",game.defenders.some(d=>d.kind==="reveal"&&d.col>=4));
 }
+
+function renderOutro(){
+ const won=game?.phase==="won",stars=won?scoreStars(game):0;
+ const foeId=game?.lastThreat?.id==="boss"?level.bossData?.id:game?.lastThreat?.id||"schemer";
+ const starsArt=won?'<div class="outro-stars">'+Array.from({length:3},(_,i)=>
+  '<span class="'+(i<stars?"earned":"empty")+'" style="--order:'+i+'">'+(i<stars?"★":"☆")+'</span>').join("")+'</div>':
+  '<p class="outro-warning">Змініть оборону та скористайтеся підказками Юсі.</p>';
+ const particles=Array.from({length:22},(_,i)=>'<span class="outro-spark" style="--n:'+i+';--dist:'+ (90+(i%5)*28) +'px;--angle:'+(i*137.5)+'deg;--delay:'+((i%6)*.11)+'s"></span>').join("");
+ return wrapper('<main class="outro-scene '+(won?"outro-victory":"outro-defeat")+'"><div class="outro-ambient" aria-hidden="true">'+particles+'</div>'+
+ '<div class="outro-curtain"><div class="outro-eyebrow">'+(won?"✦ СПРАВУ ВИКОНАНО ✦":"⚠️ ТРИВОГА НА ПОЛІ")+'</div>'+
+ '<h1 class="outro-title">'+(won?"СХЕМУ ЗУПИНЕНО!":"ОБОРОНУ ПРОРВАНО")+'</h1>'+
+ '<p class="outro-subtitle">'+(won?"Права родини захищено. Юся святкує перемогу!":"Захисники відступили, але ще можна повернутися сильнішими.")+'</p>'+
+ '<div class="outro-characters"><div class="outro-character outro-hero">'+art("yusya","outro-yusya")+'</div>'+
+ '<span class="outro-center">'+(won?"🏆":"🛡️")+'</span><div class="outro-character outro-villain">'+art(foeId,"outro-enemy")+'</div></div>'+
+ starsArt+'<div class="outro-progress" aria-hidden="true"><span></span></div>'+
+ btn("skip-outro","Переглянути статистику →","btn btn-primary")+'</div></main>');
+}
 function renderResult(){
  const success=game?.phase==="won",stars=success?scoreStars(game):0;
  const e=game?.lastThreat;
@@ -505,7 +522,7 @@ function render(){
  document.body.classList.toggle("high-contrast",!!save.settings.highContrast);
  document.body.classList.toggle("large-text",!!save.settings.largeText);
  document.body.classList.toggle("reduced-motion",!!save.settings.reducedMotion);
- let html=({home:renderHome,worlds:renderWorlds,levels:renderLevels,deck:renderDeck,play:renderPlay,result:renderResult,almanac:renderAlmanac,settings:renderSettings,mini:renderMini}[view]||renderHome)();
+ let html=({home:renderHome,worlds:renderWorlds,levels:renderLevels,deck:renderDeck,play:renderPlay,result:renderResult,outro:renderOutro,almanac:renderAlmanac,settings:renderSettings,mini:renderMini}[view]||renderHome)();
  root.innerHTML=html+renderDialog();
  updatePlacementPreview();
  if(view==="play"&&py>0)window.scrollTo?.(px,py);
@@ -519,7 +536,7 @@ function goLevel(w,s){
 }
 function startGame(){
  if(!deck.length)return;
- game=makeGame(level,deck,save.mode,{...save.settings,careerBonus:totalStars()>=35?25:0},challenge);selected=deck[0];shownEnd=false;latestShotSound=0;lastShotSfxAt=-10;
+ game=makeGame(level,deck,save.mode,{...save.settings,careerBonus:totalStars()>=35?25:0},challenge);selected=deck[0];shownEnd=false;outroElapsed=0;latestShotSound=0;lastShotSfxAt=-10;
  game.lastHint=level.tutorial||`Світ ${world+1}. Захистіть будівлю, використовуючи відповідні інструменти.`;
  setView("play");
 }
@@ -534,7 +551,8 @@ function finish(){
  }else if(game.phase==="won"){
   const id=level.id;save.completed[id]=Math.max(scoreStars(game),save.completed[id]||0);persist();
  }
- setView("result");
+ outroElapsed=0;
+ setView("outro");
 }
 function nextLevel(){
  if(stage<10)goLevel(world,stage+1);
@@ -583,6 +601,7 @@ function action(name,el){
  if(name==="pause"){modal="pause";render();return;}
  if(name==="retry"){if(level.mini){startMini();setView("mini");}else startGame();return;}
  if(name==="next-level"){nextLevel();return;}
+ if(name==="skip-outro"){setView("result");return;}
  if(name==="almanac"){modalReturn=view;setView("almanac");return;}
  if(name==="settings"){modalReturn=view;setView("settings");return;}
  if(name==="back"){
@@ -616,6 +635,7 @@ root.addEventListener("input",e=>{if(e.target.id==="almanac-search"){almanacQuer
 document.addEventListener("keydown",e=>{
  if(e.target instanceof HTMLInputElement)return;
  if(e.key==="Escape"&&modal){modal="";render();return;}
+ if(view==="outro"&&["Enter","Escape"," "].includes(e.key)){setView("result");e.preventDefault();return;}
  if(view!=="play"||!game||modal)return;
  const key=e.key.toLowerCase();
  if(key==="p"){modal="pause";render();e.preventDefault();return;}
@@ -639,6 +659,10 @@ function loop(ts){
   tick(game,delta*speed);
   if(game.phase!=="playing"){finish();}
   else if(ts-lastRender>34){lastRender=ts;syncGameFrame();}
+ }
+ if(view==="outro"&&!document.hidden){
+  outroElapsed+=delta;
+  if(outroElapsed>=(save.settings.reducedMotion?.6:4))setView("result");
  }
  requestAnimationFrame(loop);
 }
