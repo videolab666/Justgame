@@ -180,7 +180,7 @@ function renderPlay(){
  <div class="progress-track"><div class="progress-fill" data-game-progress style="width:${progress}%"></div></div></div>
  <div class="game-controls">${btn("speed",speed===1?"▶ ×1":speed===2?"▶▶ ×2":"▶ ½","btn btn-quiet")}${btn("pause","⏸","btn btn-quiet","aria-label=\"Пауза\"")}</div></div>
  <div class="cardbar" aria-label="Колода захисників">${cards}</div>
- <div class="selected-help" aria-live="off"><span>↘ <strong>${E(UNIT_BY_ID[selected]?.name||"Захисник")}</strong></span><span>${E(UNIT_BY_ID[selected]?.desc||"Оберіть клітинку для захисту.")}</span></div>
+ <div class="selected-help" aria-live="off"><span>↘ <strong data-selected-name>${E(UNIT_BY_ID[selected]?.name||"Захисник")}</strong></span><span data-selected-desc>${E(UNIT_BY_ID[selected]?.desc||"Оберіть клітинку для захисту.")}</span></div>
  <div class="field-wrap ${level.special.blackout?"blackout":""} ${level.special.fog?"fog":""}" data-world="${level.world+1}">
  <div class="skyline" aria-hidden="true">${landscape(level.world,"scenery")}</div>
  <div class="board-frame"><div class="house-strip">${guards}</div><div class="board" role="grid" aria-label="Поле оборони, 5 рядків і 9 колонок">
@@ -203,6 +203,9 @@ function syncGameFrame(){
  bar.style.width=currentProgress(game)+"%";
  const first=$(".game-bottom > span");
  if(first)first.textContent="🛡️ Захищено рядків: "+(5-game.usedGuards.filter(Boolean).length)+"/5 · Схемників: "+game.enemies.length+" · Пострілів: "+game.projectiles.length+" · Залишилось: "+(game.plan.length-game.spawned);
+ const unitName=$("[data-selected-name]"),unitDesc=$("[data-selected-desc]");
+ if(unitName)unitName.textContent=UNIT_BY_ID[selected]?.name||"Захисник";
+ if(unitDesc)unitDesc.textContent=UNIT_BY_ID[selected]?.desc||"Оберіть клітинку для захисту.";
  const hint=$(".owl-message > div:last-child");
  if(hint){
   const msg=toast||game.lastHint;
@@ -466,12 +469,14 @@ function updatePlacementPreview(){
 }
 
 function render(){
+ const px=Number(window.scrollX)||0,py=Number(window.scrollY)||0;
  document.body.classList.toggle("high-contrast",!!save.settings.highContrast);
  document.body.classList.toggle("large-text",!!save.settings.largeText);
  document.body.classList.toggle("reduced-motion",!!save.settings.reducedMotion);
  let html=({home:renderHome,worlds:renderWorlds,levels:renderLevels,deck:renderDeck,play:renderPlay,result:renderResult,almanac:renderAlmanac,settings:renderSettings,mini:renderMini}[view]||renderHome)();
  root.innerHTML=html+renderDialog();
  updatePlacementPreview();
+ if(view==="play"&&py>0)window.scrollTo?.(px,py);
 }
 function setView(v){view=v;modal="";toast="";render();}
 function goLevel(w,s){
@@ -530,7 +535,7 @@ function action(name,el){
   if(view==="deck"){
    if(deck.includes(id)&&deck.length>1)deck=deck.filter(x=>x!==id);
    else if(!deck.includes(id)&&deck.length<slotLimit())deck.push(id);
-  }else if(view==="play"){selected=id;}
+  }else if(view==="play"){selected=id;syncGameFrame();return;}
   render();return;
  }
  if(name==="cell"&&view==="play"){
@@ -538,11 +543,11 @@ function action(name,el){
   const result=place(game,selected,focus.lane,focus.col);
   toast=result.ok?`${UNIT_BY_ID[selected].name}: додано на поле.`:result.error;
   if(result.ok)sound(540,.09);
-  render();return;
+  syncGameFrame();return;
  }
- if(name==="collect"&&game){collectToken(game,Number(el.dataset.id));sound(950,.12);toast="Отримано 25 печаток довіри!";render();return;}
- if(name==="guard"&&game){const ok=useGuard(game,Number(el.dataset.lane));if(ok)sound(260,.24);toast=ok?"Заборону застосовано!":"У босовій справі дочекайтеся фінальної фази.";render();return;}
- if(name==="speed"){speed=speed===1?2:speed===2?.5:1;render();return;}
+ if(name==="collect"&&game){collectToken(game,Number(el.dataset.id));sound(950,.12);toast="Отримано 25 печаток довіри!";syncGameFrame();return;}
+ if(name==="guard"&&game){const ok=useGuard(game,Number(el.dataset.lane));if(ok)sound(260,.24);toast=ok?"Заборону застосовано!":"У босовій справі дочекайтеся фінальної фази.";syncGameFrame();return;}
+ if(name==="speed"){speed=speed===1?2:speed===2?.5:1;const b=root.querySelector?.('[data-act="speed"]');if(b)b.textContent=speed===1?"▶ ×1":speed===2?"▶▶ ×2":"▶ ½";return;}
  if(name==="pause"){modal="pause";render();return;}
  if(name==="retry"){if(level.mini){startMini();setView("mini");}else startGame();return;}
  if(name==="next-level"){nextLevel();return;}
@@ -582,14 +587,16 @@ document.addEventListener("keydown",e=>{
  if(view!=="play"||!game||modal)return;
  const key=e.key.toLowerCase();
  if(key==="p"){modal="pause";render();e.preventDefault();return;}
- if(/^[1-8]$/.test(key)&&deck[Number(key)-1]){selected=deck[Number(key)-1];render();return;}
- if(key===" "){collectAll(game);render();e.preventDefault();return;}
- if(key==="enter"){const result=place(game,selected,focus.lane,focus.col);toast=result.ok?"Захисника встановлено.":result.error;render();e.preventDefault();return;}
+ if(/^[1-9]$/.test(key)&&deck[Number(key)-1]){selected=deck[Number(key)-1];syncGameFrame();return;}
+ if(key===" "){collectAll(game);syncGameFrame();e.preventDefault();return;}
+ if(key==="enter"){const result=place(game,selected,focus.lane,focus.col);toast=result.ok?"Захисника встановлено.":result.error;syncGameFrame();e.preventDefault();return;}
  const changes={arrowleft:[0,-1],arrowright:[0,1],arrowup:[-1,0],arrowdown:[1,0]};
  if(changes[key]){
   const [dr,dc]=changes[key];focus.col=Math.max(0,Math.min(8,focus.col+dc));
   focus.lane=Math.max(0,Math.min(4,focus.lane+dr));
-  render();e.preventDefault();
+  for(const cell of root.querySelectorAll?.(".board > .cell")||[])
+   cell.classList.toggle("cursor",Number(cell.dataset.lane)===focus.lane&&Number(cell.dataset.col)===focus.col);
+  updatePlacementPreview();e.preventDefault();
  }
 });
 document.addEventListener("visibilitychange",()=>{prevTs=0;});

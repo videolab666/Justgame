@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import * as data from '../src/data.js';
+import * as tactics from '../src/tactics.js';
 import * as engine from '../src/engine.js';
 
 function createUI(source){
@@ -16,7 +17,7 @@ function createUI(source){
  const requestAnimationFrame=()=>{};
  const fetch=async()=>{throw Error('No external fetch in UI smoke test')};
  const noImports=source.replace(/^import .*?;\s*$/gm,'');
- const symbols={...data,...engine,document,window,localStorage,requestAnimationFrame,fetch};
+ const symbols={...data,...engine,...tactics,document,window,localStorage,requestAnimationFrame,fetch};
  const load=new Function(...Object.keys(symbols),
   noImports+';return {action,goLevel,startGame,setView,html:()=>root.innerHTML,game:()=>game,mode:()=>view};');
  return load(...Object.values(symbols));
