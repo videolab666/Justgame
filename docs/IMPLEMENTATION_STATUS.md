@@ -69,3 +69,5 @@
 - Рух і реакції різних типів ворогів, поворот руки зі штампом, шкода, падіння і уламки захисника.
 - Тест Chrome перевіряє геометрію та відсутність стрибків, розміщення юніта, стрільбу, відкриття підказок, екрани 812×420 і 390×844.
 - Суто декоративні ефекти прибираються в режимі reduced motion; є ліміти VFX.
+
+- **Audio / Outro / Shooting:** 4 original live-generated jazzy tunes, separately adjustable music volume and toggle, win/loss transitions before scores, close-target projectile origin regression fix, persistent defender firing animations, combat status tooltips. Details: docs/AUDIO_COMBAT_RELEASE.md.
