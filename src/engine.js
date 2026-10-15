@@ -322,7 +322,9 @@ const pSource=p=>({kind:p.sourceKind,tool:p.tool});
  */
 export function fireProjectile(g,d,target,raw,bonus=1){
  const style=SHOT_STYLES[d.kind]||SHOT_STYLES.shooter;
- const sourceX=d.col+.78,targetX=target.x,fromRow=d.lane+.5,toRow=target.lane+.5;
+ // The launch point must be behind every target allowed by attack() (x > col+.45).
+ // A shot from col+.78 silently missed enemies pressed against the defender.
+ const sourceX=d.col+.4,targetX=target.x,fromRow=d.lane+.5,toRow=target.lane+.5;
  const ballistic=style.arc>0;
  const shot={
   uid:uid(g),kind:style.kind,sourceKind:d.kind,sourceUid:d.uid,
@@ -332,7 +334,7 @@ export function fireProjectile(g,d,target,raw,bonus=1){
   duration:ballistic?Math.max(.5,Math.min(1.5,Math.hypot(targetX-sourceX,(toRow-fromRow)*1.25)/style.speed)):
    Math.max(.18,(targetX-sourceX)/style.speed),
   speed:style.speed,arc:style.arc,ballistic,
-  cosmetic:style.kind==="beam"
+  cosmetic:style.kind==="beam", launchedAt:g.time
  };
  if(shot.cosmetic){
   // A laser scan affects the enemy instantly; the visible beam is brief.
@@ -343,7 +345,7 @@ export function fireProjectile(g,d,target,raw,bonus=1){
  g.projectiles.push(shot);
  // A modest ceiling protects low-end mobile browsers during endless mode.
  if(g.projectiles.length>160)g.projectiles.splice(0,g.projectiles.length-160);
- d.lastShotAt=g.time;
+ d.lastShotAt=g.time;d.shotsFired=(d.shotsFired||0)+1;
  effect(g,"muzzle",d.lane,sourceX,"");
  emitBurst(g,style.kind,d.lane,sourceX,3);
  return shot;
