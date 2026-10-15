@@ -383,3 +383,62 @@ body.reduced-motion .enemy .enemy-illustration,body.reduced-motion .defender.hur
 @media(prefers-reduced-motion:reduce){.defender.firing .attack-arm{display:none}.fallen-layer{display:none}}
 body.reduced-motion .defender.firing .attack-arm{display:none}
 body.reduced-motion .fallen-layer{display:none}
+
+
+/* Film-like, result-dependent 4s transition. Separate from the score screen. */
+.outro-scene{position:relative;isolation:isolate;min-height:clamp(490px,70vh,740px);display:flex;align-items:center;justify-content:center;overflow:hidden;text-align:center;padding:35px 16px;color:#fff}
+.outro-victory{background:radial-gradient(circle at 50% 45%,#fce6a2 0,#3dafa6 35%,#105d7c 79%,#092945 100%)}
+.outro-defeat{background:radial-gradient(circle at 50% 40%,#b35e77 0,#5b456f 37%,#23344f 77%,#111c35 100%)}
+.outro-scene:before{content:"";position:absolute;inset:-20%;pointer-events:none;background:repeating-conic-gradient(from 11deg at 50% 51%,#fff5 0 7deg,transparent 7deg 26deg);opacity:.45;animation:outro-sunburst 18s linear infinite}
+.outro-defeat:before{background:repeating-conic-gradient(from 11deg at 50% 51%,#c9566a66 0 7deg,transparent 7deg 26deg);animation-direction:reverse}
+.outro-scene:after{content:"";position:absolute;inset:0;pointer-events:none;border:13px solid #ffffff1c;box-shadow:inset 0 0 90px #001c3757}
+.outro-curtain{width:min(880px,100%);z-index:1;position:relative;display:flex;align-items:center;flex-direction:column;gap:12px;animation:outro-enter .7s cubic-bezier(.19,.9,.35,1) both}
+.outro-eyebrow{background:#11354eae;border:2px solid #fce4a5;border-radius:20px;padding:8px 20px;font-size:13px;letter-spacing:.15em;font-weight:950;box-shadow:0 7px 16px #102d3d47}
+.outro-title{font-size:clamp(35px,6vw,80px);line-height:1.04;font-weight:1000;letter-spacing:-.065em;margin:4px 0;color:#fff8d5;-webkit-text-stroke:1px #14547a;text-shadow:0 6px 0 #205374,0 12px 24px #072d4780;animation:outro-headline .7s .28s cubic-bezier(.2,.9,.4,1.3) both}
+.outro-defeat .outro-title{color:#fff0ee;text-shadow:0 6px 0 #5c2446,0 12px 24px #200d2d}
+.outro-subtitle{font-size:clamp(14px,2vw,21px);font-weight:750;margin:0;color:#f4ffed;text-shadow:0 2px 6px #0b324e}
+.outro-characters{width:min(590px,100%);min-height:235px;display:flex;align-items:center;justify-content:center;gap:12px;margin-top:12px}
+.outro-character{width:clamp(124px,25%,218px);height:clamp(150px,20vw,218px);display:grid;place-items:center}
+.outro-character .game-art{height:100%;width:100%;object-fit:contain;filter:drop-shadow(0 11px 5px #0b37465a)}
+.outro-hero{animation:outro-hero-dance .75s .4s ease-in-out 3}
+.outro-villain{animation:outro-villain-escape 2s .35s ease-in forwards}
+.outro-defeat .outro-hero{animation:outro-hero-sad 2s .2s forwards}
+.outro-defeat .outro-villain{animation:outro-villain-victory 1s .3s ease-in-out 2}
+.outro-center{font-size:clamp(43px,7vw,74px);filter:drop-shadow(0 7px 7px #194c6699);animation:outro-trophy 1.1s .3s both}
+.outro-stars{display:flex;gap:9px;justify-content:center;align-items:center;font-size:clamp(35px,5.8vw,65px);min-height:65px;color:#ffefab;text-shadow:0 3px 1px #b57629,0 6px 11px #263c6280}
+.outro-stars .earned{display:inline-block;animation:outro-star-appear .42s cubic-bezier(.2,1.1,.3,1.3) both;animation-delay:calc(.95s + var(--order)*.27s)}
+.outro-stars .empty{color:#adc8c5;text-shadow:none;opacity:.6;animation:outro-star-appear .35s both;animation-delay:calc(.95s + var(--order)*.27s)}
+.outro-warning{padding:12px 18px;border-radius:14px;background:#2718308a;border:1px solid #e1a4bb;font-size:clamp(12px,1.5vw,17px);font-weight:700;max-width:560px;margin:8px 0}
+.outro-ambient{position:absolute;inset:0;pointer-events:none}
+.outro-spark{--angle:0deg;position:absolute;left:50%;top:52%;height:14px;width:9px;border-radius:2px;background:#ffdc76;box-shadow:0 0 8px #fff1a6;transform:rotate(var(--angle));opacity:0;animation:outro-confetti 1.9s var(--delay) ease-out both}
+.outro-spark:nth-child(3n){background:#f5ffd1}.outro-spark:nth-child(3n + 1){background:#7cece3}
+.outro-defeat .outro-spark{background:#fb8b91;box-shadow:0 0 7px #e5587c}
+.outro-progress{position:relative;height:6px;width:min(300px,75%);border-radius:8px;overflow:hidden;background:#082f4f91;border:1px solid #ffeecb90;margin:13px auto}
+.outro-progress span{display:block;width:100%;height:100%;background:linear-gradient(90deg,#ffe39a,#fefad8);transform-origin:left;animation:outro-timer 4s linear both}
+.outro-scene .btn{border-color:#ffdf88;box-shadow:0 4px 0 #9b7d45;z-index:1;position:relative}
+@keyframes outro-enter{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+@keyframes outro-headline{from{opacity:0;transform:scale(.66) rotate(-3deg)}70%{transform:scale(1.12) rotate(1deg)}to{opacity:1;transform:scale(1) rotate(0)}}
+@keyframes outro-sunburst{to{transform:rotate(360deg)}}
+@keyframes outro-hero-dance{0%,100%{transform:translateY(0) rotate(-5deg)}50%{transform:translateY(-20px) rotate(7deg)}}
+@keyframes outro-hero-sad{0%{transform:translateY(0) rotate(0)}40%{transform:translateY(-5px) rotate(8deg)}100%{transform:translateY(7px) rotate(-15deg);filter:saturate(.6)}}
+@keyframes outro-villain-escape{0%{transform:translateX(0) rotate(0);opacity:1}30%{transform:translateX(-25px) rotate(-15deg);opacity:1}100%{transform:translateX(260px) rotate(45deg) scale(.4);opacity:0}}
+@keyframes outro-villain-victory{0%,100%{transform:rotate(-6deg) translateY(0)}50%{transform:rotate(6deg) translateY(-12px)}}
+@keyframes outro-trophy{0%{opacity:0;transform:scale(.2) rotate(-60deg)}70%{transform:scale(1.25) rotate(10deg)}100%{opacity:1;transform:scale(1)}}
+@keyframes outro-star-appear{from{opacity:0;transform:translateY(35px) scale(.3) rotate(-45deg)}to{opacity:1;transform:translateY(0) scale(1) rotate(0)}}
+@keyframes outro-confetti{0%{opacity:0;transform:rotate(var(--angle)) translateY(0)}15%{opacity:1}90%{opacity:.9}100%{opacity:0;transform:rotate(var(--angle)) translateY(calc(-1*var(--dist))) rotate(400deg)}}
+@keyframes outro-timer{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@media(max-width:620px){
+ .outro-scene{min-height:490px;padding:30px 12px}
+ .outro-characters{min-height:170px;gap:0}
+ .outro-character{width:37%;height:155px}
+ .outro-center{width:25%;font-size:42px}
+ .outro-eyebrow{font-size:10px}
+ .outro-curtain{gap:8px}
+}
+@media(prefers-reduced-motion:reduce){
+ .outro-scene *,.outro-scene:before,.outro-spark{animation:none!important}
+ .outro-villain,.outro-hero{opacity:1}
+ .outro-progress span{width:100%;transform:none}
+}
+body.reduced-motion .outro-scene *,body.reduced-motion .outro-scene:before{animation:none!important}
+.setting-row input[type=range]{width:clamp(120px,36%,280px);accent-color:#247b93;cursor:pointer}
