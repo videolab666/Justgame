@@ -121,7 +121,10 @@ function renderPlay(){
  const foes=game.enemies.map(e=>`<div class="enemy ${e.trait==="flying"?"flying":""} ${e.trait==="disguised_jump"&&!e.reveal?"disguised":""} ${game.time<e.frozenUntil?"frozen":""} ${e.id==="boss"?"boss":""}" style="left:${e.x*100/9}%;top:${e.lane*20+.35}%">
  <div class="enemy-inner"><span class="kind">${TYPES[e.scheme].icon}</span><span class="eicon">${e.icon}</span><span class="hp-track"><b style="width:${Math.max(0,e.hp/e.maxHp)*100}%"></b></span></div></div>`).join("");
  const fx=game.effects.map(e=>`<span style="position:absolute;left:${e.x*100/9}%;top:${e.lane*20+1}%;font-size:12px;font-weight:900;color:#fdfbf3;text-shadow:1px 2px #174563,0 0 5px #173752;white-space:nowrap">${E(e.text)}</span>`).join("");
- const guards=Array.from({length:5},(_,l)=>`<button type="button" class="guard ${game.usedGuards[l]?"used":""}" data-act="guard" data-lane="${l}" ${game.usedGuards[l]||!level.activeLanes.includes(l)?"disabled":""} title="Одноразова заборона реєстраційних дій, ряд ${l+1}">🛑</button>`).join("");
+ const guards=Array.from({length:5},(_,l)=>{
+  const manual=level.boss&&level.world===0&&game.bossGuardReady&&game.enemies.some(e=>e.id==="boss"&&e.lane===l&&e.phase===3);
+  return `<button type="button" class="guard ${game.usedGuards[l]?"used":""}" data-act="guard" data-lane="${l}" ${game.usedGuards[l]||!manual?"disabled":""} title="${manual?"Активувати заборону проти Барона":"Заборона спрацьовує автоматично під час прориву"}">🛑</button>`;
+ }).join("");
  return wrapper(`<main class="main" style="padding:12px"><section class="game-shell">
  <div class="game-top"><div class="seal-pill">✦ ${Math.floor(game.seal)}</div>
  <div class="game-meta"><strong>${E(level.id)} · ${E(level.name)} ${status} · Хвиля ${game.stageWave}/${game.maxWave}</strong>

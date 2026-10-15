@@ -173,9 +173,10 @@ export function damageEnemy(g,e,raw,tool=null,extra=1){
  removeEnemy(g,e);
  return n;
 }
-export function useGuard(g,lane){
+export function useGuard(g,lane,automatic=false){
  if(g.phase!=="playing"||g.usedGuards[lane]||!g.level.activeLanes.includes(lane))return false;
- if(g.level.boss&&g.level.world===0){
+ if(!automatic){
+  if(!(g.level.boss&&g.level.world===0))return false;
   const boss=g.enemies.find(e=>e.id==="boss"&&e.lane===lane);
   if(!boss||boss.phase<3)return false;
   g.bossGuardUsed=true;damageEnemy(g,boss,boss.maxHp,"registry",3);
@@ -252,7 +253,7 @@ function defeat(g,e){
  if(e.id==="boss"&&g.level.world===0){
   g.phase="lost";g.lastHint="Барон завершив переоформлення. Зупиніть його спеціальною Забороною у третій фазі.";return;
  }
- if(!g.usedGuards[e.lane]){useGuard(g,e.lane);return;}
+ if(!g.usedGuards[e.lane]){useGuard(g,e.lane,true);return;}
  if(g.mode==="young"){removeEnemy(g,e);return;}
  g.phase="lost";g.lastHint=`Прорвався: ${e.name}. ${e.tip||"Спробуйте інший інструмент."}`;
 }

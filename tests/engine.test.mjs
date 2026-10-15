@@ -68,3 +68,15 @@ test("world three miniboss appears in its stage wave plan",()=>{
  const plan=makeWavePlan(getLevel(2,5));
  assert.equal(plan.some(x=>x.id==="mini_boss"),true);
 });
+
+test("lane guards trigger automatically once; manual button is boss-only",()=>{
+ const g=makeGame(getLevel(0,2),["registrar"]);
+ assert.equal(useGuard(g,2),false);
+ spawn(g,"schemer",2,.02);
+ tick(g,.1);
+ assert.equal(g.usedGuards[2],true);
+ assert.equal(g.phase,"playing");
+ spawn(g,"schemer",2,.02);
+ tick(g,.1);
+ assert.equal(g.phase,"lost");
+});
