@@ -352,6 +352,17 @@ function syncGameFrame(){
   guard.title=manual?"Активувати заборону проти Барона":"Заборона спрацьовує автоматично під час прориву";
  }
  updatePlacementPreview();
+ // Expand the legend in place if a boss summons new enemy types.
+ const roster=root.querySelector?.(".threat-legend:not(.threat-compact) .threat-list");
+ if(roster){
+  const ids=getEncounterThreats(level,game),signature=ids.join(",");
+  if(roster.dataset.roster!==signature){
+   const previousX=roster.scrollLeft;
+   roster.innerHTML=ids.map(renderThreatChip).join("");
+   roster.dataset.roster=signature;
+   roster.scrollLeft=previousX;
+  }
+ }
  const counts=root.querySelectorAll?.("[data-threat-count]")||[];
  for(const count of counts){
   const n=game.enemies.filter(e=>e.id===count.dataset.threatCount).length;
