@@ -1,5 +1,6 @@
 import {UNITS,UNIT_BY_ID,ENEMIES,ENEMY_BY_ID,WORLDS,TYPES,TOOLS,FACTS,UNLOCK_REWARDS,MINI_LEVELS,STORY,getLevel,levelId,unlockedUnits,levelUnlocked} from "./data.js";
 import {makeGame,tick,place,collectToken,collectAll,currentProgress,scoreStars,selectAdvice,useGuard,availablePlacement} from "./engine.js";
+import {getThreat,getEncounterThreats,getCounterAdvice} from "./tactics.js";
 const root=document.getElementById("app");
 const KEY="just-oborona-progress-v1";
 let audioContext=null;
@@ -23,6 +24,7 @@ let save=readStore();
 let view="home",world=0,stage=1,level=getLevel(0,1),deck=[],selected="registrar",game=null;
 let challenge=null;
 let latestShotSound=0,lastShotSfxAt=-10;
+let selectedThreat="schemer";
 let modal="",modalReturn="",almanacTab="units",almanacQuery="",detail=null,mini=null,focus={lane:2,col:2},speed=1,toast="",lastRender=0,prevTs=0,shownEnd=false;
 const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
 const E=escapeHtml;
@@ -91,6 +93,45 @@ function unitCard(u,{selected=false,disabled=false,cooldown=0}={}){
  <span class="cost">🟡${u.cost}</span><span class="glyph" aria-hidden="true">${art(u.id,"card-illustration")}</span><strong>${E(u.name)}</strong>
  <small>⏱ ${u.cooldown} с</small>${cooldown>.2?`<span class="cooldown">${Math.ceil(cooldown)}</span>`:""}</button>`;
 }
+
+function availableUnits(){return challenge?UNITS:unlockedUnits(save.completed);}
+function threatArtwork(id){return id==="boss"?level.bossData?.id||"baron":id;}
+function renderThreatChip(id){
+ const t=getThreat(id,level),info=getCounterAdvice(id,{level,deck,owned:availableUnits()});
+ if(!t||!info)return "";
+ const equipped=info.recommended.find(u=>u.state==="deck"),count=game?.enemies.filter(e=>e.id===id).length||0;
+ return '<button type="button" class="threat-chip" data-act="threat-tip" data-enemy="'+E(id)+'" aria-label="Порада проти '+E(t.name)+'">'+
+ '<span class="threat-portrait">'+art(threatArtwork(id),"threat-illustration")+'</span>'+
+ '<span class="threat-copy"><strong>'+E(t.name)+'</strong><small>'+E(TYPES[t.scheme]?.name||"Загроза")+'</small><em>'+E(equipped?"У колоді: "+equipped.name:"Потрібна тактика")+'</em></span>'+
+ '<span class="threat-active" data-threat-count="'+E(id)+'">'+(count?"×"+count:"i")+'</span></button>';
+}
+function renderThreatLegend(compact=false){
+ const ids=getEncounterThreats(level,game);
+ return '<section class="threat-legend'+(compact?" threat-compact":"")+'" aria-label="Легенда нападників">'+
+ '<div class="threat-heading"><div><strong>🕵️ Хто наступає?</strong><small>Натисніть на ворога — дізнаєтесь, чим його зупинити</small></div>'+
+ btn("hint","💡 Підказка для хвилі","btn btn-primary")+'</div>'+
+ '<div class="threat-list">'+ids.map(renderThreatChip).join("")+'</div>'+
+ '<p class="threat-disclaimer">Підбір враховує тип загрози, маскування, польоти та підземні цілі. Це правила гри.</p></section>';
+}
+function renderCounterModal(){
+ const info=getCounterAdvice(selectedThreat,{level,deck,owned:availableUnits()});
+ if(!info)return '<h2>Підказка недоступна</h2>';
+ const t=info.threat,states={deck:"✓ У колоді",owned:"Доступний",locked:"🔒 Не відкрито"};
+ const rows=info.recommended.map(u=>{
+ const select=u.state==="deck"&&view==="play"?btn("pick-counter","Обрати","btn btn-quiet",'data-unit="'+E(u.id)+'"'):"";
+ return '<div class="counter-row"><span class="counter-art">'+art(u.id,"counter-illustration")+'</span><div><strong>'+E(u.name)+'</strong><small>'+
+ E(TOOLS[u.tool]?.name||"Допоміжний")+' · '+(u.multiplier>1?"Перевага ×"+u.multiplier:u.multiplier<1?"Шкода ×"+u.multiplier:"Звичайна ефективність")+
+ '</small><small class="counter-state">'+states[u.state]+'</small></div>'+select+'</div>';
+ }).join("");
+ const extra=info.support.filter(id=>UNIT_BY_ID[id]).map(id=>E(UNIT_BY_ID[id].name)).join(", ");
+ return '<div class="counter-header"><span class="counter-header-art">'+art(threatArtwork(selectedThreat),"detail-art")+'</span><div class="eyebrow">Ігровий довідник · '+E(TYPES[t.scheme]?.name||"Загроза")+'</div><h2>'+E(t.name)+'</h2></div>'+
+ '<div class="hint"><strong>🦉 Тактика Юсі:</strong> '+E(info.note)+'</div>'+
+ (extra?'<p><strong>Допоміжні інструменти:</strong> '+extra+'</p>':"")+
+ '<h3>🎯 Чим атакувати</h3><div class="counter-list">'+rows+'</div>'+
+ '<p class="notice">Підказки описують механіку гри та не є юридичною консультацією.</p>'+
+ '<div class="dialog-actions">'+btn("close-modal","Повернутися","btn btn-dark")+'</div>';
+}
+
 function renderDeck(){
  const avail=challenge?UNITS:unlockedUnits(save.completed);const disabled=level.activeLanes.length===1&&level.stage===1;
  const types=[...new Set(level.enemies.map(id=>ENEMY_BY_ID[id]?.scheme).filter(Boolean))];
@@ -99,7 +140,7 @@ function renderDeck(){
  <div class="split"><section><div class="panel"><h3>📂 Оберіть захисників</h3><p class="muted">Візьміть від 1 до 8 карток. Для встановлення потрібно заробляти печатки.</p>
  <div class="deck-grid">${avail.map(u=>unitCard(u,{selected:deck.includes(u.id)})).join("")}</div></div>
  <div class="deck-summary"><span><strong>${deck.length}/${slotLimit()}</strong> карток у справі</span>${btn("start","▶ Розпочати оборону","btn btn-primary",deck.length?'':'disabled')}</div></section>
- <aside class="panel"><h3>🕵️ Хто наступає?</h3><div style="display:grid;gap:10px">${level.enemies.map(id=>{const e=ENEMY_BY_ID[id];return `<div> <span class="tag">${TYPES[e.scheme].icon} ${TYPES[e.scheme].name}</span> <strong>${e.icon} ${E(e.name)}</strong></div>`;}).join("")}</div>
+ <aside class="panel"><div class="deck-threat-box">${renderThreatLegend(true)}</div>
  <p class="hint" style="margin-top:16px">${warns.length?"🦉 Порада: у колоді бракує ефективних інструментів для деяких типів схем.":"🦉 Гарний вибір! Комбінуйте економіку, стіни та атакувальні картки."}</p>
  <p class="muted">${level.special.blackout?"🌙 Блекаут: потрібна зарядна станція.":""} ${level.special.fog?"🌫️ Туман приховує частину поля.":""}</p>
  <div class="eyebrow">Режим гри</div><div style="display:grid;gap:8px;margin:10px 0">
@@ -146,7 +187,7 @@ function renderPlay(){
  ${cells}<div class="placement-preview" aria-hidden="true">${art(selected,"preview-art")}</div><div class="projectile-layer" aria-hidden="true">${shots}</div><div class="particle-layer" aria-hidden="true"></div><div class="enemy-layer" aria-hidden="true">${foes}</div><div class="tokens-layer">${tokens}</div><div class="vfx-layer" aria-hidden="true">${fx}</div></div></div></div>
  <div class="game-bottom"><span>🛡️ Захищено рядків: ${5-game.usedGuards.filter(Boolean).length}/5 · Схемників: ${game.enemies.length} · Пострілів: ${activeAttackers} · Залишилось: ${remaining}</span>
  <span>⌨️ 1–8: картка · Стрілки: клітинка · Enter: поставити · Пробіл: зібрати · P: пауза</span></div>
- </section><div class="owl-message" aria-live="polite"><div class="face" aria-hidden="true">🦉</div><div><strong>Сова Юся</strong>${E(toast||game.lastHint)}</div></div></main>`);
+ </section>${renderThreatLegend()}<div class="owl-message" aria-live="polite"><div class="face" aria-hidden="true">🦉</div><div><strong>Сова Юся</strong>${E(toast||game.lastHint)}</div></div></main>`);
 }
 
 /** Update live sprites in place; do not rebuild the whole document every frame.
@@ -287,6 +328,12 @@ function syncGameFrame(){
   guard.title=manual?"Активувати заборону проти Барона":"Заборона спрацьовує автоматично під час прориву";
  }
  updatePlacementPreview();
+ const counts=root.querySelectorAll?.("[data-threat-count]")||[];
+ for(const count of counts){
+  const n=game.enemies.filter(e=>e.id===count.dataset.threatCount).length;
+  const label=n?"×"+n:"i";if(count.textContent!==label)count.textContent=label;
+  count.classList.toggle("is-active",n>0);
+ }
  const fog=$(".field-wrap");
  if(fog&&level.special.fog)fog.classList.toggle("fog-cleared",game.defenders.some(d=>d.kind==="reveal"&&d.col>=4));
 }
@@ -381,11 +428,13 @@ function renderDialog(){
  let content="";
  if(modal==="pause")content=`<div class="large-emoji">⏸️</div><h2>Пауза</h2><p>Ваша справа чекає. Продовжуйте у зручному темпі.</p>
  <div class="dialog-actions">${btn("close-modal","▶ Продовжити","btn btn-primary")}${btn("retry","↻ Заново","btn btn-quiet")}${btn("levels","🗺️ На карту","btn btn-quiet")}</div>`;
+ else if(modal==="threat")content=renderCounterModal();
  else if(modal==="detail"&&detail){
   const d=detail.kind==="unit"?UNIT_BY_ID[detail.id]:ENEMY_BY_ID[detail.id],isUnit=detail.kind==="unit";
   content=`<div class="detail-illustration">${art(d.id,"detail-art")}</div><div class="eyebrow">Альманах · ${isUnit?"Захисник":"Схемник"}</div><h2>${E(d.name)}</h2>
   <p class="hint"><strong>Як грає:</strong> ${E(isUnit?d.desc:d.tip)}</p>
   <p><strong>📘 Як це в житті</strong><br>${E(FACTS[isUnit?({registry:"registry",notary:"notary",digital:"cyber",enforcement:"debt",integrity:"corruption",expert:"expert"}[d.tool]||"general"):({forgery:"registry",cyber:"cyber",debt:"debt",corruption:"corruption",bureaucracy:"general"}[d.scheme]||"general")])}</p>
+  ${!isUnit?btn("threat-tip","💡 Чим атакувати?","btn btn-primary",'data-enemy="'+E(d.id)+'"'):""}
   <p class="notice">Статус: 🟨 Не затверджено юристом · Актуальність: чернетка GDD від 15.10.2026</p>
   <a href="https://just-dnipro.gov.ua/" target="_blank" rel="noopener noreferrer">Детальніше на офіційному сайті ↗</a>${commonActions}`;
  }else if(modal==="reset")content=`<h2>Скинути прогрес?</h2><p>Усі зірки, відкриті картки й результати на цьому пристрої буде стерто.</p><div class="dialog-actions">${btn("reset-confirm","Так, скинути","btn btn-danger")}${btn("close-modal","Скасувати","btn btn-dark")}</div>`;
@@ -473,6 +522,9 @@ function action(name,el){
  if(name==="levels"){game=null;if(challenge){challenge=null;setView("worlds");}else setView("levels");return;}
  if(name==="level"){const st=Number(el.dataset.stage);if(levelUnlocked(world,st,save.completed))goLevel(world,st);return;}
  if(name==="start"){startGame();return;}
+ if(name==="threat-tip"){selectedThreat=el?.dataset?.enemy||selectedThreat;modal="threat";render();return;}
+ if(name==="hint"){selectedThreat=game?.enemies.find(e=>e.trait!=="neutral")?.id||getEncounterThreats(level,game)[0]||"schemer";modal="threat";render();return;}
+ if(name==="pick-counter"){const id=el?.dataset?.unit;if(deck.includes(id)){selected=id;modal="";render();}return;}
  if(name==="unit"){
   const id=el.dataset.unit;
   if(view==="deck"){
