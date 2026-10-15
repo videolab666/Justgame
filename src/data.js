@@ -9,7 +9,7 @@ U("registrar","Державний реєстратор","🏛️",100,7,300,"sho
 U("cnap","ЦНАП","🏠",50,7,300,"income",null,25,24,"1-1","Виробляє печатки довіри."),
 U("notary","Нотаріус","🖋️",50,35,4000,"wall","notary",10,1,"1-2","Міцно тримає оборону."),
 U("mine","Арешт майна","🔒",25,35,300,"mine","enforcement",1800,14,"1-3","Спрацьовує після підготовки."),
-U("notification","Сповіщення","📱",75,20,300,"reveal","digital",0,0,"1-4","Розкриває замаскованих шахраїв."),
+U("notification","Сповіщення","📱",75,20,300,"reveal","digital",0,0,"1-3","Розкриває замаскованих шахраїв."),
 U("commission","Комісія зі скарг","⚖️",100,35,1,"restore","registry",0,0,"1-6","Прибирає фальшивий запис."),
 U("archive","Архів БТІ","🗄️",50,35,300,"healer",null,200,20,"1-7","Відновлює сусідніх захисників."),
 U("senior","Старший реєстратор","👩‍💼",200,20,300,"shooter","registry",40,1.4,"1-8","Подвійна перевірка документів."),
@@ -67,7 +67,7 @@ export const WORLDS=[
 {id:"digital",name:"Цифровий фронт",subtitle:"Реєстри під захистом",emoji:"💠",summary:"Фішинг, КЕП, кібергігієна",enemyIds:["schemer","phisher","hacker","caller","usb","queue","unregistered"],titles:["Другий фактор","Збережи ключ","Небезпечний лист","Нічні реєстри","Справжнє чи фейк?","Цифровий офіс","Фішингова атака","Серверна зміна","Зламати схему","Гідра Фішингу"]}
 ];
 export const UNLOCK_REWARDS={
-"1-1":"cnap","1-2":"notary","1-3":"mine","1-4":"notification","1-6":"commission","1-7":"archive","1-8":"senior",
+"1-1":"cnap","1-2":"notary","1-3":"notification","1-4":"mine","1-6":"commission","1-7":"archive","1-8":"senior",
 "2-1":"limitation","2-2":"trustee","2-3":"station","2-5":"private_executor","2-7":"notary_office",
 "3-1":"integrity","3-2":"order","3-3":"expert","3-5":"intern","3-7":"legal_aid",
 "4-1":"shield","4-2":"apostille","4-5":"digital_office"

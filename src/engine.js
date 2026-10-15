@@ -25,6 +25,7 @@ export function makeWavePlan(level,seed=0){
   }
  }
  if(level.boss)list.push({time:13+(waves-1)*41+24,id:"boss",lane:level.activeLanes[Math.floor(rand()*level.activeLanes.length)],wave:waves});
+ if(level.id==="3-5")list.push({time:13+(waves-1)*41+19,id:"mini_boss",lane:2,wave:waves});
  return list.sort((a,b)=>a.time-b.time);
 }
 export function makeGame(level,deck,mode="normal",settings={}){
@@ -41,7 +42,7 @@ export function makeGame(level,deck,mode="normal",settings={}){
 const uid=g=>g.serial++;
 function effect(g,kind,lane,x,text=""){g.effects.push({id:uid(g),kind,lane,x,ttl:.7,text});if(g.effects.length>35)g.effects.shift();}
 export function spawn(g,id,lane,x=9.3){
- let data=id==="boss"?g.level.bossData:ENEMY_BY_ID[id]; if(!data)return null;
+ let data=id==="boss"?g.level.bossData:id==="mini_boss"?{name:"Липовий експерт",icon:"🥼",scheme:"bureaucracy",hp:2500,speed:.6,trait:"mini_boss",tip:"Перевіряйте кваліфікацію експертів у визначених законом реєстрах."}:ENEMY_BY_ID[id]; if(!data)return null;
  const hpMod=g.mode==="young"?.6:g.mode==="expert"?1.3:1;
  const enemy={uid:uid(g),id,name:data.name,icon:data.icon,scheme:data.scheme,
  hp:data.hp*hpMod,maxHp:data.hp*hpMod,shield:data.shield||0,maxShield:data.shield||0,
@@ -71,7 +72,7 @@ function revealInRange(g,e){
 export function canTarget(g,d,e){
  if(e.hp<=0)return false;
  if(e.trait==="neutral")return false;
- if(e.trait==="flying"&&!["air","sniper","global"].includes(d.kind))return false;
+ if((e.trait==="flying"||e.air)&&!["air","sniper","global"].includes(d.kind))return false;
  if(e.trait==="burrow"&&!["lobber","mine"].includes(d.kind))return false;
  if(!e.reveal && d.kind!=="sniper" && !revealInRange(g,e))return false;
  if(g.level.special.fog&&e.x>5.5&&!revealInRange(g,e)&&d.kind!=="sniper")return false;
@@ -140,8 +141,10 @@ export function damageEnemy(g,e,raw,tool=null,extra=1){
  if(e.id==="boss"){
   if(g.level.world===2&&tool!=="integrity")mult*=.5;
   if(g.level.world===1&&e.phase===2&&!["enforcement","expert"].includes(tool))mult*=.2;
+  if(g.level.world===3&&e.phase<3&&tool!=="digital")mult*=.25;
   if(g.level.world===0&&e.hp<=e.maxHp*.35&&!g.bossGuardUsed)mult=0;
  }
+ if(e.id==="mini_boss"&&tool!=="expert")mult=Math.min(mult,.5);
  let n=Math.max(0,raw*mult*extra);
  if(e.shield>0 && tool!=="enforcement"){const absorbed=Math.min(e.shield,n);e.shield-=absorbed;n-=absorbed;}
  e.hp-=n;e.lastHitTool=tool;
@@ -149,6 +152,7 @@ export function damageEnemy(g,e,raw,tool=null,extra=1){
  if(e.id==="boss"){
   const prev=e.phase;e.phase=e.hp>e.maxHp*.7?1:e.hp>e.maxHp*.35?2:3;
   if(e.phase!==prev){
+   if(g.level.world===1){e.air=e.phase===2;if(e.phase===3)e.speed=.58;}
    g.lastHint=`⚠️ ${e.name}: фаза ${e.phase}. Змінюйте тактику!`;
    effect(g,"phase",e.lane,e.x,"ФАЗА "+e.phase);
    if(e.phase===3&&g.level.world===0){g.bossGuardReady=true;g.lastHint="Барон готує фінальний підпис! Натисніть 🛑 біля його доріжки."; }
@@ -242,8 +246,12 @@ function attack(g,d,delta){
  d.timer=spec.interval||2;
 }
 function defeat(g,e){
- g.lastThreat=e;g.breaches++;
+ g.lastThreat=e;
  if(e.trait==="neutral"){g.seal+=50;removeEnemy(g,e,true);return;}
+ g.breaches++;
+ if(e.id==="boss"&&g.level.world===0){
+  g.phase="lost";g.lastHint="Барон завершив переоформлення. Зупиніть його спеціальною Забороною у третій фазі.";return;
+ }
  if(!g.usedGuards[e.lane]){useGuard(g,e.lane);return;}
  if(g.mode==="young"){removeEnemy(g,e);return;}
  g.phase="lost";g.lastHint=`Прорвався: ${e.name}. ${e.tip||"Спробуйте інший інструмент."}`;
@@ -256,6 +264,24 @@ function enemyTurn(g,e,delta){
  if(g.time<e.stunUntil)move=0;
  const nearby=g.defenders.filter(d=>d.lane===e.lane&&Math.abs(d.col+.5-e.x)<.65).sort((a,b)=>b.col-a.col);
  const blocker=nearby[0];
+ if(e.id==="boss"&&g.time>e.specialUntil){
+  const w=g.level.world;
+  if(w===0&&e.phase===1)spawn(g,"poa",e.lane,Math.min(9,e.x+.5));
+  if(w===0&&e.phase===2)spawn(g,"hacker",e.lane,Math.min(9,e.x+.7));
+  if(w===1&&e.phase===1)spawn(g,"burrower",e.lane,Math.min(9,e.x+.7));
+  if(w===1&&e.phase===2)spawn(g,"bankrupt",e.lane,Math.min(9,e.x+.7));
+  if(w===2)for(let lane=0;lane<5;lane++)if(g.level.activeLanes.includes(lane)&&lane%2===0)spawn(g,"briber",lane,9.2);
+  if(w===3){g.seal=Math.max(0,g.seal-25);spawn(g,e.phase===1?"phisher":e.phase===2?"caller":"usb",e.lane,9.2);}
+  e.specialUntil=g.time+13;effect(g,"phase",e.lane,e.x,"СХЕМА!");
+ }
+ if(e.trait==="mini_boss"&&g.time>e.specialUntil){
+  for(const other of g.enemies)if(other!==e&&Math.abs(other.lane-e.lane)<=2&&Math.abs(other.x-e.x)<2)other.hp=Math.min(other.maxHp,other.hp+300);
+  e.specialUntil=g.time+8;effect(g,"heal",e.lane,e.x,"ЛИПОВИЙ ВИСНОВОК");
+ }
+ if(["phish","call"].includes(e.trait)&&g.time>e.specialUntil){
+  const target=g.defenders.filter(d=>d.lane===e.lane&&e.x>d.col+.5&&e.x-(d.col+.5)<=3&&!d.shieldHp).sort((a,b)=>b.col-a.col)[0];
+  if(target){target.disabledUntil=g.time+(e.trait==="phish"?5:3);e.specialUntil=g.time+(e.trait==="phish"?10:8);effect(g,"phish",e.lane,e.x,"НЕВІДОМЕ ПОСИЛАННЯ");}
+ }
  if(e.trait==="giant"&&!e.spawnedMinions&&e.hp<e.maxHp*.5){
   e.spawnedMinions=true;spawn(g,"schemer",e.lane,Math.max(.9,e.x-2));
  }
@@ -279,6 +305,7 @@ function enemyTurn(g,e,delta){
    let dmg=e.trait==="giant"?2500:100*delta;
    if(blocker.shieldHp>0){const absorbed=Math.min(blocker.shieldHp,dmg);blocker.shieldHp-=absorbed;dmg-=absorbed;}
    blocker.hp-=dmg;
+   if(blocker.kind==="wall"&&blocker.id==="notary"&&e.scheme==="forgery")damageEnemy(g,e,10*delta,"notary");
    if(blocker.hp<=0){g.defenders.splice(g.defenders.indexOf(blocker),1);g.defenderLosses++;effect(g,"down",blocker.lane,blocker.col+.5,"ЗАХИСНИК");}
   }
  }else{

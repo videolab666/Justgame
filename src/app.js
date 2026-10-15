@@ -54,7 +54,12 @@ function renderLevels(){
 }
 function chooseSuggested(){
  const unlocked=unlockedUnits(save.completed),max=8;
- const recommend=["registrar","cnap","notary","senior","executor","limitation","trustee","station","notification","twofactor","expert","whistleblower","integrity","apostille","mine","intern","legal_aid"];
+ const recommend=[
+  ["registrar","cnap","notary","notification","senior","mine","commission","archive"],
+  ["executor","cnap","limitation","trustee","private_executor","station","notary","registrar"],
+  ["whistleblower","cnap","integrity","order","expert","intern","legal_aid","registrar"],
+  ["twofactor","cnap","shield","notification","expert","apostille","digital_office","registrar"]
+ ][world];
  const owned=new Set(unlocked.map(x=>x.id));
  deck=recommend.filter(x=>owned.has(x)).slice(0,max);
  if(!deck.length)deck=["registrar"];
