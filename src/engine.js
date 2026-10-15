@@ -530,7 +530,7 @@ export function tick(g,delta){
   spawn(g,ids[Math.abs(ix)],Math.floor(Math.random()*5),9.3);
   g.nextSurvivalSpawn=g.time+2.6;
  }
- if(g.phase==="playing"&&g.spawned===g.plan.length&&g.enemies.length===0&&g.projectiles.length===0&&g.time>=g.plan[g.plan.length-1].time+2){
+ if(g.phase==="playing"&&g.plan.length>0&&g.spawned===g.plan.length&&g.enemies.length===0&&g.projectiles.length===0&&g.time>=g.plan[g.plan.length-1].time+2){
   if(g.challenge?.kind==="endless"){
    queueEndlessWave(g,g.maxWave+1);
    g.lastHint="🦉 Хвилю "+g.stageWave+" відбито. Готуйтесь до наступної!";
