@@ -400,7 +400,7 @@ function renderDialog(){
  */
 function updatePlacementPreview(){
  if(view!=="play"||!game||modal)return;
- const preview=root.querySelector(".placement-preview");
+ const preview=root.querySelector?.(".placement-preview");
  if(!preview)return;
  const error=availablePlacement(game,selected,focus.lane,focus.col);
  const valid=!error;
