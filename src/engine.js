@@ -31,7 +31,7 @@ export function makeWavePlan(level,seed=0){
 export function makeGame(level,deck,mode="normal",settings={},challenge=null){
  const game={
   level,deck:[...deck],mode,settings,challenge,phase:"playing",time:0,elapsed:0,seal:(mode==="young"?300:level.startingSeals)+(settings.careerBonus||0),
-  defenders:[],enemies:[],tokens:[],locks:[],effects:[],projectiles:[],plan:makeWavePlan(level),
+  defenders:[],enemies:[],tokens:[],locks:[],effects:[],projectiles:[],particles:[],plan:makeWavePlan(level),
   spawned:0,serial:1,nextSky:7,cooldowns:Object.fromEntries(deck.map(id=>[id,0])),
   usedGuards:[false,false,false,false,false],breaches:0,defenderLosses:0,created:0,kills:0,
   stageWave:0,maxWave:level.waves,bossGuardReady:false,bossGuardUsed:false,
@@ -160,13 +160,13 @@ export function place(g,id,lane,col){
   for(const e of [...g.enemies])if(Math.abs(e.lane-lane)<=2&&Math.abs(e.x-(col+.5))<=2.5){
    if(e.scheme==="corruption")damageEnemy(g,e,1500,"integrity");else e.stunUntil=g.time+3;
   }
-  effect(g,"blast",lane,col+.5,"ВИКРИТО");return {ok:true};
+  effect(g,"blast",lane,col+.5,"ВИКРИТО");emitBurst(g,"blast",lane,col+.5,13);return {ok:true};
  }
  if(u.kind==="sweep"){
   for(const e of [...g.enemies])if(e.lane===lane){
    if(e.trait==="neutral"){g.seal+=50;removeEnemy(g,e,true);}else damageEnemy(g,e,1800,null);
   }
-  effect(g,"sweep",lane,col+.5,"ПРАВНИЧА ДОПОМОГА");return {ok:true};
+  effect(g,"sweep",lane,col+.5,"ПРАВНИЧА ДОПОМОГА");emitBurst(g,"sweep",lane,col+.5,12);return {ok:true};
  }
  g.defenders.push({uid:uid(g),id,name:u.name,icon:u.icon,kind:u.kind,tool:u.tool,lane,col,
  hp:u.hp,maxHp:u.hp,shieldHp:0,timer:0,placedAt:g.time,disabledUntil:0,confusedUntil:0,lastShotAt:-10});
@@ -247,8 +247,35 @@ export function useGuard(g,lane,automatic=false){
  }
  g.usedGuards[lane]=true;
  for(const e of [...g.enemies])if(e.lane===lane)removeEnemy(g,e);
- effect(g,"guard",lane,3.5,"ЗАБОРОНА");
+ effect(g,"guard",lane,3.5,"ЗАБОРОНА");emitBurst(g,"guard",lane,3.5,11);
  return true;
+}
+
+
+/** Lightweight, deterministic and purely decorative particles.
+ * A cap and reduced-motion flag avoid unbounded DOM work in endless mode.
+ */
+export function emitBurst(g,kind,lane,x,count=6){
+ if(g.settings?.reducedMotion)return;
+ const palette={stamp:"ink",chain:"ice",writ:"paper",dossier:"paper",clip:"spark",dove:"gold",beam:"cyan",mine:"gold",guard:"gold",blast:"spark",sweep:"paper"};
+ const variant=palette[kind]||"ink";
+ const amount=Math.min(14,Math.max(0,count));
+ for(let i=0;i<amount;i++){
+  const angle=(i+.5)*Math.PI*2/amount+(g.serial%7)*.13;
+  const speed=.55+(i%4)*.28;
+  g.particles.push({uid:uid(g),kind:variant,x,row:lane+.5,vx:Math.cos(angle)*speed,
+    vy:Math.sin(angle)*speed-.24,age:0,ttl:.3+(i%4)*.07,spin:(i%2?1:-1)*(i+1)*65});
+ }
+ if(g.particles.length>115)g.particles.splice(0,g.particles.length-115);
+}
+export function advanceParticles(g,delta){
+ for(let i=g.particles.length-1;i>=0;i--){
+  const p=g.particles[i];
+  p.age+=delta;
+  if(p.age>=p.ttl){g.particles.splice(i,1);continue;}
+  p.x+=p.vx*delta;
+  p.row+=(p.vy+p.age*2.1)*delta;
+ }
 }
 
 const SHOT_STYLES={
@@ -291,6 +318,7 @@ export function fireProjectile(g,d,target,raw,bonus=1){
  if(g.projectiles.length>160)g.projectiles.splice(0,g.projectiles.length-160);
  d.lastShotAt=g.time;
  effect(g,"muzzle",d.lane,sourceX,"");
+ emitBurst(g,style.kind,d.lane,sourceX,3);
  return shot;
 }
 function hitProjectile(g,p,e){
@@ -307,6 +335,7 @@ function hitProjectile(g,p,e){
  }else damageEnemy(g,e,p.damage,p.tool,p.bonus);
  const word=p.kind==="chain"?"ОБМЕЖЕНО":p.kind==="clip"?"АКТИВИ":p.kind==="dossier"?"ПОСТАНОВА":"";
  effect(g,"impact-"+p.kind,e.lane,e.x,word);
+ emitBurst(g,p.kind,e.lane,e.x,p.kind==="dossier"?11:7);
 }
 /** Sweep fast-moving shots across their full step, so no enemy is skipped at 2x speed.
  * Ballistic shots follow their target until the predicted impact. Dead targets produce
@@ -387,7 +416,7 @@ function attack(g,d,delta){
  if(d.kind==="mine"){
   if(g.time-d.placedAt<14)return;
   const e=g.enemies.find(e=>e.lane===d.lane&&Math.abs(e.x-(d.col+.5))<.62);
-  if(e){damageEnemy(g,e,spec.damage,"enforcement");g.defenders.splice(g.defenders.indexOf(d),1);effect(g,"mine",d.lane,d.col+.5,"АРЕШТ");}
+  if(e){damageEnemy(g,e,spec.damage,"enforcement");g.defenders.splice(g.defenders.indexOf(d),1);effect(g,"mine",d.lane,d.col+.5,"АРЕШТ");emitBurst(g,"mine",d.lane,d.col+.5,12);}
   return;
  }
  if(["power","integrity","boost","wall"].includes(d.kind))return;
@@ -524,6 +553,7 @@ export function tick(g,delta){
  for(const d of [...g.defenders])attack(g,d,delta);
  for(const e of [...g.enemies])if(g.enemies.includes(e))enemyTurn(g,e,delta);
  advanceProjectiles(g,delta);
+ advanceParticles(g,delta);
  if(g.finalSurvivalUntil&&g.time<g.finalSurvivalUntil&&g.time>=g.nextSurvivalSpawn){
   const ids=["schemer","phisher","briber","alimony","caller","usb"];
   const ix=Math.floor((g.finalSurvivalUntil-g.time)*2)%ids.length;
