@@ -196,3 +196,19 @@ body.reduced-motion .projectile{transition:none!important}
 body.reduced-motion .defender.placing{animation:none}
 body.reduced-motion .combat-particle{display:none}
 @media(prefers-reduced-motion:reduce){.combat-particle{display:none}}
+
+/* Placement telegraph shows the actual card at the pointer / keyboard cell. */
+.selected-help{margin:-4px 4px 8px;padding:7px 11px;display:flex;align-items:center;gap:8px 18px;flex-wrap:wrap;color:#dff5ef;
+ background:linear-gradient(90deg,#2a6073ba,#16425c70);border-left:4px solid #edc96f;border-radius:6px;font-size:12px;line-height:1.3}
+.selected-help strong{color:#ffe39a;font-weight:900}
+.selected-help span:first-child{white-space:nowrap}
+.placement-preview{position:absolute;pointer-events:none;z-index:3;display:grid;place-items:center;transition:left .09s ease,top .09s ease,opacity .1s}
+.placement-preview .preview-art{width:85%;height:85%;opacity:.64;filter:drop-shadow(0 2px 6px #2f746974)}
+.placement-preview.preview-valid{background:radial-gradient(circle,#fff6bb57 16%,#36c8a142 84%);outline:2px dashed #d7f7cd;outline-offset:-5px;border-radius:12px}
+.placement-preview.preview-valid:after{content:"✓";position:absolute;right:7%;top:4%;font-size:14px;font-weight:1000;color:#fff;background:#2ba886;border:2px solid #bdf6d3;line-height:1;border-radius:50%;padding:3px}
+.placement-preview.preview-invalid{background:#bf4b5b47;outline:2px dashed #df97aa;outline-offset:-5px;border-radius:12px}
+.placement-preview.preview-invalid .preview-art{opacity:.14;filter:grayscale(1)}
+.placement-preview.preview-invalid:after{content:"×";position:absolute;top:25%;left:39%;font-size:28px;font-weight:1000;color:#ffdce3;text-shadow:0 2px #983a57}
+@media(max-width:620px){.selected-help{font-size:11px;padding:5px 8px;gap:4px 8px}.placement-preview.preview-valid:after{font-size:10px;padding:1px}}
+body.reduced-motion .placement-preview{transition:none}
+@media(prefers-reduced-motion:reduce){.placement-preview{transition:none}}

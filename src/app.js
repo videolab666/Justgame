@@ -139,10 +139,11 @@ function renderPlay(){
  <div class="progress-track"><div class="progress-fill" data-game-progress style="width:${progress}%"></div></div></div>
  <div class="game-controls">${btn("speed",speed===1?"▶ ×1":speed===2?"▶▶ ×2":"▶ ½","btn btn-quiet")}${btn("pause","⏸","btn btn-quiet","aria-label=\"Пауза\"")}</div></div>
  <div class="cardbar" aria-label="Колода захисників">${cards}</div>
+ <div class="selected-help" aria-live="off"><span>↘ <strong>${E(UNIT_BY_ID[selected]?.name||"Захисник")}</strong></span><span>${E(UNIT_BY_ID[selected]?.desc||"Оберіть клітинку для захисту.")}</span></div>
  <div class="field-wrap ${level.special.blackout?"blackout":""} ${level.special.fog?"fog":""}" data-world="${level.world+1}">
  <div class="skyline" aria-hidden="true">${landscape(level.world,"scenery")}</div>
  <div class="board-frame"><div class="house-strip">${guards}</div><div class="board" role="grid" aria-label="Поле оборони, 5 рядків і 9 колонок">
- ${cells}<div class="projectile-layer" aria-hidden="true">${shots}</div><div class="particle-layer" aria-hidden="true"></div><div class="enemy-layer" aria-hidden="true">${foes}</div><div class="tokens-layer">${tokens}</div><div class="vfx-layer" aria-hidden="true">${fx}</div></div></div></div>
+ ${cells}<div class="placement-preview" aria-hidden="true">${art(selected,"preview-art")}</div><div class="projectile-layer" aria-hidden="true">${shots}</div><div class="particle-layer" aria-hidden="true"></div><div class="enemy-layer" aria-hidden="true">${foes}</div><div class="tokens-layer">${tokens}</div><div class="vfx-layer" aria-hidden="true">${fx}</div></div></div></div>
  <div class="game-bottom"><span>🛡️ Захищено рядків: ${5-game.usedGuards.filter(Boolean).length}/5 · Схемників: ${game.enemies.length} · Пострілів: ${activeAttackers} · Залишилось: ${remaining}</span>
  <span>⌨️ 1–8: картка · Стрілки: клітинка · Enter: поставити · Пробіл: зібрати · P: пауза</span></div>
  </section><div class="owl-message" aria-live="polite"><div class="face" aria-hidden="true">🦉</div><div><strong>Сова Юся</strong>${E(toast||game.lastHint)}</div></div></main>`);
@@ -285,6 +286,7 @@ function syncGameFrame(){
   guard.disabled=game.usedGuards[lane]||!manual;guard.classList.toggle("used",game.usedGuards[lane]);
   guard.title=manual?"Активувати заборону проти Барона":"Заборона спрацьовує автоматично під час прориву";
  }
+ updatePlacementPreview();
  const fog=$(".field-wrap");
  if(fog&&level.special.fog)fog.classList.toggle("fog-cleared",game.defenders.some(d=>d.kind==="reveal"&&d.col>=4));
 }
@@ -392,12 +394,35 @@ function renderDialog(){
  <div class="dialog-actions">${btn("print","🖨️ Друкувати","btn btn-primary")}${btn("close-modal","Закрити","btn btn-dark")}</div>`;
  return `<div class="overlay" role="presentation"><div class="dialog" role="dialog" aria-modal="true" aria-label="Ігрове вікно">${content}</div></div>`;
 }
+
+/** Shared pointer/keyboard preview. The same placement rules are used by the engine,
+ * so a green cell means an actually legal placement (and red cannot spend seals).
+ */
+function updatePlacementPreview(){
+ if(view!=="play"||!game||modal)return;
+ const preview=root.querySelector(".placement-preview");
+ if(!preview)return;
+ const error=availablePlacement(game,selected,focus.lane,focus.col);
+ const valid=!error;
+ preview.classList.toggle("preview-valid",valid);
+ preview.classList.toggle("preview-invalid",!valid);
+ preview.style.left=focus.col*100/9+"%";
+ preview.style.top=focus.lane*20+"%";
+ preview.style.width=(100/9)+"%";
+ preview.style.height="20%";
+ const img=preview.querySelector("img");
+ const path="./assets/sprites/"+encodeURIComponent(selected)+".svg";
+ if(img?.getAttribute("src")!==path)img.setAttribute("src",path);
+ preview.title=valid?UNIT_BY_ID[selected]?.name||"":"Неможливо поставити: "+error;
+}
+
 function render(){
  document.body.classList.toggle("high-contrast",!!save.settings.highContrast);
  document.body.classList.toggle("large-text",!!save.settings.largeText);
  document.body.classList.toggle("reduced-motion",!!save.settings.reducedMotion);
  let html=({home:renderHome,worlds:renderWorlds,levels:renderLevels,deck:renderDeck,play:renderPlay,result:renderResult,almanac:renderAlmanac,settings:renderSettings,mini:renderMini}[view]||renderHome)();
  root.innerHTML=html+renderDialog();
+ updatePlacementPreview();
 }
 function setView(v){view=v;modal="";toast="";render();}
 function goLevel(w,s){
@@ -486,6 +511,13 @@ function action(name,el){
  if(name==="certificate"){modal="certificate";render();return;}
  if(name==="print"){window.print();return;}
 }
+root.addEventListener("pointerover",e=>{
+ const cell=e.target.closest?.(".board > .cell");
+ if(view==="play"&&game&&!modal&&cell&&!cell.disabled){
+  focus={lane:Number(cell.dataset.lane),col:Number(cell.dataset.col)};
+  updatePlacementPreview();
+ }
+});
 root.addEventListener("click",e=>{const el=e.target.closest("[data-act]");if(el&&!el.disabled){action(el.dataset.act,el);}});
 root.addEventListener("change",e=>{
  if(e.target.matches("[data-setting]")){save.settings[e.target.dataset.setting]=e.target.checked;persist();if(game)game.settings=save.settings;render();}
