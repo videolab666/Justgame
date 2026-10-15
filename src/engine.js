@@ -63,15 +63,36 @@ export function queueEndlessWave(game,n){
 const uid=g=>g.serial++;
 function effect(g,kind,lane,x,text=""){g.effects.push({id:uid(g),kind,lane,x,ttl:.7,text});if(g.effects.length>35)g.effects.shift();}
 export function spawn(g,id,lane,x=9.3){
- let data=id==="boss"?g.level.bossData:id==="mini_boss"?{name:"Липовий експерт",icon:"🥼",scheme:"bureaucracy",hp:2500,speed:.6,trait:"mini_boss",tip:"Перевіряйте кваліфікацію експертів у визначених законом реєстрах."}:ENEMY_BY_ID[id]; if(!data)return null;
+ const parts={
+  offshore_safe:{name:"Сейф-офшор",icon:"🔒",scheme:"debt",hp:800,speed:0,trait:"offshore_safe",tip:"Сховані активи потребують виявлення."},
+  tentacle:{name:"Щупальце підкупу",icon:"🐙",scheme:"corruption",hp:1500,speed:0,trait:"tentacle",tip:"Запобігання корупції потребує перевірки."},
+  hydra_phish:{name:"Голова фішингу",icon:"🎣",scheme:"cyber",hp:5000,speed:0,trait:"hydra_head",tip:"Перевіряйте посилання."},
+  hydra_call:{name:"Голова дзвінків",icon:"☎️",scheme:"cyber",hp:5000,speed:0,trait:"hydra_head",tip:"Не розголошуйте коди по телефону."},
+  hydra_malware:{name:"Голова шкідливого ПЗ",icon:"💾",scheme:"cyber",hp:5000,speed:0,trait:"hydra_head",tip:"Невідомі носії небезпечні."}
+ };
+ let data=parts[id]|| (id==="boss"?g.level.bossData:id==="mini_boss"?{name:"Липовий експерт",icon:"🥼",scheme:"bureaucracy",hp:2500,speed:.6,trait:"mini_boss",tip:"Перевіряйте кваліфікацію експертів у визначених законом реєстрах."}:ENEMY_BY_ID[id]); if(!data)return null;
  const hpMod=g.mode==="young"?.6:g.mode==="expert"?1.3:1;
  const enemy={uid:uid(g),id,name:data.name,icon:data.icon,scheme:data.scheme,
  hp:data.hp*hpMod,maxHp:data.hp*hpMod,shield:data.shield||0,maxShield:data.shield||0,
- speed:(data.speed||.28)*(g.mode==="young"?.6:g.mode==="expert"?1.15:1),lane,x,
+ speed:(data.speed??.28)*(g.mode==="young"?.6:g.mode==="expert"?1.15:1),lane,x,
  trait:data.trait||(id==="boss"?"boss":"basic"),reveal:!["disguised_jump","disguised_split"].includes(data.trait),
  frozenUntil:0,stunUntil:0,specialUntil:0,contactTime:0,jumped:false,revived:false,
  spawnedMinions:false,lastHitTool:null,phase:1,tip:data.tip,air:id==="bankrupt"||id==="boss"&&g.level.world===1&&false};
+ if(id==="boss"&&g.level.world===3){enemy.hp=8000*hpMod;enemy.maxHp=8000*hpMod;}
+ if(id==="offshore_safe")enemy.reveal=false;
  g.enemies.push(enemy);g.lastThreat=enemy;effect(g,"spawn",lane,x,"!");
+ if(id==="boss"&&g.level.world===1){
+  for(const l of [0,1,3,4])spawn(g,"offshore_safe",l,7.0);
+  g.lastHint="Граф сховав активи! Державний виконавець допоможе знайти сейфи.";
+ }
+ if(id==="boss"&&g.level.world===2){
+  for(let l=0;l<5;l++)spawn(g,"tentacle",l,8.0);
+  g.lastHint="Спершу нейтралізуйте п'ять щупалець підкупу.";
+ }
+ if(id==="boss"&&g.level.world===3){
+  for(const [part,l] of [["hydra_phish",1],["hydra_call",2],["hydra_malware",3]])spawn(g,part,l,7.5);
+  g.lastHint="Три голови Гідри знищуються назавжди тільки цифровим інструментом.";
+ }
  return enemy;
 }
 function createToken(g,lane,col){
@@ -92,6 +113,7 @@ function revealInRange(g,e){
 }
 export function canTarget(g,d,e){
  if(e.hp<=0)return false;
+ if(e.id==="offshore_safe"&&!e.reveal)return false;
  if(e.trait==="neutral")return false;
  if((e.trait==="flying"||e.air)&&!["air","sniper","global"].includes(d.kind))return false;
  if(e.trait==="burrow"&&!["lobber","mine"].includes(d.kind))return false;
@@ -155,17 +177,27 @@ function removeEnemy(g,e,silent=false){
  const idx=g.enemies.indexOf(e);if(idx>=0)g.enemies.splice(idx,1);
  if(!silent){g.kills++;effect(g,"hit",e.lane,e.x,"АНУЛЬОВАНО");}
  g.locks=g.locks.filter(l=>l.enemyUid!==e.uid);
+ if(e.id==="boss"&&g.level.world===3&&!g.finalSurvivalUntil){
+  g.finalSurvivalUntil=g.time+30;g.nextSurvivalSpawn=g.time+2;
+  g.lastHint="Перезавантаження реєстрів: протримайтесь іще 30 секунд!";
+ }
 }
 export function damageEnemy(g,e,raw,tool=null,extra=1){
  if(!g.enemies.includes(e))return 0;
  let mult=typeMultiplier(tool,e.scheme,g.mode);
  if(e.id==="boss"){
-  if(g.level.world===2&&tool!=="integrity")mult*=.5;
+  if(g.level.world===2){
+   if(tool!=="integrity")mult*=.5;
+   if(g.enemies.some(x=>x.id==="tentacle"&&x.hp>0))mult*=.25;
+  }
+  if(g.level.world===1&&g.enemies.some(x=>x.id==="offshore_safe"&&x.hp>0))mult=0;
+  if(g.level.world===3&&g.enemies.some(x=>x.trait==="hydra_head"&&x.hp>0))mult=0;
   if(g.level.world===1&&e.phase===2&&!["enforcement","expert"].includes(tool))mult*=.2;
   if(g.level.world===3&&e.phase<3&&tool!=="digital")mult*=.25;
   if(g.level.world===0&&e.hp<=e.maxHp*.35&&!g.bossGuardUsed)mult=0;
  }
  if(e.id==="mini_boss"&&tool!=="expert")mult=Math.min(mult,.5);
+ if(e.id==="tentacle"&&tool!=="integrity")mult*=.5;
  let n=Math.max(0,raw*mult*extra);
  if(e.shield>0 && tool!=="enforcement"){const absorbed=Math.min(e.shield,n);e.shield-=absorbed;n-=absorbed;}
  e.hp-=n;e.lastHitTool=tool;
@@ -180,6 +212,17 @@ export function damageEnemy(g,e,raw,tool=null,extra=1){
   }
  }
  if(e.hp>0)return n;
+ if(e.trait==="hydra_head"&&tool!=="digital"){
+  // A wrong finishing tool cannot permanently destroy a Hydra head.
+  const current=g.enemies.filter(x=>x.trait==="hydra_head"&&x.uid!==e.uid).length;
+  const splits=current>=8?1:2;
+  for(let i=0;i<splits;i++){
+   const h=spawn(g,e.id,e.lane,Math.min(8.5,e.x+i*.25));
+   h.hp=h.maxHp*.5;
+  }
+  g.lastHint="Голова відросла! Використовуйте 2FA, щоб зупинити Гідру.";
+  effect(g,"regrow",e.lane,e.x,"ГОЛОВА ВІДРОСЛА");
+ }
  if(e.trait==="revive"&&!e.revived&&tool!=="integrity"){
   e.revived=true;e.hp=e.maxHp*.5;effect(g,"revive",e.lane,e.x,"ПОВЕРНУВСЯ");return n;
  }
@@ -255,6 +298,10 @@ function attack(g,d,delta){
   candidates.sort((a,b)=>(Number(!a.reveal)-Number(!b.reveal))||(b.hp-a.hp));
  }else if(d.kind==="global"){candidates.sort((a,b)=>a.x-b.x);}
  else candidates.sort((a,b)=>a.x-b.x);
+ if(d.kind==="lobber"&&g.level.boss&&g.level.world===1){
+  const hidden=g.enemies.filter(x=>x.id==="offshore_safe"&&!x.reveal);
+  if(hidden.length){for(const safe of hidden)safe.reveal=true;g.lastHint="Активи виявлено! Тепер знищіть сейфи-офшори.";effect(g,"reveal",d.lane,d.col+.5,"ЗНАЙДЕНО АКТИВИ");}
+ }
  const e=candidates[0];if(!e)return;
  let raw=d.kind==="intern"&&g.time-d.placedAt>=60?20:spec.damage;
  if(d.kind==="slow"){
@@ -280,6 +327,21 @@ function defeat(g,e){
 }
 function enemyTurn(g,e,delta){
  if(e.hp<=0)return;
+ if(["offshore_safe","tentacle","hydra_head"].includes(e.trait)){
+  if(g.time<e.specialUntil)return;
+  if(e.trait==="tentacle"){
+   const target=g.defenders.filter(d=>d.lane===e.lane&&!isProtected(g,d)).sort((a,b)=>b.col-a.col)[0];
+   if(target){target.disabledUntil=g.time+3;effect(g,"bribe",e.lane,e.x,"КОНВЕРТ");}
+  }else if(e.trait==="hydra_head"){
+   if(e.id==="hydra_phish"){g.seal=Math.max(0,g.seal-25);effect(g,"phish",e.lane,e.x,"-25");}
+   if(e.id==="hydra_call"){
+    const target=g.defenders.find(d=>d.lane===e.lane&&!d.shieldHp);
+    if(target)target.disabledUntil=g.time+4;
+   }
+   if(e.id==="hydra_malware")for(let i=0;i<3;i++)spawn(g,"usb",e.lane,9.0+i*.24);
+  }
+  e.specialUntil=g.time+12;return;
+ }
  const rowHaste=g.enemies.some(x=>x!==e&&x.lane===e.lane&&x.trait==="haste")?1.3:1;
  let move=(e.speed/4.5)*delta*rowHaste;
  if(g.time<e.frozenUntil)move*=e.scheme==="debt"?.02:.5;
@@ -356,11 +418,17 @@ export function tick(g,delta){
  }
  for(const d of [...g.defenders])attack(g,d,delta);
  for(const e of [...g.enemies])if(g.enemies.includes(e))enemyTurn(g,e,delta);
+ if(g.finalSurvivalUntil&&g.time<g.finalSurvivalUntil&&g.time>=g.nextSurvivalSpawn){
+  const ids=["schemer","phisher","briber","alimony","caller","usb"];
+  const ix=Math.floor((g.finalSurvivalUntil-g.time)*2)%ids.length;
+  spawn(g,ids[Math.abs(ix)],Math.floor(Math.random()*5),9.3);
+  g.nextSurvivalSpawn=g.time+2.6;
+ }
  if(g.phase==="playing"&&g.spawned===g.plan.length&&g.enemies.length===0&&g.time>=g.plan[g.plan.length-1].time+2){
   if(g.challenge?.kind==="endless"){
    queueEndlessWave(g,g.maxWave+1);
    g.lastHint="🦉 Хвилю "+g.stageWave+" відбито. Готуйтесь до наступної!";
-  }else g.phase="won";
+  }else if(!g.finalSurvivalUntil||g.time>=g.finalSurvivalUntil)g.phase="won";
  }
 }
 export function currentProgress(g){return g.plan.length?Math.min(100,Math.round(100*g.spawned/g.plan.length)):100;}
