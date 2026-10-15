@@ -123,11 +123,54 @@ try{
  await waitFor('document.querySelectorAll(".enemy").length>0',28000);
  await waitFor('document.querySelectorAll(".projectile").length>0',11000);
  await screenshot("03-shots-and-enemies");
+
+ const measure='(()=>{const r=document.querySelector(".board").getBoundingClientRect();return {w:r.width,h:r.height,top:r.top,ratio:r.width/r.height}})()';
+ const baseline=await js(measure);
+ const stable=(before,after,stage)=>{
+  if(Math.abs(before.w-after.w)>.8||Math.abs(before.h-after.h)>.8||Math.abs(before.top-after.top)>.8)
+   throw Error("FIELD JUMP "+stage+" "+JSON.stringify({before,after}));
+ };
+ if(Math.abs(baseline.ratio-2)>.06)throw Error("Field ratio should remain 2:1 "+JSON.stringify(baseline));
+ await js('document.querySelector(".cardbar [data-act=unit]").click()');
+ stable(baseline,await js(measure),"select-card");
+ await js('document.querySelector(".board > .cell[data-lane=\\"2\\"][data-col=\\"3\\"]").click()');
+ stable(baseline,await js(measure),"place");
+ await js('document.querySelector(".game-top [data-act=speed]").click()');
+ stable(baseline,await js(measure),"speed");
+ await js('document.querySelector(".threat-legend [data-act=hint]").click()');
+ await waitFor('!!document.querySelector(".counter-list .counter-row")');
+ await screenshot("05-enemy-counter-advice");
+ stable(baseline,await js(measure),"help-open");
+ await js('document.querySelector(".dialog [data-act=close-modal]").click()');
+ stable(baseline,await js(measure),"help-close");
+ await js('document.querySelector(".threat-chip[data-enemy=schemer]").click()');
+ await waitFor('!!document.querySelector(".counter-list")');
+ await js('document.querySelector(".dialog [data-act=close-modal]").click()');
+ stable(baseline,await js(measure),"enemy-legend");
+ await delay(1700);
+ stable(baseline,await js(measure),"live-wave");
+ console.log("Field geometry stable during battle interactions",JSON.stringify(baseline));
+
  await cmd("Emulation.setDeviceMetricsOverride",{width:812,height:420,deviceScaleFactor:1.5,mobile:true,screenWidth:812,screenHeight:420});
  await delay(500);
  const mobile=await js('({w:document.querySelector(".board").clientWidth,cells:document.querySelectorAll(".board > .cell").length})');
  if(mobile.w<300||mobile.cells!==45)throw Error("Mobile board invalid: "+JSON.stringify(mobile));
  await screenshot("04-mobile-landscape");
+
+ const landscape=await js(measure);
+ if(Math.abs(landscape.ratio-2)>.06)throw Error("Mobile landscape grid warped: "+JSON.stringify(landscape));
+ await js('document.querySelector(".threat-legend [data-act=hint]").click()');
+ await waitFor('!!document.querySelector(".counter-list")');
+ await js('document.querySelector(".dialog [data-act=close-modal]").click()');
+ stable(landscape,await js(measure),"mobile-help");
+ await cmd("Emulation.setDeviceMetricsOverride",{width:390,height:844,deviceScaleFactor:2.5,mobile:true,screenWidth:390,screenHeight:844});
+ await delay(400);
+ const portrait=await js('(()=>{const b=document.querySelector(".board"),f=document.querySelector(".field-wrap");return {w:b.clientWidth,h:b.clientHeight,scrollable:f.scrollWidth>f.clientWidth,cells:document.querySelectorAll(".board > .cell").length}})()');
+ if(portrait.w<500||portrait.cells!==45||!portrait.scrollable)
+  throw Error("Portrait field must scroll horizontally rather than collapse: "+JSON.stringify(portrait));
+ await screenshot("06-mobile-portrait-scroll");
+ console.log("Portrait grid geometry",JSON.stringify(portrait));
+
  if(failures.length)throw Error(failures.join("\n"));
  console.log("Browser UI + projectile smoke test passed",JSON.stringify({boardSize,mobile}));
 }finally{
