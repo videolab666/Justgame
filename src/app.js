@@ -120,9 +120,9 @@ function renderPlay(){
   cells+=`<button type="button" role="gridcell" data-act="cell" data-lane="${lane}" data-col="${col}" class="cell ${active?"":"out"} ${focus.lane===lane&&focus.col===col?"cursor":""}" ${active?"":"disabled"} aria-label="Ряд ${lane+1}, колонка ${col+1}">${cellContent(lane,col)}</button>`;
  }
  const tokens=game.tokens.map(t=>`<button class="token" type="button" aria-label="Зібрати 25 печаток" data-act="collect" data-id="${t.uid}" style="left:${(t.col+.3)*100/9}%;top:${(t.lane+.15)*100/5}%">✦</button>`).join("");
- const foes=game.enemies.map(e=>`<div class="enemy ${e.trait==="flying"?"flying":""} ${e.trait==="disguised_jump"&&!e.reveal?"disguised":""} ${game.time<e.frozenUntil?"frozen":""} ${e.id==="boss"?"boss":""}" style="left:${e.x*100/9}%;top:${e.lane*20+.35}%">
+ const foes=game.enemies.map(e=>`<div data-enemy="${e.uid}" class="enemy ${e.trait==="flying"?"flying":""} ${e.trait==="disguised_jump"&&!e.reveal?"disguised":""} ${game.time<e.frozenUntil?"frozen":""} ${e.id==="boss"?"boss":""}" style="left:${e.x*100/9}%;top:${e.lane*20+.35}%">
  <div class="enemy-inner"><span class="kind">${TYPES[e.scheme].icon}</span><span class="eicon">${art(e.id==="boss"?level.bossData.id:e.id,"enemy-illustration")}</span><span class="hp-track"><b style="width:${Math.max(0,e.hp/e.maxHp)*100}%"></b></span></div></div>`).join("");
- const fx=game.effects.map(e=>`<span style="position:absolute;left:${e.x*100/9}%;top:${e.lane*20+1}%;font-size:12px;font-weight:900;color:#fdfbf3;text-shadow:1px 2px #174563,0 0 5px #173752;white-space:nowrap">${E(e.text)}</span>`).join("");
+ const fx=game.effects.map(e=>`<span data-fx="${e.id}" style="position:absolute;left:${e.x*100/9}%;top:${e.lane*20+1}%;font-size:12px;font-weight:900;color:#fdfbf3;text-shadow:1px 2px #174563,0 0 5px #173752;white-space:nowrap">${E(e.text)}</span>`).join("");
  const guards=Array.from({length:5},(_,l)=>{
   const manual=level.boss&&level.world===0&&game.bossGuardReady&&game.enemies.some(e=>e.id==="boss"&&e.lane===l&&e.phase===3);
   return `<button type="button" class="guard ${game.usedGuards[l]?"used":""}" data-act="guard" data-lane="${l}" ${game.usedGuards[l]||!manual?"disabled":""} title="${manual?"Активувати заборону проти Барона":"Заборона спрацьовує автоматично під час прориву"}">🛑</button>`;
@@ -130,7 +130,7 @@ function renderPlay(){
  return wrapper(`<main class="main" style="padding:12px"><section class="game-shell">
  <div class="game-top"><div class="seal-pill">✦ ${Math.floor(game.seal)}</div>
  <div class="game-meta"><strong>${E(level.id)} · ${E(level.name)} ${status} · Хвиля ${game.stageWave}/${game.maxWave}</strong>
- <div class="progress-track"><div class="progress-fill" style="width:${progress}%"></div></div></div>
+ <div class="progress-track"><div class="progress-fill" data-game-progress style="width:${progress}%"></div></div></div>
  <div class="game-controls">${btn("speed",speed===1?"▶ ×1":speed===2?"▶▶ ×2":"▶ ½","btn btn-quiet")}${btn("pause","⏸","btn btn-quiet","aria-label=\"Пауза\"")}</div></div>
  <div class="cardbar" aria-label="Колода захисників">${cards}</div>
  <div class="field-wrap ${level.special.blackout?"blackout":""} ${level.special.fog?"fog":""}">
@@ -140,6 +140,97 @@ function renderPlay(){
  <div class="game-bottom"><span>🛡️ Захищено рядків: ${5-game.usedGuards.filter(Boolean).length}/5 · Схемників: ${game.enemies.length} · Залишилось: ${remaining}</span>
  <span>⌨️ 1–8: картка · Стрілки: клітинка · Enter: поставити · Пробіл: зібрати · P: пауза</span></div>
  </section><div class="owl-message" aria-live="polite"><div class="face" aria-hidden="true">🦉</div><div><strong>Сова Юся</strong>${E(toast||game.lastHint)}</div></div></main>`);
+}
+
+/** Update live sprites in place; do not rebuild the whole document every frame.
+ * Preserves focused cells, touch gestures, the card strip position and CSS animations.
+ */
+function syncGameFrame(){
+ if(view!=="play"||!game||modal)return;
+ const $=(s)=>root.querySelector(s);
+ const sealEl=$(".seal-pill"),waveEl=$(".game-meta strong"),bar=$("[data-game-progress]");
+ if(!sealEl||!bar)return;
+ sealEl.textContent="✦ "+Math.floor(game.seal);
+ waveEl.textContent=level.id+" · "+level.name+" · Хвиля "+game.stageWave+"/"+game.maxWave;
+ bar.style.width=currentProgress(game)+"%";
+ const first=$(".game-bottom > span");
+ if(first)first.textContent="🛡️ Захищено рядків: "+(5-game.usedGuards.filter(Boolean).length)+"/5 · Схемників: "+game.enemies.length+" · Залишилось: "+(game.plan.length-game.spawned);
+ const hint=$(".owl-message > div:last-child");
+ if(hint){
+  const msg=toast||game.lastHint;
+  if(hint.dataset.lastMessage!==msg){
+   hint.dataset.lastMessage=msg;
+   hint.textContent="";
+   const title=document.createElement("strong");title.textContent="Сова Юся";hint.append(title,document.createTextNode(msg));
+  }
+ }
+ for(const card of root.querySelectorAll(".cardbar [data-unit]")){
+  const id=card.dataset.unit,unit=UNIT_BY_ID[id],cd=game.cooldowns[id]||0;
+  const disabled=cd>.1;card.disabled=disabled;
+  card.classList.toggle("selected",selected===id);
+  let mask=card.querySelector(".cooldown");
+  if(disabled){
+   if(!mask){mask=document.createElement("span");mask.className="cooldown";card.insertBefore(mask,card.querySelector("small"));}
+   mask.textContent=String(Math.ceil(cd));
+  }else if(mask)mask.remove();
+  const status=card.querySelector("small");
+  if(status)status.textContent=game.seal>=unit.cost?"Готово":"Бракує 🟡";
+ }
+ for(const cell of root.querySelectorAll(".board > .cell")){
+  const row=+cell.dataset.lane,col=+cell.dataset.col;
+  const html=cellContent(row,col);
+  if(cell.dataset.content!==html){
+   cell.innerHTML=html;cell.dataset.content=html;
+  }
+ }
+ const board=$(".board"),layer=$(".enemy-layer"),tokenLayer=$(".tokens-layer"),fxLayer=$(".vfx-layer");
+ if(!board||!layer||!tokenLayer||!fxLayer)return;
+ const alive=new Set();
+ for(const e of game.enemies){
+  const id=String(e.uid);alive.add(id);
+  let el=layer.querySelector('[data-enemy="'+id+'"]');
+  if(!el){
+   el=document.createElement("div");el.className="enemy";
+   el.dataset.enemy=id;el.innerHTML='<div class="enemy-inner"><span class="kind"></span><span class="eicon"></span><span class="hp-track"><b></b></span></div>';
+   const im=document.createElement("img");im.className="game-art enemy-illustration";
+   im.alt="";im.draggable=false;im.decoding="async";im.src="./assets/sprites/"+encodeURIComponent(e.id==="boss"?level.bossData.id:e.id)+".svg";
+   el.querySelector(".eicon").append(im);layer.append(el);
+  }
+  el.style.left=(e.x*100/9)+"%";el.style.top=(e.lane*20+.35)+"%";
+  el.classList.toggle("flying",e.trait==="flying"||e.air);
+  el.classList.toggle("frozen",game.time<e.frozenUntil);
+  el.classList.toggle("disguised",!e.reveal);
+  el.classList.toggle("boss",e.id==="boss");
+  const kind=el.querySelector(".kind");if(kind.textContent!==TYPES[e.scheme].icon)kind.textContent=TYPES[e.scheme].icon;
+  el.querySelector(".hp-track b").style.width=Math.max(0,e.hp/e.maxHp)*100+"%";
+ }
+ for(const el of layer.children)if(!alive.has(el.dataset.enemy))el.remove();
+ const tokens=new Set();
+ for(const t of game.tokens){
+  const id=String(t.uid);tokens.add(id);
+  let el=tokenLayer.querySelector('[data-id="'+id+'"]');
+  if(!el){el=document.createElement("button");el.type="button";el.className="token";el.textContent="✦";el.dataset.act="collect";el.dataset.id=id;el.setAttribute("aria-label","Зібрати 25 печаток");tokenLayer.append(el);}
+  el.style.left=(t.col+.3)*100/9+"%";el.style.top=(t.lane+.15)*20+"%";
+ }
+ for(const el of tokenLayer.children)if(!tokens.has(el.dataset.id))el.remove();
+ const fxs=new Set();
+ for(const fx of game.effects){
+  const id=String(fx.id);fxs.add(id);
+  let el=fxLayer.querySelector('[data-fx="'+id+'"]');
+  if(!el){
+   el=document.createElement("span");el.dataset.fx=id;el.className="battle-fx";el.textContent=fx.text;fxLayer.append(el);
+  }
+  el.style.left=fx.x*100/9+"%";el.style.top=fx.lane*20+1+"%";
+  el.style.opacity=Math.min(1,fx.ttl*2);
+ }
+ for(const el of fxLayer.children)if(!fxs.has(el.dataset.fx))el.remove();
+ for(const guard of root.querySelectorAll(".house-strip .guard")){
+  const lane=+guard.dataset.lane,manual=level.boss&&level.world===0&&game.bossGuardReady&&game.enemies.some(e=>e.id==="boss"&&e.lane===lane&&e.phase===3);
+  guard.disabled=game.usedGuards[lane]||!manual;guard.classList.toggle("used",game.usedGuards[lane]);
+  guard.title=manual?"Активувати заборону проти Барона":"Заборона спрацьовує автоматично під час прориву";
+ }
+ const fog=$(".field-wrap");
+ if(fog&&level.special.fog)fog.classList.toggle("fog-cleared",game.defenders.some(d=>d.kind==="reveal"&&d.col>=4));
 }
 function renderResult(){
  const success=game?.phase==="won",stars=success?scoreStars(game):0;
@@ -345,7 +436,7 @@ function loop(ts){
  if(view==="play"&&game?.phase==="playing"&&!modal&&!document.hidden){
   tick(game,delta*speed);
   if(game.phase!=="playing"){finish();}
-  else if(ts-lastRender>120){lastRender=ts;render();}
+  else if(ts-lastRender>66){lastRender=ts;syncGameFrame();}
  }
  requestAnimationFrame(loop);
 }

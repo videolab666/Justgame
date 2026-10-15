@@ -54,3 +54,12 @@ body.reduced-motion *,body.reduced-motion *:before,body.reduced-motion *:after{a
  .enemy-inner{width:100%}.enemy .enemy-illustration{width:42px;height:53px}.defender small{font-size:6px}
  .skyline{height:45px}
 }
+
+/* In-place animation engine: DOM nodes persist across battle ticks. */
+.enemy{transition:left 70ms linear,top 70ms linear;z-index:5}
+.enemy-layer{z-index:4}
+.tokens-layer{z-index:6}
+.vfx-layer{z-index:7}
+.battle-fx{position:absolute;font-weight:1000;font-size:clamp(9px,1.1vw,15px);color:#fffaf0;text-shadow:1px 2px #214a65,0 0 5px #173e50;white-space:nowrap;transform:translateY(-8px);transition:opacity 120ms}
+.fog-cleared.fog .board::after{opacity:.1}
+body.reduced-motion .enemy{transition:none}
