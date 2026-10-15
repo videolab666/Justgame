@@ -24,6 +24,8 @@ let view="home",world=0,stage=1,level=getLevel(0,1),deck=[],selected="registrar"
 let modal="",modalReturn="",almanacTab="units",almanacQuery="",detail=null,mini=null,focus={lane:2,col:2},speed=1,toast="",lastRender=0,prevTs=0,shownEnd=false;
 const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
 const E=escapeHtml;
+const art=(id,cls="")=>`<img class="game-art ${cls}" src="./assets/sprites/${encodeURIComponent(id)}.svg" alt="" draggable="false" loading="eager" decoding="async">`;
+const landscape=(w,cls="")=>`<img class="world-art ${cls}" src="./assets/worlds/world-${w+1}.svg" alt="" loading="lazy">`;
 const btn=(action,label,classes="btn",props="")=>`<button type="button" class="${classes}" data-act="${action}" ${props}>${label}</button>`;
 function persist(){try{localStorage.setItem(KEY,JSON.stringify(save));}catch{/* private browsing: play without persistence */}}
 function rank(){const n=Object.values(save.completed).reduce((s,x)=>s+x,0);return n>=120?"Почесний захисник прав":n>=90?"Начальник управління":n>=60?"Начальник відділу":n>=35?"Головний спеціаліст":n>=15?"Спеціаліст":"Стажер";}
@@ -48,11 +50,11 @@ function renderHome(){
  <div class="stat-row"><span>⭐ ${totalStars()} зірок</span><span>🎓 ${rank()}</span></div>
  </div><div class="hero-art" aria-hidden="true"><div class="hero-bubbles">🛡️ ✦ 📜</div><img class="hero-owl" src="./assets/yusya.svg" alt=""><div class="hero-paper">ПЕРЕВІРЕНО ✔</div></div></section>
  <section class="main"><div class="eyebrow">Підказка від Юсі</div><h2 class="section-title">Знай правильний інструмент!</h2>
- <div class="world-grid">${WORLDS.map((w,i)=>`<button class="world-card" data-act="world" data-world="${i}"><span class="world-emoji">${w.emoji}</span><strong>${w.name}</strong><p>${w.subtitle}</p></button>`).join("")}</div></section>`);
+ <div class="world-grid">${WORLDS.map((w,i)=>`<button class="world-card" data-act="world" data-world="${i}">${landscape(i,"world-art-sm")}<span class="world-emoji">${w.emoji}</span><strong>${w.name}</strong><p>${w.subtitle}</p></button>`).join("")}</div></section>`);
 }
 function worldCard(w,i){
  const unlocked=levelUnlocked(i,1,save.completed),done=Array.from({length:10},(_,k)=>save.completed[levelId(i,k+1)]!==undefined).filter(Boolean).length;
- return `<button type="button" class="world-card ${!unlocked?"locked":""}" data-act="world" data-world="${i}" ${!unlocked?"disabled":""}><span class="world-emoji">${w.emoji}</span><strong>${i+1}. ${w.name}</strong><p>${w.subtitle}<br>${w.summary}</p><div class="progress-track"><div class="progress-fill" style="width:${done*10}%"></div></div><small>${unlocked?`${done}/10 справ`:"🔒 Спершу завершіть попередній світ"}</small></button>`;
+ return `<button type="button" class="world-card ${!unlocked?"locked":""}" data-act="world" data-world="${i}" ${!unlocked?"disabled":""}>${landscape(i,"world-art-sm")}<span class="world-emoji">${w.emoji}</span><strong>${i+1}. ${w.name}</strong><p>${w.subtitle}<br>${w.summary}</p><div class="progress-track"><div class="progress-fill" style="width:${done*10}%"></div></div><small>${unlocked?`${done}/10 справ`:"🔒 Спершу завершіть попередній світ"}</small></button>`;
 }
 function renderWorlds(){
  return wrapper(`<div class="main"><div class="eyebrow">Подорож родини Коваленків</div><h1 class="section-title">Оберіть світ</h1><div class="hint">🦉 ${STORY[Math.min(3,world)]}</div><div class="world-grid" style="margin-top:21px">${WORLDS.map(worldCard).join("")}</div>
@@ -82,7 +84,7 @@ function chooseSuggested(){
 }
 function unitCard(u,{selected=false,disabled=false,cooldown=0}={}){
  return `<button type="button" class="unit-card ${selected?"selected":""}" data-act="unit" data-unit="${u.id}" ${disabled?"disabled":""} aria-pressed="${selected}">
- <span class="cost">🟡${u.cost}</span><span class="glyph" aria-hidden="true">${u.icon}</span><strong>${E(u.name)}</strong>
+ <span class="cost">🟡${u.cost}</span><span class="glyph" aria-hidden="true">${art(u.id,"card-illustration")}</span><strong>${E(u.name)}</strong>
  <small>⏱ ${u.cooldown} с</small>${cooldown>.2?`<span class="cooldown">${Math.ceil(cooldown)}</span>`:""}</button>`;
 }
 function renderDeck(){
@@ -104,14 +106,14 @@ function renderDeck(){
 function cellContent(lane,col){
  const d=game.defenders.find(x=>x.lane===lane&&x.col===col),lock=game.locks.some(x=>x.lane===lane&&x.col===col);
  let inner=lock?'<span class="locked-cell">🚫</span>':"";
- if(d)inner+=`<span class="defender ${d.shieldHp>0?"shielded":""} ${game.time<d.disabledUntil?"disabled":""}"><span class="sprite">${d.icon}</span><small>${E(d.name.split(" ")[0])}</small><span class="health" style="width:${Math.max(0,d.hp/d.maxHp)*96}%"></span></span>`;
+ if(d)inner+=`<span class="defender ${d.shieldHp>0?"shielded":""} ${game.time<d.disabledUntil?"disabled":""}"><span class="sprite">${art(d.id,"board-illustration")}</span><small>${E(d.name.split(" ")[0])}</small><span class="health" style="width:${Math.max(0,d.hp/d.maxHp)*96}%"></span></span>`;
  return inner;
 }
 function renderPlay(){
  if(!game)return renderHome();
  const remaining=game.plan.length-game.spawned,progress=currentProgress(game),status=game.phase!=="playing"?" · Завершено":"";
  const cards=deck.map((id,i)=>{const u=UNIT_BY_ID[id],cd=game.cooldowns[id]||0,afford=game.seal>=u.cost;
- return `<button type="button" data-act="unit" data-unit="${id}" class="unit-card ${selected===id?"selected":""}" ${cd>0?"disabled":""} title="${E(u.name)} — клавіша ${i+1}" aria-label="${E(u.name)}, ціна ${u.cost}"><span class="cost">🟡${u.cost}</span><span class="glyph">${u.icon}</span><strong>${E(u.name)}</strong>${cd>.2?`<span class="cooldown">${Math.ceil(cd)}</span>`:""}<small>${afford?"Готово":"Бракує 🟡"}</small></button>`;}).join("");
+ return `<button type="button" data-act="unit" data-unit="${id}" class="unit-card ${selected===id?"selected":""}" ${cd>0?"disabled":""} title="${E(u.name)} — клавіша ${i+1}" aria-label="${E(u.name)}, ціна ${u.cost}"><span class="cost">🟡${u.cost}</span><span class="glyph">${art(u.id,"card-illustration")}</span><strong>${E(u.name)}</strong>${cd>.2?`<span class="cooldown">${Math.ceil(cd)}</span>`:""}<small>${afford?"Готово":"Бракує 🟡"}</small></button>`;}).join("");
  let cells="";
  for(let lane=0;lane<5;lane++)for(let col=0;col<9;col++){
   const active=level.activeLanes.includes(lane);
@@ -119,7 +121,7 @@ function renderPlay(){
  }
  const tokens=game.tokens.map(t=>`<button class="token" type="button" aria-label="Зібрати 25 печаток" data-act="collect" data-id="${t.uid}" style="left:${(t.col+.3)*100/9}%;top:${(t.lane+.15)*100/5}%">✦</button>`).join("");
  const foes=game.enemies.map(e=>`<div class="enemy ${e.trait==="flying"?"flying":""} ${e.trait==="disguised_jump"&&!e.reveal?"disguised":""} ${game.time<e.frozenUntil?"frozen":""} ${e.id==="boss"?"boss":""}" style="left:${e.x*100/9}%;top:${e.lane*20+.35}%">
- <div class="enemy-inner"><span class="kind">${TYPES[e.scheme].icon}</span><span class="eicon">${e.icon}</span><span class="hp-track"><b style="width:${Math.max(0,e.hp/e.maxHp)*100}%"></b></span></div></div>`).join("");
+ <div class="enemy-inner"><span class="kind">${TYPES[e.scheme].icon}</span><span class="eicon">${art(e.id==="boss"?level.bossData.id:e.id,"enemy-illustration")}</span><span class="hp-track"><b style="width:${Math.max(0,e.hp/e.maxHp)*100}%"></b></span></div></div>`).join("");
  const fx=game.effects.map(e=>`<span style="position:absolute;left:${e.x*100/9}%;top:${e.lane*20+1}%;font-size:12px;font-weight:900;color:#fdfbf3;text-shadow:1px 2px #174563,0 0 5px #173752;white-space:nowrap">${E(e.text)}</span>`).join("");
  const guards=Array.from({length:5},(_,l)=>{
   const manual=level.boss&&level.world===0&&game.bossGuardReady&&game.enemies.some(e=>e.id==="boss"&&e.lane===l&&e.phase===3);
@@ -132,7 +134,7 @@ function renderPlay(){
  <div class="game-controls">${btn("speed",speed===1?"▶ ×1":speed===2?"▶▶ ×2":"▶ ½","btn btn-quiet")}${btn("pause","⏸","btn btn-quiet","aria-label=\"Пауза\"")}</div></div>
  <div class="cardbar" aria-label="Колода захисників">${cards}</div>
  <div class="field-wrap ${level.special.blackout?"blackout":""} ${level.special.fog?"fog":""}">
- <div class="skyline" aria-hidden="true">${level.world===0?"🏘️ 🌉 🌳 🏠":level.world===1?"🏭 ⚙️ 🏗️ 🏭":level.world===2?"🏛️ 🌳 🏤 🌳":"💾 ◇ 🖥️ ◇"}</div>
+ <div class="skyline" aria-hidden="true">${landscape(level.world,"scenery")}</div>
  <div class="board-frame"><div class="house-strip">${guards}</div><div class="board" role="grid" aria-label="Поле оборони, 5 рядків і 9 колонок">
  ${cells}<div class="enemy-layer" aria-hidden="true">${foes}</div><div class="tokens-layer">${tokens}</div><div class="vfx-layer" aria-hidden="true">${fx}</div></div></div></div>
  <div class="game-bottom"><span>🛡️ Захищено рядків: ${5-game.usedGuards.filter(Boolean).length}/5 · Схемників: ${game.enemies.length} · Залишилось: ${remaining}</span>
@@ -160,7 +162,7 @@ function renderAlmanac(){
  <div class="almanac-tabs">${btn("tab-units","🛡️ Захисники (24)","btn "+(units?"btn-primary":"btn-quiet"))}${btn("tab-enemies","🕵️ Схемники (19)","btn "+(!units?"btn-primary":"btn-quiet"))}${btn("back","← Назад","btn btn-dark")}</div>
  <label>Пошук <input id="almanac-search" type="search" placeholder="Назва персонажа..." value="${E(almanacQuery)}" style="padding:10px 13px;border-radius:12px;border:2px solid #a0bdc5;max-width:280px;width:100%"></label>
  <div class="almanac-list" style="margin-top:20px">${items.map(x=>`<button type="button" class="almanac-card" data-act="detail" data-id="${x.id}" data-kind="${units?"unit":"enemy"}">
- <span class="glyph">${x.icon}</span><strong>${E(x.name)}</strong><span class="tag">${units?(x.tool?TOOLS[x.tool]?.icon+" "+TOOLS[x.tool]?.name:"Підтримка"):TYPES[x.scheme].icon+" "+TYPES[x.scheme].name}</span>
+ <span class="glyph">${art(x.id,"almanac-illustration")}</span><strong>${E(x.name)}</strong><span class="tag">${units?(x.tool?TOOLS[x.tool]?.icon+" "+TOOLS[x.tool]?.name:"Підтримка"):TYPES[x.scheme].icon+" "+TYPES[x.scheme].name}</span>
  <p>${E(units?x.desc:x.tip)}</p></button>`).join("")}</div></main>`);
 }
 function renderSettings(){
@@ -230,7 +232,7 @@ function renderDialog(){
  <div class="dialog-actions">${btn("close-modal","▶ Продовжити","btn btn-primary")}${btn("retry","↻ Заново","btn btn-quiet")}${btn("levels","🗺️ На карту","btn btn-quiet")}</div>`;
  else if(modal==="detail"&&detail){
   const d=detail.kind==="unit"?UNIT_BY_ID[detail.id]:ENEMY_BY_ID[detail.id],isUnit=detail.kind==="unit";
-  content=`<div class="large-emoji">${d.icon}</div><div class="eyebrow">Альманах · ${isUnit?"Захисник":"Схемник"}</div><h2>${E(d.name)}</h2>
+  content=`<div class="detail-illustration">${art(d.id,"detail-art")}</div><div class="eyebrow">Альманах · ${isUnit?"Захисник":"Схемник"}</div><h2>${E(d.name)}</h2>
   <p class="hint"><strong>Як грає:</strong> ${E(isUnit?d.desc:d.tip)}</p>
   <p><strong>📘 Як це в житті</strong><br>${E(FACTS[isUnit?({registry:"registry",notary:"notary",digital:"cyber",enforcement:"debt",integrity:"corruption",expert:"expert"}[d.tool]||"general"):({forgery:"registry",cyber:"cyber",debt:"debt",corruption:"corruption",bureaucracy:"general"}[d.scheme]||"general")])}</p>
   <p class="notice">Статус: 🟨 Не затверджено юристом · Актуальність: чернетка GDD від 15.10.2026</p>
