@@ -182,7 +182,17 @@ function createToken(g,lane,col){
 }
 export function collectToken(g,id){
  const index=g.tokens.findIndex(t=>t.uid===id);if(index<0)return false;
- g.seal+=g.tokens[index].value;g.tokens.splice(index,1);return true;
+ g.seal+=g.tokens[index].value;g.tokens.splice(index,1);g.missStreak=0;return true;
+}
+// Owl coaching: two seals in a row that faded away uncollected (the balance
+// bot's novice loses ~30 % of income this way) earn a reminder.
+export const MISSED_SEAL_HINT="Збирай печатки! Клацни на золоту ✦, поки вона не зникла: без печаток не буде нових захисників.";
+const MISSED_HINT_AFTER=2,MISSED_HINT_COOLDOWN=30;
+function missedToken(g){
+ g.missedTokens=(g.missedTokens||0)+1;g.missStreak=(g.missStreak||0)+1;
+ if(g.missStreak>=MISSED_HINT_AFTER&&g.time-(g.missedHintAt??-1e9)>=MISSED_HINT_COOLDOWN){
+  g.missedHintAt=g.time;g.missStreak=0;g.lastHint=MISSED_SEAL_HINT;
+ }
 }
 export function collectAll(g){for(const token of [...g.tokens])collectToken(g,token.uid);}
 const same=(a,b)=>a.lane===b.lane&&a.col===b.col;
@@ -874,7 +884,7 @@ export function tick(g,delta){
  delta=cap(delta,0,.13);
  g.time+=delta;g.elapsed+=delta;
  for(const k of Object.keys(g.cooldowns))g.cooldowns[k]=Math.max(0,g.cooldowns[k]-delta);
- for(const t of [...g.tokens]){t.ttl-=delta;if(t.ttl<=0){g.tokens.splice(g.tokens.indexOf(t),1);}}
+ for(const t of [...g.tokens]){t.ttl-=delta;if(t.ttl<=0){g.tokens.splice(g.tokens.indexOf(t),1);missedToken(g);}}
  for(const fx of [...g.effects]){fx.ttl-=delta;if(fx.ttl<=0)g.effects.splice(g.effects.indexOf(fx),1);}
  if(g.time>=g.nextSky){
   if(!g.level.special.conveyor)createToken(g,Math.floor(Math.random()*5),Math.floor(Math.random()*9));

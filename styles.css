@@ -636,3 +636,8 @@ body.reduced-motion .coach-spot,body.reduced-motion .coach-card.dialog,body.redu
 @keyframes guard-shake{0%,100%{transform:none}20%{transform:translate(-3px,1px)}45%{transform:translate(3px,-1px)}70%{transform:translate(-1px,1px)}}
 .battle-fx.fx-guard{color:#ffe7c9;font-size:clamp(12px,1.8vw,22px);letter-spacing:.08em;text-shadow:0 2px 0 #8e1f27,0 0 10px #d4434a}
 body.reduced-motion .roller-unit .roller-drum,body.reduced-motion .roller-unit:after,body.reduced-motion .board-frame.guard-shake{animation:none}
+/* A seal about to fade blinks (see the owl's "збирай печатки!" hint). */
+.token.expiring{animation:token-expiring .45s ease-in-out infinite alternate}
+@keyframes token-expiring{from{opacity:1;transform:scale(1)}to{opacity:.45;transform:scale(.88)}}
+body.reduced-motion .token.expiring{animation:none;opacity:.6}
+.house-strip .guard.lane-closed .guard-roller{display:none}

@@ -89,3 +89,20 @@ test("the paper golem only ever comes in the final wave",()=>{
   for(const a of plan)if(a.id==="golem")assert.equal(a.wave,level.waves,level.id);
  }
 });
+test("the owl reminds to collect seals after two fade away in a row",async()=>{
+ const {MISSED_SEAL_HINT,collectToken}=await import("../src/engine.js");
+ const g=makeGame(getLevel(0,3),["registrar"]);g.plan=[];g.nextSky=1e9;
+ g.tokens.push({uid:901,lane:0,col:0,ttl:.1,value:25});
+ tick(g,.2);
+ assert.notEqual(g.lastHint,MISSED_SEAL_HINT,"one miss is forgiven");
+ g.tokens.push({uid:902,lane:0,col:0,ttl:.1,value:25});
+ tick(g,.2);
+ assert.equal(g.lastHint,MISSED_SEAL_HINT);
+ g.lastHint="x";
+ g.tokens.push({uid:903,lane:0,col:0,ttl:.1,value:25},{uid:904,lane:0,col:0,ttl:.1,value:25});
+ tick(g,.2);
+ assert.equal(g.lastHint,"x","not repeated within the cooldown");
+ g.tokens.push({uid:905,lane:0,col:0,ttl:5,value:25});
+ assert.equal(collectToken(g,905),true);
+ assert.equal(g.missStreak,0,"collecting resets the streak");
+});

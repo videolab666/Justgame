@@ -212,7 +212,7 @@ function renderPlay(){
  const fx=game.effects.map(e=>`<span data-fx="${e.id}" style="position:absolute;left:${e.x*100/9}%;top:${e.lane*20+1}%;font-size:12px;font-weight:900;color:#fdfbf3;text-shadow:1px 2px #174563,0 0 5px #173752;white-space:nowrap">${E(e.text)}</span>`).join("");
  const guards=Array.from({length:5},(_,l)=>{
   const manual=bossGuardAvailable(l);
-  return `<button type="button" class="guard ${game.usedGuards[l]&&!manual?"used":""}" data-act="guard" data-lane="${l}" ${!manual?"disabled":""} title="${manual?"Активувати заборону проти Барона":"Заборона спрацьовує автоматично під час прориву"}" aria-label="Заборона, ряд ${l+1}">${rollerArt("guard-roller")}</button>`;
+  return `<button type="button" class="guard ${game.usedGuards[l]&&!manual?"used":""} ${level.activeLanes.includes(l)?"":"lane-closed"}" data-act="guard" data-lane="${l}" ${!manual?"disabled":""} title="${manual?"Активувати заборону проти Барона":"Заборона спрацьовує автоматично під час прориву"}" aria-label="Заборона, ряд ${l+1}">${rollerArt("guard-roller")}</button>`;
  }).join("");
  return wrapper(`<main class="main" style="padding:12px"><section class="game-shell">
  <div class="game-top"><div class="seal-pill">✦ ${Math.floor(game.seal)}</div>
@@ -455,6 +455,8 @@ function syncGameFrame(){
   let el=tokenLayer.querySelector('[data-id="'+id+'"]');
   if(!el){el=document.createElement("button");el.type="button";el.className="token";el.textContent="✦";el.dataset.act="collect";el.dataset.id=id;el.setAttribute("aria-label","Зібрати 25 печаток");tokenLayer.append(el);}
   el.style.left=(t.col+.3)*100/9+"%";el.style.top=(t.lane+.15)*20+"%";
+  // A seal about to fade blinks, so a missed one is never a surprise.
+  el.classList.toggle("expiring",t.ttl<3.5);
  }
  for(const el of Array.from(tokenLayer.children))if(!tokens.has(el.dataset.id))el.remove();
  const fxs=new Set();
