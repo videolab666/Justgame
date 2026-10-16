@@ -98,10 +98,22 @@ function wrapper(main,active=""){
  </nav></header>
  ${main}
  <footer class="footline"><span>© Ігровий прототип · Без реклами та стеження · Прогрес лише на цьому пристрої</span><span>Навчальна гра не є юридичною консультацією. Факти потребують фахової перевірки. <a href="https://just-dnipro.gov.ua/" target="_blank" rel="noopener noreferrer">Офіційний сайт ↗</a></span></footer>
- </div></div>${view==="play"?'<div class="portrait-tip">↻ Для комфортної гри поверніть телефон горизонтально. Вертикальна гра також доступна.</div>':""}`;
+ </div></div>${view==="play"?'<div class="rotate-overlay" role="dialog" aria-label="Поверніть телефон"><div class="rotate-phone" aria-hidden="true">📱</div><strong>Поверни телефон горизонтально</strong><p>Так поле, картки й печатки вмістяться на екрані повністю. Гру поставлено на паузу.</p>'+btn("play-portrait","Грати вертикально все одно","btn btn-quiet")+'</div>':""}`;
+}
+/* ---- "Install" tip: full-screen play without browser bars ------------- */
+let installPrompt=null;
+window.addEventListener?.("beforeinstallprompt",e=>{e.preventDefault();installPrompt=e;if(view==="home")render();});
+function isStandalone(){return !!(window.navigator?.standalone||window.matchMedia?.("(display-mode: standalone), (display-mode: fullscreen)")?.matches);}
+function installTip(){
+ if(save.installTipClosed||isStandalone())return "";
+ const ios=/iPhone|iPod/.test(window.navigator?.userAgent||"");
+ if(!ios&&!installPrompt)return "";
+ const text=ios?"Грай на весь екран: у Safari натисни «Поділитися» <b>⎙</b>, потім «На початковий екран». Гра відкриватиметься без панелей браузера.":
+  "Встанови гру на телефон — вона відкриватиметься на весь екран, без панелей браузера.";
+ return '<div class="install-tip"><span>📲</span><p>'+text+'</p>'+(installPrompt?btn("install","Встановити гру","btn btn-primary"):"")+btn("install-close","✕","btn btn-quiet",'aria-label="Закрити підказку"')+'</div>';
 }
 function renderHome(){
- return wrapper(`<section class="hero"><div class="hero-copy">
+ return wrapper(installTip()+`<section class="hero"><div class="hero-copy">
  <div class="eyebrow">40 справ · 4 світи · захисти свої права</div>
  <h1>Юст-<span>Оборона</span><br>Захисти домівку!</h1>
  <p>Схемники атакують майно, бізнес та державні реєстри. Створи оборону з реєстраторів, нотаріусів, виконавців і цифрових інструментів!</p>
@@ -275,7 +287,7 @@ function renderPlay(){
  <div class="game-top"><div class="seal-pill">✦ ${Math.floor(game.seal)}</div>
  <div class="game-meta"><strong>${E(level.id)} · ${E(level.name)} ${status} · ${E(waveStatus(game))}</strong>
  <div class="progress-track"><div class="progress-fill" data-game-progress style="width:${progress}%"></div></div></div>
- <div class="game-controls">${btn("speed",speed===1?"▶ ×1":speed===2?"▶▶ ×2":"▶ ½","btn btn-quiet")}${btn("music-toggle",save.settings.music?"♫":"♪̸","btn btn-quiet",'aria-label="Фонова музика" aria-pressed="'+save.settings.music+'"')}${btn("pause","⏸","btn btn-quiet","aria-label=\"Пауза\"")}</div></div>
+ <div class="game-controls">${btn("speed",speed===1?"▶ ×1":speed===2?"▶▶ ×2":"▶ ½","btn btn-quiet")}${btn("music-toggle",save.settings.music?"♫":"♪̸","btn btn-quiet",'aria-label="Фонова музика" aria-pressed="'+save.settings.music+'"')}${btn("legend","🕵️","btn btn-quiet mobile-only","aria-label=\"Хто наступає\"")}${btn("pause","⏸","btn btn-quiet","aria-label=\"Пауза\"")}</div></div>
  <div class="cardbar" aria-label="Колода захисників">${cards}</div>
  <div class="selected-help" aria-live="off"><span>↘ <strong data-selected-name>${E(UNIT_BY_ID[selected]?.name||"Захисник")}</strong></span><span data-selected-desc>${E(unitHow(UNIT_BY_ID[selected])||"Оберіть клітинку для захисту.")}</span></div>
  <div class="field-wrap ${level.special.blackout?"blackout":""} ${level.special.fog?"fog":""}" data-world="${level.world+1}">
@@ -432,6 +444,79 @@ function rewardFor(id){
  if(challenge||save.completed[id]!==undefined)return null;
  return UNLOCK_REWARDS[id]||null;
 }
+/* ---- Phones: landscape battle layout, rotate prompt, touch input ------- */
+// A short landscape screen gets the compact battle layout (cards on the left,
+// field at full height); a narrow portrait screen asks to rotate and pauses.
+const phoneLandscape=window.matchMedia?.("(orientation: landscape) and (max-height: 520px)");
+const phonePortrait=window.matchMedia?.("(orientation: portrait) and (max-width: 600px)");
+let allowPortrait=false,lastPhoneHint="";
+function phoneBattle(){return view==="play"&&!!phoneLandscape?.matches;}
+function needRotate(){return view==="play"&&!allowPortrait&&!!phonePortrait?.matches;}
+function applyDeviceMode(){
+ const body=document.body;if(!body?.classList)return;
+ body.classList.toggle("mb",phoneBattle());
+ if(phoneBattle()&&(window.scrollY||window.scrollX))window.scrollTo?.(0,0);
+ body.classList.toggle("need-rotate",needRotate());
+}
+for(const q of [phoneLandscape,phonePortrait])q?.addEventListener?.("change",()=>{applyDeviceMode();if(modal==="intro")positionIntro();});
+/** On phones the owl panel is hidden: her new lines go to the field bar. */
+function relayOwlHint(){
+ if(!phoneBattle()||!game)return;
+ const msg=toast||game.lastHint||"";
+ if(msg&&msg!==lastPhoneHint){lastPhoneHint=msg;showFieldHint(msg.replace(/^🦉\s*/,""),4);}
+}
+// Drag a card onto the field (tap card + tap cell still works). Vertical
+// moves keep scrolling the card column; a sideways move starts the drag.
+let drag=null,suppressClick=false;
+root.addEventListener("pointerdown",e=>{
+ if(view!=="play"||!game||modal||cine&&cineSkippable())return;
+ const card=e.target.closest?.(".cardbar .unit-card");
+ const cell=e.target.closest?.(".board > .cell");
+ if(card&&!card.disabled)drag={id:card.dataset.unit,x:e.clientX,y:e.clientY,on:false,ghost:null};
+ if(card||cell)startLongPress(e,card,cell);
+});
+root.addEventListener("pointermove",e=>{
+ if(longPress&&Math.hypot(e.clientX-longPress.x,e.clientY-longPress.y)>10)cancelLongPress();
+ if(!drag)return;
+ const dx=e.clientX-drag.x,dy=e.clientY-drag.y;
+ if(!drag.on){
+  if(Math.abs(dx)<12||Math.abs(dx)<Math.abs(dy))return;
+  const u=UNIT_BY_ID[drag.id];
+  if(!u||game.seal<u.cost){drag=null;return;}
+  drag.on=true;selected=drag.id;tutorialEvent(game,"pick",drag.id);
+  drag.ghost=document.createElement("div");drag.ghost.className="drag-ghost";drag.ghost.innerHTML=art(drag.id,"drag-art");
+  document.body.append(drag.ghost);syncGameFrame();
+ }
+ drag.ghost.style.left=e.clientX+"px";drag.ghost.style.top=e.clientY+"px";
+ const cell=document.elementFromPoint(e.clientX,e.clientY)?.closest?.(".board > .cell");
+ if(cell){focus={lane:+cell.dataset.lane,col:+cell.dataset.col};updatePlacementPreview();}
+ e.preventDefault();
+});
+function endDrag(e){
+ if(!drag)return;
+ const was=drag;drag=null;
+ if(!was.on)return;
+ was.ghost?.remove();suppressClick=true;setTimeout(()=>{suppressClick=false;},0);
+ const cell=document.elementFromPoint(e.clientX,e.clientY)?.closest?.(".board > .cell");
+ if(cell&&!cell.disabled)action("cell",cell);
+}
+root.addEventListener("pointerup",e=>{endDrag(e);cancelLongPress();});
+root.addEventListener("pointercancel",e=>{drag?.ghost?.remove();drag=null;cancelLongPress();});
+// Long press = the hover tooltip phones do not have.
+let longPress=null;
+function startLongPress(e,card,cell){
+ cancelLongPress();
+ longPress={x:e.clientX,y:e.clientY,timer:setTimeout(()=>{
+  longPress=null;suppressClick=true;setTimeout(()=>{suppressClick=false;},400);
+  if(card){const u=UNIT_BY_ID[card.dataset.unit];if(u)showFieldHint(u.name+": "+unitHow(u),5);syncGameFrame();return;}
+  const lane=+cell.dataset.lane,col=+cell.dataset.col;
+  const foe=game.enemies.find(en=>en.lane===lane&&Math.abs(en.x-(col+.5))<.8&&getThreat(en.id,level));
+  if(foe){selectedThreat=foe.id;modal="threat";render();return;}
+  const d=game.defenders.find(x=>x.lane===lane&&x.col===col);
+  if(d){showFieldHint(d.name+": "+(explainFiring(game,d)||UNIT_BY_ID[d.id]?.desc||""),5);syncGameFrame();}
+ },550)};
+}
+function cancelLongPress(){if(longPress){clearTimeout(longPress.timer);longPress=null;}}
 function syncGameFrame(){
  if(view!=="play"||!game||modal)return;
  const $=(s)=>root.querySelector(s);
@@ -560,7 +645,7 @@ function syncGameFrame(){
    "deg) translateY("+(f.age/f.ttl*22)+"px) scale("+(1-f.age/f.ttl*.3)+")";
  }
  for(const el of Array.from(fallenLayer.children))if(!fading.has(el.dataset.fallen))el.remove();
- syncRollers();syncTutorBar();syncRewardDrop();
+ syncRollers();relayOwlHint();syncTutorBar();syncRewardDrop();
  const shotKinds={stamp:"✓",clip:"⌁",chain:"❄",writ:"§",dossier:"▣",dove:"✉",beam:""};
  const shotsAlive=new Set();
  const pxPerCol=board.clientWidth/9,pxPerRow=board.clientHeight/5;
@@ -979,6 +1064,7 @@ function renderDialog(){
  if(modal==="pause")content=`<div class="large-emoji">⏸️</div><h2>Пауза</h2><p>Ваша справа чекає. Продовжуйте у зручному темпі.</p>
  <div class="dialog-actions">${btn("close-modal","▶ Продовжити","btn btn-primary")}${btn("retry","↻ Заново","btn btn-quiet")}${btn("levels","🗺️ На карту","btn btn-quiet")}</div>`;
  else if(modal==="threat")content=renderCounterModal();
+ else if(modal==="legend")content=renderThreatLegend()+commonActions;
  else if(modal==="reward")return '<div class="overlay reward-overlay" role="presentation"><div class="dialog reward-dialog" role="dialog" aria-modal="true" aria-label="Нова картка">'+rewardDialog()+'</div></div>';
  else if(modal==="detail"&&detail){
   const d=detail.kind==="unit"?UNIT_BY_ID[detail.id]:ENEMY_BY_ID[detail.id],isUnit=detail.kind==="unit";
@@ -1025,6 +1111,7 @@ function render(){
  root.innerHTML=html+renderDialog();
  updatePlacementPreview();
  if(view==="play"&&py>0)window.scrollTo?.(px,py);
+ applyDeviceMode();
 }
 function setView(v){
  view=v;modal="";toast="";render();
@@ -1101,7 +1188,9 @@ function action(name,el){
     setTimeout(()=>root.querySelector?.(".seal-pill")?.classList.remove("short"),600);
     syncGameFrame();return;
    }
-   selected=id;if(game)tutorialEvent(game,"pick",id);syncGameFrame();return;
+   selected=id;if(game)tutorialEvent(game,"pick",id);
+   if(phoneBattle()&&u&&!game?.tutorial?.step?.startsWith?.("p"))showFieldHint(u.name+" — оберіть клітинку",1.6);
+   syncGameFrame();return;
   }
   render();return;
  }
@@ -1112,6 +1201,10 @@ function action(name,el){
   if(result.ok)sound(540,.09);else showFieldHint(result.error);
   syncGameFrame();return;
  }
+ if(name==="legend"&&game){modal="legend";render();return;}
+ if(name==="install"&&installPrompt){installPrompt.prompt();installPrompt.userChoice?.finally?.(()=>{installPrompt=null;render();});return;}
+ if(name==="install-close"){save.installTipClosed=true;persist();render();return;}
+ if(name==="play-portrait"){allowPortrait=true;applyDeviceMode();return;}
  if(name==="reward-pick"&&game?.rewardDrop){modal="reward";sound(1040,.3);render();return;}
  if(name==="reward-continue"&&game){collectReward(game);modal="";render();return;}
  if(name==="collect"&&game){collectToken(game,Number(el.dataset.id));sound(950,.12);toast="Отримано 25 печаток довіри!";syncGameFrame();return;}
@@ -1158,7 +1251,8 @@ root.addEventListener("pointerover",e=>{
  }
 });
 root.addEventListener("click",e=>{
- if(view==="play"&&cineSkippable()&&!modal&&!e.target.closest?.(".game-controls")){skipCinematic();return;}
+ if(suppressClick){suppressClick=false;e.preventDefault();return;}
+ if(view==="play"&&cineSkippable()&&!modal&&!e.target.closest?.(".game-controls,.rotate-overlay")){skipCinematic();return;}
  const el=e.target.closest("[data-act]");
  if(el&&!el.disabled){
   action(el.dataset.act,el);
@@ -1223,7 +1317,8 @@ for(const type of ["mouseout","focusout"])document.addEventListener(type,e=>{
 function loop(ts){
  if(!prevTs)prevTs=ts;
  const delta=Math.min((ts-prevTs)/1000,.1);prevTs=ts;
- if(view==="play"&&game&&cine&&!modal&&!document.hidden)advanceCinematic(delta);
+ if(needRotate()){/* paused until the phone is turned */}
+ else if(view==="play"&&game&&cine&&!modal&&!document.hidden)advanceCinematic(delta);
  else if(view==="play"&&game?.phase==="playing"&&!modal&&!document.hidden){
   music.setScene("battle",world,0,{boss:!!level.boss});
   // Fixed sub-steps keep collisions identical at x2 speed and on slow

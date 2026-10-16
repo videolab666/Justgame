@@ -2,7 +2,7 @@ import {mkdir,cp,writeFile,readFile,readdir} from 'node:fs/promises';
 import {join} from 'node:path';
 const root=process.cwd(),out=join(root,'dist');
 await mkdir(out,{recursive:true});
-for(const name of ['index.html','styles.css','src','assets','content']){
+for(const name of ['index.html','styles.css','manifest.webmanifest','src','assets','content']){
   await cp(join(root,name),join(out,name),{recursive:true,force:true});
 }
 await writeFile(join(out,'.nojekyll'),'');

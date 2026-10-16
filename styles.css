@@ -782,3 +782,55 @@ body.reduced-motion .reward-rays,body.reduced-motion .reward-flash,body.reduced-
 .quiz-why.ok{background:#e9f7ec;border:1px solid #9fd3ab}
 .quiz-why.bad{background:#fff1e8;border:1px solid #efbf9c}
 @media(max-width:700px){.doc-compare{grid-template-columns:1fr}.doc-row{grid-template-columns:1fr auto}.doc-row span{grid-column:1/-1}}
+
+/* ===== Phones, landscape battle ("mb"): cards left, field at full height === */
+.mobile-only{display:none}
+.rotate-overlay{display:none}
+body.need-rotate .rotate-overlay{display:flex;position:fixed;inset:0;z-index:200;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px;text-align:center;
+ background:radial-gradient(circle at 50% 35%,#24597a,#0d2740);color:#fff8e6}
+.rotate-overlay strong{font-size:22px}
+.rotate-overlay p{max-width:320px;opacity:.9;line-height:1.4}
+.rotate-phone{font-size:64px;animation:rotate-phone 1.8s ease-in-out infinite}
+@keyframes rotate-phone{0%,25%{transform:rotate(0)}55%,100%{transform:rotate(-90deg)}}
+body.mb{--hud:34px;--cards:calc(80px + env(safe-area-inset-left));--strip:26px;
+ --avail-h:calc(100dvh - var(--hud) - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 6px);
+ --avail-w:calc(100vw - var(--cards) - var(--strip) - env(safe-area-inset-right) - 8px);
+ --bh:min(var(--avail-h),calc(var(--avail-w) / 1.8));
+ overflow:hidden;overscroll-behavior:none;touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;background:#0d2740}
+body.mb .screen{padding:0;min-height:0;max-width:none}
+body.mb .shell{border:0;border-radius:0;box-shadow:none;min-height:100dvh;background:#0d2740}
+body.mb .header,body.mb .footline,body.mb main>.threat-legend,body.mb .owl-message,body.mb .game-bottom,body.mb .selected-help,body.mb .skyline{display:none!important}
+body.mb main.main{padding:0!important;max-width:none!important;margin:0}
+body.mb .mobile-only{display:inline-flex}
+body.mb .game-shell{position:relative;display:grid;grid-template-columns:var(--cards) 1fr;grid-template-rows:calc(var(--hud) + env(safe-area-inset-top)) 1fr;
+ height:100dvh;padding:0;border:0;border-radius:0;box-shadow:none;background:linear-gradient(145deg,#1d4561,#122c47)}
+body.mb .game-top{grid-column:2;grid-row:1;display:flex;align-items:center;gap:6px;min-height:0;padding:calc(env(safe-area-inset-top) + 3px) calc(env(safe-area-inset-right) + 6px) 0 4px}
+body.mb .seal-pill{font-size:15px;padding:3px 10px;min-height:0;box-shadow:0 2px 0 #9a7a2c}
+body.mb .game-meta{flex:1;min-width:0}
+body.mb .game-meta strong{display:block;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.mb .progress-track{height:5px;margin-top:2px}
+body.mb .game-controls{display:flex;gap:4px}
+body.mb .game-controls .btn{padding:4px 8px;min-height:30px;font-size:13px;border-radius:9px;box-shadow:none}
+body.mb .cardbar{grid-column:1;grid-row:1 / span 2;flex-direction:column;align-items:stretch;height:auto;overflow-y:auto;overflow-x:hidden;scroll-snap-type:y proximity;
+ padding:calc(env(safe-area-inset-top) + 6px) 6px calc(env(safe-area-inset-bottom) + 6px) calc(env(safe-area-inset-left) + 6px);gap:6px;background:#0f2a43;border-right:2px solid #2c5f7c}
+body.mb .cardbar .unit-card{width:auto;min-width:0;height:auto;min-height:64px;flex:0 0 auto;padding:3px;touch-action:pan-y;border-radius:10px}
+body.mb .cardbar .unit-card strong,body.mb .cardbar .unit-card small{display:none}
+body.mb .cardbar .unit-card .glyph{height:42px}
+body.mb .cardbar .unit-card .cost{font-size:11px;padding:1px 5px}
+body.mb .field-wrap{grid-column:2;grid-row:2;align-self:start;justify-self:center;border:0;border-radius:6px;box-shadow:none;overflow:hidden;width:auto;max-width:none;margin-top:2px}
+body.mb .field-wrap .board-frame{grid-template-columns:var(--strip) auto;min-width:0!important;width:auto}
+body.mb .field-wrap .board{height:var(--bh);width:calc(var(--bh) * 1.8);aspect-ratio:auto;min-width:0}
+body.mb .field-wrap .guard{width:100%}
+body.mb .token{width:44px;height:44px;font-size:22px}
+body.mb .tutor-bar{bottom:4%;font-size:13px;padding:6px 10px}
+body.mb .cine-count{font-size:clamp(28px,9vh,64px)}
+body.mb .coach-card.dialog{max-height:92dvh;width:min(440px,70vw);padding:12px 14px}
+body.mb .dialog{max-height:92dvh}
+.drag-ghost{position:fixed;z-index:300;width:64px;height:64px;transform:translate(-50%,-70%);pointer-events:none;filter:drop-shadow(0 6px 6px #0008);opacity:.9}
+.drag-art{width:100%;height:100%;object-fit:contain}
+
+/* "Install the game" tip on the home screen (phones). */
+.install-tip{display:flex;align-items:center;gap:12px;margin:12px clamp(12px,3vw,32px) 0;padding:10px 14px;border-radius:14px;background:#fff6d8;border:2px solid #e8c56a;color:#28435a}
+.install-tip>span{font-size:26px}
+.install-tip p{margin:0;flex:1;line-height:1.35}
+.install-tip .btn{padding:6px 12px}
