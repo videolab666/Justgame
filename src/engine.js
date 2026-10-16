@@ -133,7 +133,7 @@ export function explainFiring(g,d){
  let nearby=g.enemies.filter(e=>e.hp>0);
  if(["shooter","intern","lobber","splash","air","slow"].includes(d.kind)){
   const inRow=nearby.filter(e=>e.lane===d.lane);
-  nearby=inRow.filter(e=>e.x>d.col+.45);
+  nearby=inRow.filter(e=>e.x>d.col+.02);
   if(!nearby.length)return inRow.length?
    "Вороги вже позаду захисника: він стріляє тільки праворуч.":
    "Очікує на ворогів у своєму ряду.";
@@ -351,7 +351,11 @@ export function fireProjectile(g,d,target,raw,bonus=1){
  const style=SHOT_STYLES[d.kind]||SHOT_STYLES.shooter;
  // The launch point must be behind every target allowed by attack() (x > col+.45).
  // A shot from col+.78 silently missed enemies pressed against the defender.
- const sourceX=d.col+.4,targetX=target.x,fromRow=d.lane+.5,toRow=target.lane+.5;
+ // Spawn the shot behind the actual target, even when an enemy is pressed
+ // against the defender. A fixed launch point could put the projectile ahead
+ // of a close target and produce apparently random non-firing.
+ const targetX=target.x,sourceX=style.arc>0?d.col+.4:Math.min(d.col+.4,targetX-.22),
+  fromRow=d.lane+.5,toRow=target.lane+.5;
  const ballistic=style.arc>0;
  const shot={
   uid:uid(g),kind:style.kind,sourceKind:d.kind,sourceUid:d.uid,
@@ -479,7 +483,10 @@ function attack(g,d,delta){
  if(!["shooter","intern","lobber","splash","air","slow","sniper","global"].includes(d.kind)||d.timer>0)return;
  let candidates=g.enemies.filter(e=>canTarget(g,d,e));
  if(["shooter","intern","lobber","splash","air","slow"].includes(d.kind)){
-  candidates=candidates.filter(e=>e.lane===d.lane&&e.x>d.col+.45);
+  // An overlapping enemy is still directly in front of the defender.
+  // Enemies can stop at x = col+.05 while fighting or after a leap; the
+  // old +.45 cutoff made an otherwise live registrar stay permanently idle.
+  candidates=candidates.filter(e=>e.lane===d.lane&&e.x>d.col+.02);
  }
  if(d.kind==="sniper"){
   candidates=candidates.filter(e=>Math.abs(e.x-(d.col+.5))<=3.5);
