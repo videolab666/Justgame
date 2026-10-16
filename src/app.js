@@ -2,6 +2,7 @@ import {UNITS,UNIT_BY_ID,UNIT_HOW,ENEMIES,ENEMY_BY_ID,WORLDS,TYPES,TOOLS,FACTS,U
 import {makeGame,makeWavePlan,tick,place,collectToken,collectAll,currentProgress,scoreStars,selectAdvice,useGuard,availablePlacement,explainFiring,waveStatus,ROLLER_FADE,tutorialEvent,tutorialText,collectReward} from "./engine.js";
 import {getThreat,getEncounterThreats,getCounterAdvice,threatNote,threatLanes,lanesLabel} from "./tactics.js";
 import {Soundtrack} from "./music.js";
+import {MusicPlayer} from "./music-files.js";
 import {ENEMY_LIFE,UNIT_LIFE} from "./life.js";
 const root=document.getElementById("app");
 const KEY="just-oborona-progress-v1";
@@ -23,8 +24,10 @@ function sound(freq=640,duration=.085){
 const defaults={completed:{},seen:{units:{},enemies:{}},settings:{sound:false,music:true,musicVolume:40,autoCollect:false,tutorials:true,reducedMotion:window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches||false,highContrast:false,largeText:false},mode:"normal"};
 function readStore(){try{const saved=JSON.parse(localStorage.getItem(KEY));return { ...defaults,...saved,completed:saved?.completed||{},seen:{units:{...saved?.seen?.units},enemies:{...saved?.seen?.enemies}},settings:{...defaults.settings,...saved?.settings}};}catch{return structuredClone(defaults);}}
 let save=readStore();
-const soundtrack=new Soundtrack();
+// Recorded tracks for menus and battles; the synth only plays jingles.
+const soundtrack=new Soundtrack(),music=new MusicPlayer();
 soundtrack.configure(save.settings.music,save.settings.musicVolume);
+music.configure(save.settings.music,save.settings.musicVolume);
 let view="home",world=0,stage=1,level=getLevel(0,1),deck=[],selected="registrar",game=null;
 let challenge=null,outroElapsed=0;
 // First-encounter coach marks: pause, spotlight the new card/enemy, explain it.
@@ -79,7 +82,7 @@ function lifeBlock(kind,id,compact=false){
  if(!life)return "";
  const tips=compact?life.tips.slice(0,2):life.tips;
  return '<ul class="life-tips">'+tips.map(t=>'<li>'+E(t)+'</li>').join("")+'</ul>'+
-  (life.fact?'<p class="life-fact"><strong>💡 Факт:</strong> '+E(life.fact)+(life.source?' <small>('+E(life.source)+')</small>':"")+'</p>':"");
+  (life.fact?'<p class="life-fact"><strong>💡 Факт:</strong> '+E(life.fact)+'</p>':"");
 }
 const landscape=(w,cls="")=>`<img class="world-art ${cls}" src="./assets/worlds/world-${w+1}.svg" alt="" loading="lazy">`;
 const btn=(action,label,classes="btn",props="")=>`<button type="button" class="${classes}" data-act="${action}" ${props}>${label}</button>`;
@@ -186,7 +189,7 @@ function threatArtwork(id){return id==="boss"?level.bossData?.id||"baron":id;}
 function renderThreatChip(id){
  const t=getThreat(id,level),info=getCounterAdvice(id,{level,deck,owned:availableUnits()});
  if(!t||!info)return "";
- const equipped=info.recommended.find(u=>u.state==="deck"),count=game?.enemies.filter(e=>e.id===id).length||0;
+ const equipped=info.recommended.find(u=>u.state==="deck"),count=game?.level===level&&game.enemies?game.enemies.filter(e=>e.id===id).length:0;
  const lanes=encounterLanes()[id]||[],laneText=lanes.length&&lanes.length<level.activeLanes.length?lanesLabel(lanes):"";
  return '<button type="button" class="threat-chip" data-scheme="'+E(t.scheme)+'" data-act="threat-tip" data-enemy="'+E(id)+'"'+(laneText?' data-lanes="'+lanes.join(",")+'"':"")+' aria-label="Порада проти '+E(t.name)+(laneText?", "+E(laneText):"")+'">'+
  '<span class="threat-portrait">'+art(threatArtwork(id),"threat-illustration")+'</span>'+
@@ -719,7 +722,7 @@ function renderMini(){
   <div class="split" style="grid-template-columns:1fr 1fr"><div class="panel"><h3>Оригінал</h3><p>Дата: 12.05.2026</p><p>Реєстр: № 4728</p><p>Підпис: Коваленко</p><p>Адреса: Дніпро</p></div>
   <div class="panel"><h3>Підозрілий</h3>${["Дата: 12.05.2036","Реєстр: номер відсутній","Підпис: Каваленко","Адреса: Дніпро"].map((x,i)=>`<button type="button" class="btn ${mini.marked.includes(i)?"btn-primary":""}" style="display:block;width:100%;margin:7px 0" data-act="mini-choice" data-idx="${i}">${E(x)} ${mini.marked.includes(i)?"✔":""}</button>`).join("")}</div></div><p>Знайдено: ${mini.marked.length}/3</p>`;
  }else if(type==="assets"){
-  body=`<p>Знайди три активи за 8 запитів. Підозрілі сектори позначені крапкою. Це навчальний макет.</p><p>Запитів залишилося: <strong>${8-mini.tries}</strong> · Активів: ${mini.found}/3</p><div class="mini-grid">${Array.from({length:36},(_,i)=>`<button data-act="mini-choice" data-idx="${i}" ${mini.opened.includes(i)?"disabled":""}>${mini.opened.includes(i)?([7,17,28].includes(i)?"💼":"—"):[1,7,10,13,17,20,24,28,33].includes(i)?"·":"□"}</button>`).join("")}</div>`;
+  body=assetsBoard();
  }else{
   const questions=type==="acts"?[
    ["Порядок видачі довідок громадянам","Нормативний","Індивідуальний",0],
@@ -738,11 +741,45 @@ function renderMini(){
   body=`<p>Запитання ${mini.index+1}/5 · Правильних відповідей: ${mini.correct}</p><div class="panel"><h3>${E(q[0])}</h3>
   <div class="quiz-list">${[1,2].map((j,i)=>`<button data-act="mini-choice" data-idx="${i}">${E(q[j])}</button>`).join("")}</div></div><p class="notice">Навчальне спрощення, не правовий висновок.</p>`;
  }
- return wrapper(`<main class="main" style="max-width:970px;margin:auto"><div class="eyebrow">Бонусна справа ${level.id}</div><h1 class="section-title">${heading}</h1><div class="panel">${body}<p class="muted">${E(mini.feedback||"🦉 Уважно читай реквізити та не поспішай.")}</p></div><div class="dialog-actions">${btn("mini-retry","↻ Спочатку","btn btn-quiet")}${btn("levels","← На карту","btn btn-dark")}</div></main>`);
+ return wrapper(`<main class="main" style="max-width:970px;margin:auto"><div class="eyebrow">Бонусна справа ${level.id}</div><h1 class="section-title">${heading}</h1><div class="panel">${body}<p class="muted">${E(mini.feedback||{assets:"🦉 Почни з будь-якого об'єкта, а далі орієнтуйся на цифри.",acts:"🦉 Нормативний акт — загальні правила для багатьох; індивідуальний — щодо конкретної особи.",phishing:"🦉 Офіційні сервіси не просять паролів і кодів."}[type]||"🦉 Уважно читай реквізити та не поспішай.")}</p></div><div class="dialog-actions">${btn("mini-retry","↻ Спочатку","btn btn-quiet")}${btn("levels","← На карту","btn btn-dark")}</div></main>`);
 }
-function startMini(){mini={marked:[],opened:[],tries:0,found:0,index:0,correct:0,feedback:""};}
+function startMini(){
+ mini={marked:[],opened:[],tries:0,found:0,index:0,correct:0,feedback:""};
+ // "Знайди майно": a fresh hiding place every attempt.
+ const cells=[...Array(ASSET_CELLS).keys()].sort(()=>Math.random()-.5);
+ mini.assets=cells.slice(0,ASSET_COUNT);
+ mini.kinds=Array.from({length:ASSET_CELLS},()=>Math.floor(Math.random()*ASSET_KINDS.length));
+}
+/* ---- Bonus case "Знайди майно боржника" (minesweeper-like) ------------ */
+const ASSET_SIDE=6,ASSET_CELLS=36,ASSET_COUNT=3,ASSET_QUERIES=10;
+const ASSET_KINDS=[["🏠","Квартира"],["🚗","Автомобіль"],["🏢","Офіс"],["🌳","Земельна ділянка"],["🏦","Рахунок у банку"],["🏚️","Гараж"]];
+/** Debtor's assets in the 8 cells around one cell. */
+function assetsAround(i){
+ const r=Math.floor(i/ASSET_SIDE),c=i%ASSET_SIDE;let n=0;
+ for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){
+  if(!dr&&!dc)continue;const rr=r+dr,cc=c+dc;
+  if(rr>=0&&rr<ASSET_SIDE&&cc>=0&&cc<ASSET_SIDE&&mini.assets.includes(rr*ASSET_SIDE+cc))n++;
+ }
+ return n;
+}
+function assetsBoard(){
+ const left=ASSET_QUERIES-mini.tries;
+ const cells=Array.from({length:ASSET_CELLS},(_,i)=>{
+  const [icon,name]=ASSET_KINDS[mini.kinds[i]];
+  if(!mini.opened.includes(i))return '<button type="button" class="asset-cell" data-act="mini-choice" data-idx="'+i+'" title="'+E(name)+': надіслати запит до реєстру" aria-label="'+E(name)+', надіслати запит">'+icon+'</button>';
+  if(mini.assets.includes(i))return '<button type="button" class="asset-cell found" disabled aria-label="'+E(name)+': майно боржника">💼<small>'+E(name)+'</small></button>';
+  const n=assetsAround(i);
+  return '<button type="button" class="asset-cell clue n'+n+'" disabled aria-label="'+E(name)+': не належить боржнику, поруч майна '+n+'">'+n+'<small>поруч</small></button>';
+ }).join("");
+ return '<p><strong>Ти — державний виконавець.</strong> Боржник сховав <strong>3 об\'єкти майна</strong> серед 36 об\'єктів міста: квартир, авто, офісів, ділянок, рахунків і гаражів. Натисни на об\'єкт — це <strong>запит до державного реєстру</strong>:</p>'+
+  '<ul class="asset-rules"><li><b class="asset-key found">💼</b> об\'єкт належить боржнику — майно знайдено!</li>'+
+  '<li><b class="asset-key clue n2">2</b> не належить, але <strong>стільки</strong> майна боржника є в сусідніх клітинках (і по діагоналі)</li>'+
+  '<li><b class="asset-key clue n0">0</b> поруч нічого немає — шукай в іншому місці</li></ul>'+
+  '<p class="asset-status">Запитів залишилося: <strong>'+left+'</strong> з '+ASSET_QUERIES+' · Знайдено майна: <strong>'+mini.found+'</strong> з '+ASSET_COUNT+'</p>'+
+  '<div class="mini-grid asset-grid">'+cells+'</div><p class="notice">Навчальний макет: справжні виконавці отримують відомості з реєстрів у встановленому законом порядку.</p>';
+}
 function completeMini(){
- const id=level.id;save.completed[id]=Math.max(save.completed[id]||0,3);persist();view="result";game={phase:"won",lastThreat:null,usedGuards:[false,false,false,false,false],defenderLosses:0,breaches:0};
+ const id=level.id;save.completed[id]=Math.max(save.completed[id]||0,3);persist();view="result";game={phase:"won",level,enemies:[],plan:[],lastThreat:null,usedGuards:[false,false,false,false,false],defenderLosses:0,breaches:0};
  render();
 }
 function miniAction(i){
@@ -753,10 +790,17 @@ function miniAction(i){
  }else if(level.mini==="assets"){
   if(mini.opened.includes(i))return;
   mini.opened.push(i);mini.tries++;
-  if([7,17,28].includes(i)){mini.found++;mini.feedback="Актив підтверджено умовним запитом!";}
-  else mini.feedback="Активу немає. Шукайте серед позначених секторів.";
-  if(mini.found===3)completeMini();
-  else if(mini.tries>=8){mini.feedback="Запити вичерпано. Повторіть пошук.";mini=null;startMini();}
+  const name=ASSET_KINDS[mini.kinds[i]][1];
+  if(mini.assets.includes(i)){mini.found++;mini.feedback="💼 Знайдено! «"+name+"» належить боржнику — на це майно можна накласти арешт.";}
+  else{
+   const n=assetsAround(i);
+   mini.feedback="Запит до реєстру: «"+name+"» не належить боржнику. "+(n?"Поруч його майна: "+n+" — перевір сусідні клітинки.":"Поруч нічого немає — шукай в іншому місці.");
+  }
+  if(mini.found===ASSET_COUNT)completeMini();
+  else if(mini.tries>=ASSET_QUERIES){
+   const found=mini.found;startMini();
+   mini.feedback="Запити вичерпано (знайдено "+found+" з "+ASSET_COUNT+"). Боржник переховав майно — спробуй ще раз, спираючись на цифри.";
+  }
  }else{
   const answer=(level.mini==="acts"?[0,1,0,1,0]:[1,1,0,1,0])[mini.index];
   if(i===answer){mini.correct++;mini.feedback="✔ Вірно!";}else{mini.feedback="Спробуйте врахувати правило з підказки Юсі.";}
@@ -899,10 +943,10 @@ function render(){
 }
 function setView(v){
  view=v;modal="";toast="";render();
- soundtrack.setScene(v==="play"?"battle":v==="outro"?"outro":"silent",world);
+ music.setScene(v==="play"?"battle":v==="outro"?"outro":"menu",world,0,{boss:!!level.boss});
 }
 function goLevel(w,s){
- challenge=null;
+ challenge=null;game=null;
  world=w;stage=s;level=getLevel(world,stage);mini=null;shownEnd=false;chooseSuggested();
  if(level.mini){startMini();setView("mini");}
  else setView("deck");
@@ -994,8 +1038,8 @@ function action(name,el){
  if(name==="skip-outro"){setView("result");return;}
  if(name==="music-toggle"){
   save.settings.music=!save.settings.music;persist();
-  soundtrack.configure(save.settings.music,save.settings.musicVolume);
-  if(save.settings.music)soundtrack.unlock();
+  soundtrack.configure(save.settings.music,save.settings.musicVolume);music.configure(save.settings.music,save.settings.musicVolume);
+  if(save.settings.music){soundtrack.unlock();music.unlock();}
   const b=root.querySelector?.('[data-act="music-toggle"]');
   if(b){b.textContent=save.settings.music?"♫":"♪̸";b.setAttribute("aria-pressed",String(save.settings.music));}
   return;
@@ -1032,7 +1076,7 @@ root.addEventListener("click",e=>{
  if(el&&!el.disabled){
   action(el.dataset.act,el);
   // The game starts audio within a trusted user event; no autoplay at page load.
-  if(view==="play"&&!modal&&save.settings.music){soundtrack.unlock();soundtrack.setScene("battle",world);}
+  if(save.settings.music){soundtrack.unlock();music.unlock();}
  }
 });
 root.addEventListener("change",e=>{
@@ -1040,8 +1084,8 @@ root.addEventListener("change",e=>{
   save.settings[e.target.dataset.setting]=e.target.checked;persist();
   if(game)game.settings=save.settings;
   if(e.target.dataset.setting==="music"){
-   soundtrack.configure(save.settings.music,save.settings.musicVolume);
-   if(save.settings.music)soundtrack.unlock();
+   soundtrack.configure(save.settings.music,save.settings.musicVolume);music.configure(save.settings.music,save.settings.musicVolume);
+   if(save.settings.music){soundtrack.unlock();music.unlock();}
   }
   render();
  }
@@ -1050,7 +1094,7 @@ root.addEventListener("change",e=>{
 root.addEventListener("input",e=>{
  if(e.target.matches("[data-volume]")){
   save.settings.musicVolume=Number(e.target.value);persist();
-  soundtrack.configure(save.settings.music,save.settings.musicVolume);
+  soundtrack.configure(save.settings.music,save.settings.musicVolume);music.configure(save.settings.music,save.settings.musicVolume);
   const label=root.querySelector?.("[data-volume-label]");if(label)label.textContent=e.target.value+"%";
   return;
  }
@@ -1094,7 +1138,7 @@ function loop(ts){
  const delta=Math.min((ts-prevTs)/1000,.1);prevTs=ts;
  if(view==="play"&&game&&cine&&!modal&&!document.hidden)advanceCinematic(delta);
  else if(view==="play"&&game?.phase==="playing"&&!modal&&!document.hidden){
-  soundtrack.setScene("battle",world,Math.min(1,game.stageWave/Math.max(1,game.maxWave)));
+  music.setScene("battle",world,0,{boss:!!level.boss});
   // Fixed sub-steps keep collisions identical at x2 speed and on slow
   // frames (a single big tick used to be clamped and lose game time).
   let rest=delta*speed;
@@ -1113,9 +1157,11 @@ function loop(ts){
  // Audio follows gameplay: menus, pause/help dialogs and hidden tabs never
  // continue scheduling new backing-track notes in the background.
  const audibleBattle=view==="play"&&game?.phase==="playing"&&!modal&&!document.hidden;
- soundtrack.setScene(audibleBattle?"battle":view==="outro"?"outro":"silent",world,
-  audibleBattle?Math.min(1,game.stageWave/Math.max(1,game.maxWave)):0);
- soundtrack.tick();
+ // Menus play the menu track; a paused battle keeps its track, ducked.
+ const scene=document.hidden?"silent":audibleBattle?"battle":view==="outro"?"outro":
+  view==="play"&&game?.phase==="playing"?"pause":view==="play"?"silent":"menu";
+ music.setScene(scene,world,0,{boss:!!level.boss});
+ music.tick();
  requestAnimationFrame(loop);
 }
 render();

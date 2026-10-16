@@ -738,3 +738,18 @@ body.reduced-motion .reward-rays,body.reduced-motion .reward-flash,body.reduced-
    (coach-card spotlights scroll the field to an enemy). */
 .game-shell:not(.cine-on) .street-scene{display:none}
 .reward-dialog .dialog-actions{justify-content:center}
+
+/* "Знайди майно боржника": objects, clues and legend. */
+.asset-rules{margin:6px 0 10px;padding-left:4px;list-style:none;display:grid;gap:6px}
+.asset-rules li{display:flex;align-items:center;gap:10px}
+.asset-key{display:inline-grid;place-items:center;min-width:34px;height:30px;border-radius:8px;font-weight:1000}
+.asset-status{font-size:15px}
+.asset-grid{max-width:520px;margin:8px auto}
+.asset-grid .asset-cell{position:relative;min-height:58px;font-size:26px;cursor:pointer;background:#eef7f2;border:2px solid #a9cdbd;border-radius:10px;transition:transform .12s,box-shadow .12s}
+.asset-grid .asset-cell:not(:disabled):hover{transform:translateY(-2px);box-shadow:0 4px 0 #9fc4b4;background:#fffbe8}
+.asset-cell small{display:block;font-size:9px;font-weight:800;line-height:1;margin-top:2px}
+.asset-cell.found,.asset-key.found{background:#fff1c4;border-color:#e2b85c;box-shadow:0 0 12px #ffd34d}
+.asset-cell.clue,.asset-key.clue{background:#dfe7e4;border-color:#b7c7c1;font-weight:1000;font-size:24px;color:#5c6f6a}
+.asset-cell.n1,.asset-key.n1{color:#1f6fb2}.asset-cell.n2,.asset-key.n2{color:#2f8f3a}.asset-cell.n3,.asset-key.n3{color:#c0392b}
+.asset-cell.n0 small{opacity:.6}
+.asset-grid .asset-cell:disabled{opacity:1;cursor:default}

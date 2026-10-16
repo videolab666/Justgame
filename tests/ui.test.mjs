@@ -6,6 +6,7 @@ import * as tactics from '../src/tactics.js';
 import {Soundtrack} from '../src/music.js';
 import * as engine from '../src/engine.js';
 import * as life from '../src/life.js';
+import {MusicPlayer} from '../src/music-files.js';
 
 function createUI(source){
  const root={innerHTML:'',addEventListener(){}};
@@ -19,7 +20,8 @@ function createUI(source){
  const requestAnimationFrame=()=>{};
  const fetch=async()=>{throw Error('No external fetch in UI smoke test')};
  const noImports=source.replace(/^import .*?;\s*$/gm,'');
- const symbols={...data,...engine,...tactics,...life,Soundtrack,document,window,localStorage,requestAnimationFrame,fetch};
+ class Audio{constructor(){this.paused=true;this.volume=1;}play(){this.paused=false;return Promise.resolve();}pause(){this.paused=true;}getAttribute(){return this.src;}}
+ const symbols={...data,...engine,...tactics,...life,Soundtrack,MusicPlayer,Audio,document,window,localStorage,requestAnimationFrame,fetch};
  const load=new Function(...Object.keys(symbols),
   noImports+';return {action,goLevel,startGame,setView,finish,advanceCinematic,cine:()=>cine,html:()=>root.innerHTML,game:()=>game,mode:()=>view};');
  return load(...Object.values(symbols));
@@ -130,4 +132,21 @@ test('the very first battle is a guided tutorial instead of a coach card',()=>{
  assert.doesNotMatch(game.html(),/coach-card/);
  assert.match(game.html(),/street-scene/);
  assert.match(game.html(),/tutor-bar/);
+});
+test('after a bonus case the "next case" button opens the next level',()=>{
+ const game=createUI(source);
+ game.goLevel(0,5);
+ for(const i of [0,1,2])game.action('mini-choice',{dataset:{idx:String(i)}});
+ assert.equal(game.mode(),'result');
+ game.action('next-level');
+ assert.equal(game.mode(),'deck');
+});
+test('the asset hunt explains its cells and keys',()=>{
+ const game=createUI(source);
+ game.goLevel(1,5);
+ const html=game.html();
+ assert.match(html,/державний виконавець/);
+ assert.match(html,/asset-cell/);
+ assert.match(html,/сусідніх клітинках/);
+ assert.doesNotMatch(html,/□/);
 });
