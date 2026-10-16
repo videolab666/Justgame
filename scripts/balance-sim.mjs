@@ -229,6 +229,7 @@ for (let w = 0; w < 4; w++) for (let s = 1; s <= 10; s++) {
   if (only && !only.has(id)) continue;
   const res = [];
   for (let k = 0; k < SEEDS; k++) res.push(run(w, s, k === 0 ? 0 : 1000 + k * 37));
+  if (process.env.PERRUN) for (const r of res) console.log(`  ${r.phase} ${r.time.toFixed(0)}s guards ${r.guards}`);
   const wins = res.filter(r => r.phase === "won").length;
   const avg = f => (res.reduce((a, r) => a + f(r), 0) / res.length);
   rows.push(id);

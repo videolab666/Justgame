@@ -38,7 +38,7 @@ test('Hydra heads are only exhausted by ordinary tools and finished by 2FA',()=>
  const g=makeGame(getLevel(3,10),['twofactor']);
  g.plan=[];
  const boss=spawn(g,'boss',2,8);
- assert.equal(boss.maxHp,6000);
+ assert.equal(boss.maxHp,5000);
  assert.equal(g.enemies.filter(x=>x.trait==='hydra_head').length,3);
  const head=g.enemies.find(x=>x.id==='hydra_phish');
  const old=boss.hp;

@@ -204,8 +204,8 @@ export const CONTACT=.65;
 // the lane's shooters could reach the boss itself.
 const BOSS_SUMMON_EVERY=16,BOSS_ESCORT_CAP=3,SAFE_AUTO_REVEAL=20;
 // Hydra (body 8000, heads 2000, 25-seal wallet drain every 12 s) took a novice
-// ~4 min per head and ate ~40 % of their income; malware head drops 2 USBs.
-const HYDRA_HEAD_HP=1000,HYDRA_BODY_HP=6000;
+// ~4 min per head and ate ~40 % of their income; malware head drops 1 USB.
+const HYDRA_HEAD_HP=600,HYDRA_BODY_HP=5000;
 const SEIZE_TIME=2.5,GIANT_WINDUP=1.2,GIANT_SMASH_EVERY=1.8,JUMP_TIME=.7;
 // Bosses and their stationary parts are never removed by a lane guard.
 const GUARD_IMMUNE=new Set(["offshore_safe","tentacle","hydra_head"]);
@@ -761,7 +761,9 @@ function enemyTurn(g,e,delta){
     const target=g.defenders.find(d=>d.lane===e.lane&&d.kind!=="trap"&&!d.shieldHp);
     if(target)target.disabledUntil=g.time+4;
    }
-   if(e.id==="hydra_malware")for(let i=0;i<2;i++)spawn(g,"usb",e.lane,9.0+i*.24);
+   // One USB per pulse: two every 12 s kept a lone shooter busy with USBs
+   // forever, so the head itself never lost HP (a ten-minute stall).
+   if(e.id==="hydra_malware")spawn(g,"usb",e.lane,9.0);
   }
   e.specialUntil=g.time+12;return;
  }
