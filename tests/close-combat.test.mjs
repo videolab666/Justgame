@@ -30,7 +30,7 @@ test("all straight-line attackers handle near contact without vanishing shots",(
 });
 test("close-range shooting leaves enemies genuinely behind the defender untargeted",()=>{
  const g=setup(),e=spawn(g,"schemer",2,2.98);e.speed=0;
- for(let k=0;k<40;k++)tick(g,.08);
+ for(let k=0;k<8;k++)tick(g,.08); // Enemy contact deals damage; check before it destroys the defender.
  assert.equal(e.hp,e.maxHp);
  assert.equal(g.defenders[0].shotsFired||0,0);
  assert.match(explainFiring(g,g.defenders[0]),/позаду/);
