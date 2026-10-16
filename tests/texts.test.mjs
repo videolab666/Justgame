@@ -25,3 +25,8 @@ test("boss notes describe the current roller guard, not the old stop button",()=
  assert.ok(!src.includes("Натисніть 🛑"));
  assert.ok(!src.includes("@@@"),"no leftover placeholders");
 });
+test("every enemy and defender has real-life tips and a sourced fact",async()=>{
+ const {ENEMY_LIFE,UNIT_LIFE}=await import("../src/life.js");
+ for(const e of ENEMIES){const l=ENEMY_LIFE[e.id];assert.ok(l?.tips?.length>=2&&l.fact&&l.source,e.id);}
+ for(const u of UNITS){const l=UNIT_LIFE[u.id];assert.ok(l?.tips?.length>=1&&l.fact&&l.source,u.id);}
+});

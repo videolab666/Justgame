@@ -84,6 +84,29 @@ const BOSS_NOTES=[
  "Спрут: поки живі п'ять щупалець, стоїть, не кличе підмоги й отримує лише чверть шкоди. «Викривач» біля щупалець знищує кілька одразу. Потім Спрут іде вперед, а корупціонери приходять із флангів.",
  "Гідра: тіло спить і невразливе, поки живі три голови. Виснажте голови будь-якою зброєю, добийте їх 2FA у їхніх рядах. Потім розбийте тіло й протримайтесь 30 секунд."
 ];
+/** Lanes (0-based) each threat will use, read from the real wave plan.
+ * Boss parts have fixed lanes in the engine. Ordinary schemers are spread
+ * over every lane on purpose, so they are left out. */
+export function threatLanes(level,plan){
+ const lanes={};
+ const add=(id,l)=>{(lanes[id]??=new Set()).add(l);};
+ for(const a of plan||[])if(a.id!=="schemer")add(a.id,a.lane);
+ if(level?.boss){
+  const bossLane=(plan||[]).find(a=>a.id==="boss")?.lane;
+  if(level.world===1)for(const l of [0,1,3,4])add("offshore_safe",l);
+  if(level.world===2)for(const l of level.activeLanes)add("tentacle",l);
+  if(level.world===3){add("hydra_phish",1);add("hydra_call",2);add("hydra_malware",3);}
+  if(bossLane!=null)add("boss",bossLane);
+ }
+ return Object.fromEntries(Object.entries(lanes).map(([id,set])=>[id,[...set].sort((a,b)=>a-b)]));
+}
+/** "Ряд 3" / "Ряди 2 і 4" / "Ряди 1, 3 і 5" (1-based for players). */
+export function lanesLabel(lanes){
+ const n=lanes.map(l=>l+1);
+ if(!n.length)return "";
+ if(n.length===1)return "Ряд "+n[0];
+ return "Ряди "+n.slice(0,-1).join(", ")+" і "+n[n.length-1];
+}
 /** Plain-language "how it acts and how to stop it" for any threat. */
 export function threatNote(id,level=null){
  if(id==="boss")return BOSS_NOTES[level?.world||0];

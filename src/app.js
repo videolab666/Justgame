@@ -1,7 +1,8 @@
 import {UNITS,UNIT_BY_ID,UNIT_HOW,ENEMIES,ENEMY_BY_ID,WORLDS,TYPES,TOOLS,FACTS,UNLOCK_REWARDS,MINI_LEVELS,STORY,getLevel,levelId,unlockedUnits,levelUnlocked} from "./data.js";
-import {makeGame,tick,place,collectToken,collectAll,currentProgress,scoreStars,selectAdvice,useGuard,availablePlacement,explainFiring,waveStatus,ROLLER_FADE} from "./engine.js";
-import {getThreat,getEncounterThreats,getCounterAdvice,threatNote} from "./tactics.js";
+import {makeGame,makeWavePlan,tick,place,collectToken,collectAll,currentProgress,scoreStars,selectAdvice,useGuard,availablePlacement,explainFiring,waveStatus,ROLLER_FADE} from "./engine.js";
+import {getThreat,getEncounterThreats,getCounterAdvice,threatNote,threatLanes,lanesLabel} from "./tactics.js";
 import {Soundtrack} from "./music.js";
+import {ENEMY_LIFE,UNIT_LIFE} from "./life.js";
 const root=document.getElementById("app");
 const KEY="just-oborona-progress-v1";
 let audioContext=null;
@@ -70,6 +71,15 @@ function unitStats(u){
 }
 function enemyStats(e){
  return "❤ "+e.hp+(e.shield?" + щит "+e.shield:"")+" · 🏃 "+speedLabel(e.speed)+" · "+TYPES[e.scheme].icon+" "+TYPES[e.scheme].name;
+}
+/** "Як це в житті": practical tips plus one verified fact with its source.
+ * `compact` keeps coach cards short (two tips). */
+function lifeBlock(kind,id,compact=false){
+ const life=(kind==="unit"?UNIT_LIFE:ENEMY_LIFE)[id];
+ if(!life)return "";
+ const tips=compact?life.tips.slice(0,2):life.tips;
+ return '<ul class="life-tips">'+tips.map(t=>'<li>'+E(t)+'</li>').join("")+'</ul>'+
+  (life.fact?'<p class="life-fact"><strong>💡 Факт:</strong> '+E(life.fact)+(life.source?' <small>('+E(life.source)+')</small>':"")+'</p>':"");
 }
 const landscape=(w,cls="")=>`<img class="world-art ${cls}" src="./assets/worlds/world-${w+1}.svg" alt="" loading="lazy">`;
 const btn=(action,label,classes="btn",props="")=>`<button type="button" class="${classes}" data-act="${action}" ${props}>${label}</button>`;
@@ -141,18 +151,50 @@ function unitCard(u,{selected=false,disabled=false,cooldown=0}={}){
 }
 
 function availableUnits(){return challenge?UNITS:unlockedUnits(save.completed);}
+/** Lanes of every special threat. Before the battle the plan is rebuilt with
+ * the same seed the battle will use, so the preview matches the fight. */
+function encounterPlan(){
+ if(game?.level===level)return game.plan;
+ if(challenge?.kind==="endless")return null;
+ return makeWavePlan(level,challenge?.kind==="daily"?challenge.seed:0);
+}
+function encounterLanes(){
+ const plan=encounterPlan();
+ return plan?threatLanes(level,plan):{};
+}
+/** Threats of this fight: the running battle, else the plan it will use. */
+function encounterThreats(){
+ if(game?.level===level)return getEncounterThreats(level,game);
+ const plan=encounterPlan();
+ return getEncounterThreats(level,plan?{plan}:null);
+}
+/** Deck screen: which special threats come down which lane. */
+function renderLaneMap(){
+ const lanes=encounterLanes(),byLane=[[],[],[],[],[]];
+ for(const [id,ls] of Object.entries(lanes))for(const l of ls)if(getThreat(id,level))byLane[l].push(id);
+ if(!byLane.some(x=>x.length))return "";
+ const rows=byLane.map((ids,l)=>{
+  const open=level.activeLanes.includes(l);
+  const body=!open?'<span class="lane-map-closed">закрито</span>':
+   ids.length?ids.map(id=>'<span class="lane-map-foe" title="'+E(getThreat(id,level).name)+'">'+art(threatArtwork(id),"lane-map-art")+'</span>').join(""):
+   '<span class="lane-map-calm">лише Схемники</span>';
+  return '<div class="lane-map-row'+(open?"":" closed")+(ids.length?" special":"")+'"><b>'+(l+1)+'</b>'+body+'</div>';
+ }).join("");
+ return '<div class="lane-map"><strong>🗺️ Де чекати спецворогів</strong><small>Ряди рахуються згори вниз. Поставте контр-юніти саме туди.</small>'+rows+'</div>';
+}
 function threatArtwork(id){return id==="boss"?level.bossData?.id||"baron":id;}
 function renderThreatChip(id){
  const t=getThreat(id,level),info=getCounterAdvice(id,{level,deck,owned:availableUnits()});
  if(!t||!info)return "";
  const equipped=info.recommended.find(u=>u.state==="deck"),count=game?.enemies.filter(e=>e.id===id).length||0;
- return '<button type="button" class="threat-chip" data-scheme="'+E(t.scheme)+'" data-act="threat-tip" data-enemy="'+E(id)+'" aria-label="Порада проти '+E(t.name)+'">'+
+ const lanes=encounterLanes()[id]||[],laneText=lanes.length&&lanes.length<level.activeLanes.length?lanesLabel(lanes):"";
+ return '<button type="button" class="threat-chip" data-scheme="'+E(t.scheme)+'" data-act="threat-tip" data-enemy="'+E(id)+'"'+(laneText?' data-lanes="'+lanes.join(",")+'"':"")+' aria-label="Порада проти '+E(t.name)+(laneText?", "+E(laneText):"")+'">'+
  '<span class="threat-portrait">'+art(threatArtwork(id),"threat-illustration")+'</span>'+
- '<span class="threat-copy"><strong>'+E(t.name)+'</strong><small>'+E(TYPES[t.scheme]?.name||"Загроза")+'</small><em>'+E(equipped?"У колоді: "+equipped.name:"Потрібна тактика")+'</em></span>'+
+ '<span class="threat-copy"><strong>'+E(t.name)+'</strong><small>'+E(TYPES[t.scheme]?.name||"Загроза")+(laneText?' · 🛣 '+E(laneText):"")+'</small><em>'+E(equipped?"У колоді: "+equipped.name:"Потрібна тактика")+'</em></span>'+
  '<span class="threat-active" data-threat-count="'+E(id)+'">'+(count?"×"+count:"i")+'</span></button>';
 }
 function renderThreatLegend(compact=false){
- const ids=getEncounterThreats(level,game);
+ const ids=encounterThreats();
  return '<section class="threat-legend'+(compact?" threat-compact":"")+'" aria-label="Легенда нападників">'+
  '<div class="threat-heading"><div><strong>🕵️ Хто наступає?</strong><small>Натисніть на ворога — дізнаєтесь, чим його зупинити</small></div>'+
  btn("hint","💡 Підказка для хвилі","btn btn-primary")+'</div>'+
@@ -186,7 +228,7 @@ function renderDeck(){
  <div class="split"><section><div class="panel"><h3>📂 Оберіть захисників</h3><p class="muted">Візьміть від 1 до ${slotLimit()} карток. Наведіть на картку, щоб прочитати, як вона грає. Для встановлення потрібно заробляти печатки.</p>
  <div class="deck-grid">${avail.map(u=>unitCard(u,{selected:deck.includes(u.id)})).join("")}</div></div>
  <div class="deck-summary"><span><strong>${deck.length}/${slotLimit()}</strong> карток у справі</span>${btn("start","▶ Розпочати оборону","btn btn-primary",deck.length?'':'disabled')}</div></section>
- <aside class="panel"><div class="deck-threat-box">${renderThreatLegend(true)}</div>
+ <aside class="panel"><div class="deck-threat-box">${renderThreatLegend(true)}${renderLaneMap()}</div>
  <p class="hint" style="margin-top:16px">${warns.length?"🦉 Порада: у колоді бракує ефективних інструментів для деяких типів схем.":"🦉 Гарний вибір! Комбінуйте економіку, стіни та атакувальні картки."}</p>
  <p class="muted">${level.special.blackout?"🌙 Блекаут: печатки з неба падають рідше, а захисники без Зарядної станції поруч працюють удвічі повільніше (2FA — ні).":""} ${level.special.fog?"🌫️ Туман: праву половину поля не видно. Стрільці побачать ворога, коли той підійде, або завдяки «Сповіщенню» поруч чи Судовому експерту.":""}</p>
  <div class="eyebrow">Режим гри</div><div style="display:grid;gap:8px;margin:10px 0">
@@ -496,7 +538,7 @@ function syncGameFrame(){
  // Expand the legend in place if a boss summons new enemy types.
  const roster=root.querySelector?.(".threat-legend:not(.threat-compact) .threat-list");
  if(roster){
-  const ids=getEncounterThreats(level,game),signature=ids.join(",");
+  const ids=encounterThreats(),signature=ids.join(",");
   if(roster.dataset.roster!==signature){
    const previousX=roster.scrollLeft;
    roster.innerHTML=ids.map(renderThreatChip).join("");
@@ -542,7 +584,7 @@ function renderResult(){
  <h1 class="section-title">${game?.challenge?.kind==="endless"?"Кінець облоги":success?"Права захищено!":"Схема прорвалася!"}</h1><p>${E(text)}</p>
  ${success?`<div class="stars">${"★".repeat(stars)}${"☆".repeat(3-stars)}</div><p>${reward?"Нова картка: "+reward.icon+" "+E(reward.name):"Відкрито наступну справу та сторінку Альманаху."}</p>`:""}
  ${!success&&e?.id&&threatNote(e.id,level)?`<div class="hint" style="text-align:left;margin-top:20px"><strong>🦉 Як зупинити наступного разу:</strong><p>${E(threatNote(e.id,level))}</p></div>`:""}
- <div class="hint" style="text-align:left;margin-top:20px"><strong>📘 Як це в житті:</strong><p>${E(e?.tip||FACTS.general)}</p>
+ <div class="hint" style="text-align:left;margin-top:20px"><strong>📘 Як це в житті:</strong><p>${E(e?.tip||FACTS.general)}</p>${e?.id?lifeBlock("enemy",e.id):""}
  <small>Юридична інформація має бути перевірена перед офіційним релізом.</small></div>
  <div class="dialog-actions" style="justify-content:center">${btn("retry","↻ Спробувати ще","btn btn-quiet")}${btn("levels","🗺️ До рівнів","btn btn-dark")}${success&&!challenge?btn("next-level","Наступна справа →","btn btn-primary"):""}
  ${success&&!challenge&&level.id==="4-10"?btn("certificate","🎓 Сертифікат","btn btn-primary"):""}</div>
@@ -677,7 +719,7 @@ function renderIntroCard(){
    '<p class="hint"><strong>Як грає:</strong> '+E(unitHow(u))+'</p>'+
    (strong.length?'<p><strong>✔ Найкраще проти:</strong> '+E(strong.join(", "))+'</p>':"")+
    (weak.length?'<p><strong>✖ Слабкий проти:</strong> '+E(weak.join(", "))+'</p>':"")+
-   '<p class="coach-fact"><strong>📘 Як це в житті:</strong> '+E(fact)+'</p>'+
+   '<div class="coach-fact"><strong>📘 Як це в житті:</strong> '+E(fact)+lifeBlock("unit",u.id,true)+'</div>'+
    '<p class="muted">Натисніть картку, а потім клітинку на полі.</p><div class="dialog-actions">'+next+'</div>';
  }
  const t=getThreat(intro.id,level),info=getCounterAdvice(intro.id,{level,deck,owned:availableUnits()});
@@ -694,7 +736,7 @@ function renderIntroCard(){
   (info?'<p class="hint"><strong>🦉 Як діє і як зупинити:</strong> '+E(info.note)+'</p>':"")+
   (counters?'<p><strong>🎯 Чим зупинити:</strong></p><ul class="coach-list">'+counters+'</ul>':"")+
   (extra?'<p><strong>Допоможе також:</strong> '+extra+'</p>':"")+
-  (t.tip?'<p class="coach-fact"><strong>📘 Як це в житті:</strong> '+E(t.tip)+'</p>':"")+
+  (t.tip?'<div class="coach-fact"><strong>📘 Як це в житті:</strong> '+E(t.tip)+lifeBlock("enemy",intro.id,true)+'</div>':"")+
   '<div class="dialog-actions">'+next+'</div>';
 }
 function renderDialog(){
@@ -710,7 +752,7 @@ function renderDialog(){
   content=`<div class="detail-illustration">${art(d.id,"detail-art")}</div><div class="eyebrow">Альманах · ${isUnit?"Захисник":"Схемник"}</div><h2>${E(d.name)}</h2>
   <p class="coach-stats"><span>${E(isUnit?unitStats(d):enemyStats(d))}</span></p>
   <p class="hint"><strong>${isUnit?"Як грає:":"🦉 Як діє і як зупинити:"}</strong> ${E(isUnit?unitHow(d):threatNote(d.id))}</p>
-  <p><strong>📘 Як це в житті</strong><br>${E(isUnit?FACTS[{registry:"registry",notary:"notary",digital:"cyber",enforcement:"debt",integrity:"corruption",expert:"expert"}[d.tool]||"general"]:d.tip)}</p>
+  <div class="life-box"><strong>📘 Як це в житті</strong><p>${E(isUnit?FACTS[{registry:"registry",notary:"notary",digital:"cyber",enforcement:"debt",integrity:"corruption",expert:"expert"}[d.tool]||"general"]:d.tip)}</p>${lifeBlock(isUnit?"unit":"enemy",d.id)}</div>
   ${!isUnit?btn("threat-tip","💡 Чим атакувати?","btn btn-primary",'data-enemy="'+E(d.id)+'"'):""}
   <p class="notice">Статус: 🟨 Не затверджено юристом · Актуальність: чернетка GDD від 15.10.2026</p>
   <a href="https://just-dnipro.gov.ua/" target="_blank" rel="noopener noreferrer">Детальніше на офіційному сайті ↗</a>${commonActions}`;
@@ -810,7 +852,7 @@ function action(name,el){
  if(name==="level"){const st=Number(el.dataset.stage);if(levelUnlocked(world,st,save.completed))goLevel(world,st);return;}
  if(name==="start"){startGame();return;}
  if(name==="threat-tip"){selectedThreat=el?.dataset?.enemy||selectedThreat;modal="threat";render();return;}
- if(name==="hint"){selectedThreat=game?.enemies.find(e=>e.trait!=="neutral")?.id||getEncounterThreats(level,game)[0]||"schemer";modal="threat";render();return;}
+ if(name==="hint"){selectedThreat=game?.enemies.find(e=>e.trait!=="neutral")?.id||encounterThreats()[0]||"schemer";modal="threat";render();return;}
  if(name==="pick-counter"){const id=el?.dataset?.unit;if(deck.includes(id)){selected=id;modal="";render();}return;}
  if(name==="unit"){
   const id=el.dataset.unit;
@@ -918,6 +960,17 @@ document.addEventListener("keydown",e=>{
 });
 document.addEventListener("visibilitychange",()=>{prevTs=0;});
 window.addEventListener?.("resize",()=>{if(modal==="intro")positionIntro();});
+function highlightLanes(list){
+ const lanes=new Set((list||"").split(",").filter(Boolean).map(Number));
+ for(const cell of root.querySelectorAll?.(".board > .cell")||[])cell.classList.toggle("lane-preview",lanes.has(+cell.dataset.lane));
+}
+for(const type of ["mouseover","focusin"])document.addEventListener(type,e=>{
+ const chip=e.target?.closest?.(".threat-chip[data-lanes]");
+ if(chip)highlightLanes(chip.dataset.lanes);
+});
+for(const type of ["mouseout","focusout"])document.addEventListener(type,e=>{
+ if(e.target?.closest?.(".threat-chip[data-lanes]"))highlightLanes("");
+});
 function loop(ts){
  if(!prevTs)prevTs=ts;
  const delta=Math.min((ts-prevTs)/1000,.1);prevTs=ts;

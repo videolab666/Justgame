@@ -42,3 +42,17 @@ test("tips include stealth detection and raider restoration",()=>{
  assert.ok(getCounterAdvice("raider").support.includes("commission"));
  assert.equal(getCounterAdvice("absent"),null);
 });
+test("lane preview matches the battle plan and skips ordinary schemers",async()=>{
+ const {threatLanes,lanesLabel}=await import("../src/tactics.js");
+ const {makeGame}=await import("../src/engine.js");
+ const level=getLevel(1,6),g=makeGame(level,["registrar"]);
+ const lanes=threatLanes(level,g.plan);
+ assert.equal(lanes.schemer,undefined);
+ for(const a of g.plan)if(a.id!=="schemer")assert.ok(lanes[a.id].includes(a.lane),a.id);
+ assert.ok(Object.values(lanes).every(ls=>ls.length<=2));
+ assert.equal(lanesLabel([1,3]),"Ряди 2 і 4");
+ assert.equal(lanesLabel([2]),"Ряд 3");
+ const boss=threatLanes(getLevel(1,10),makeGame(getLevel(1,10),["registrar"]).plan);
+ assert.deepEqual(boss.boss,[2]);
+ assert.deepEqual(boss.offshore_safe,[0,1,3,4]);
+});

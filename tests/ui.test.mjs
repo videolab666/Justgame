@@ -5,6 +5,7 @@ import * as data from '../src/data.js';
 import * as tactics from '../src/tactics.js';
 import {Soundtrack} from '../src/music.js';
 import * as engine from '../src/engine.js';
+import * as life from '../src/life.js';
 
 function createUI(source){
  const root={innerHTML:'',addEventListener(){}};
@@ -18,7 +19,7 @@ function createUI(source){
  const requestAnimationFrame=()=>{};
  const fetch=async()=>{throw Error('No external fetch in UI smoke test')};
  const noImports=source.replace(/^import .*?;\s*$/gm,'');
- const symbols={...data,...engine,...tactics,Soundtrack,document,window,localStorage,requestAnimationFrame,fetch};
+ const symbols={...data,...engine,...tactics,...life,Soundtrack,document,window,localStorage,requestAnimationFrame,fetch};
  const load=new Function(...Object.keys(symbols),
   noImports+';return {action,goLevel,startGame,setView,finish,html:()=>root.innerHTML,game:()=>game,mode:()=>view};');
  return load(...Object.values(symbols));
