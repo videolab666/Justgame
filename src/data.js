@@ -57,7 +57,7 @@ export const ENEMY_BY_ID=Object.fromEntries(ENEMIES.map(x=>[x.id,x]));
 export const BOSSES=[
 {id:"baron",name:"Барон Рейдерон",icon:"🎩",scheme:"forgery",hp:12000,tip:"Захист майна починається з перевірки прав і документів."},
 {id:"count",name:"Граф Борговій",icon:"💰",scheme:"debt",hp:15000,tip:"Виконання рішення проводять уповноважені виконавці."},
-{id:"octopus",name:"Спрут Конверт",icon:"🐙",scheme:"corruption",hp:18000,tip:"Виявлення та запобігання корупції — важлива частина правопорядку."},
+{id:"octopus",name:"Спрут Конверт",icon:"🐙",scheme:"corruption",hp:12000,tip:"Виявлення та запобігання корупції — важлива частина правопорядку."},
 {id:"hydra",name:"Гідра Фішингу",icon:"🐉",scheme:"cyber",hp:23000,tip:"Другий фактор та захист електронного підпису посилюють безпеку."}
 ];
 export const WORLDS=[

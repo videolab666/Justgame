@@ -23,7 +23,7 @@ if (process.env.SCALE) { const k = Number(process.env.SCALE); for (let i = 0; i 
 const RECOMMEND = [
   ["registrar","cnap","notary","notification","senior","mine","commission","archive"],
   ["executor","cnap","limitation","trustee","private_executor","station","notary","registrar"],
-  ["whistleblower","cnap","integrity","order","expert","intern","legal_aid","registrar"],
+  ["whistleblower","cnap","integrity","order","expert","intern","legal_aid","registrar","notary","mine"],
   ["twofactor","cnap","shield","notification","expert","apostille","digital_office","registrar","notary","mine"],
 ];
 function deckFor(world, stage) {
@@ -50,7 +50,7 @@ const mult = (u, e) => TOOLS[u.tool]?.multipliers[SCHEMES.indexOf(e.scheme)] ?? 
 function canHurt(u, e) {
   if (e.trait === "neutral") return false;
   if (u.kind === "trap") return e.scheme === "cyber" && e.trait !== "hydra_head";
-  if ((e.trait === "flying" || e.air) && !["air","sniper","global"].includes(u.kind)) return false;
+  if ((e.trait === "flying" || e.air && e.id !== "boss") && !["air","sniper","global"].includes(u.kind)) return false;
   if (e.trait === "burrow" && !["lobber"].includes(u.kind)) return false;
   if (e.id === "hacker" && u.tool === "notary") return false;
   return RANGED.includes(u.kind);
@@ -139,7 +139,8 @@ function botStep(g, st) {
   // 1) Arm the most urgent deficient lane; if broke and enemy close, stall it.
   for (const L of deficient) {
     const target = L.uncovered || L.enemies[0];
-    for (const id of bestFor(target)) if (tryPlace(g, id, L.lane, id === "twofactor" ? [5,4,6,3] : shooterCols)) return;
+    const cols = L.enemies.some(e => e.id === "boss") ? [...shooterCols, 7] : shooterCols;
+    for (const id of bestFor(target)) if (tryPlace(g, id, L.lane, id === "twofactor" ? [5,4,6,3] : cols)) return;
     if (L.closest < 4) {
       const wallCol = Math.max(0, Math.floor(L.closest) - 1);
       if (tryPlace(g, "notary", L.lane, [wallCol, wallCol - 1].filter(c => c >= 0))) return;

@@ -73,7 +73,9 @@ export function makeWavePlan(level,seed=0){
   ids.forEach((id,i)=>list.push({time:t+i*spacing,id,lane:laneFor(id),wave:w+1}));
   const last=t+(ids.length-1)*spacing;
   if(final){
-   if(level.boss)list.push({time:last+10,id:"boss",lane:level.activeLanes[Math.floor(rand()*level.activeLanes.length)],wave:waves});
+   // Bosses walk the centre lane: the Count's safes (0,1,3,4) and the Hydra's
+   // heads (1-3) are laid out around it, and the player can prepare it.
+   if(level.boss)list.push({time:last+10,id:"boss",lane:level.activeLanes.includes(2)?2:level.activeLanes[Math.floor(rand()*level.activeLanes.length)],wave:waves});
    if(level.id==="3-5")list.push({time:last+6,id:"mini_boss",lane:2,wave:waves});
   }
   // Scheduled gap; tick() pulls it in once the field is clear.
@@ -152,7 +154,7 @@ export function spawn(g,id,lane,x=9.3){
  }
  if(id==="boss"&&g.level.world===2){
   for(let l=0;l<5;l++)spawn(g,"tentacle",l,8.0);
-  g.lastHint="Спершу нейтралізуйте п'ять щупалець підкупу.";
+  g.lastHint="Спрут тримається щупальцями! Викривач поряд із ними знищує кілька одразу.";
  }
  if(id==="boss"&&g.level.world===3){
   for(const [part,l] of [["hydra_phish",1],["hydra_call",2],["hydra_malware",3]])spawn(g,part,l,7.5);
@@ -188,6 +190,14 @@ function bossImmune(g,e){
  if(g.level.world===3)return g.enemies.some(x=>x.trait==="hydra_head"&&x.hp>0);
  return false;
 }
+/** Bosses that hold their position: the Octopus while any tentacle grips the
+ * field; the Count hovers on his "assets" in phase 2 (GDD) and only runs in
+ * phase 3. Flying forward over every defender made phase 2 unwinnable. */
+function bossAnchored(g,e){
+ if(e.id!=="boss")return false;
+ if(g.level.world===1)return e.phase===2;
+ return g.level.world===2&&g.enemies.some(x=>x.id==="tentacle"&&x.hp>0);
+}
 function at(g,lane,col){return g.defenders.find(d=>d.lane===lane&&d.col===col&&d.hp>0);}
 /** Units that physically stop walking enemies. 2FA is a floor trap: enemies
  * walk over it and take damage instead of chewing through it. */
@@ -209,7 +219,10 @@ export function canTarget(g,d,e){
  if(e.hp<=0)return false;
  if(e.id==="offshore_safe"&&!e.reveal)return false;
  if(e.trait==="neutral")return false;
- if((e.trait==="flying"||e.air)&&!["air","sniper","global"].includes(d.kind))return false;
+ // The flying Count stays a target for everyone (x0.2 unless enforcement or
+ // expert, see damageEnemy): a hard lock wiped out every phase-1 investment
+ // in his lane, and there is no way to clear cells for new cards.
+ if((e.trait==="flying"||e.air&&e.id!=="boss")&&!["air","sniper","global"].includes(d.kind))return false;
  if(e.trait==="burrow"&&!["lobber","mine"].includes(d.kind))return false;
  if(!e.reveal && d.kind!=="sniper" && !revealInRange(g,e))return false;
  if(g.level.special.fog&&e.x>5.5&&!revealInRange(g,e)&&d.kind!=="sniper")return false;
@@ -236,7 +249,7 @@ export function explainFiring(g,d){
  if(!nearby.length)return "Цілі поза зоною досяжності.";
  if(nearby.some(e=>canTarget(g,d,e)))return g.time-(d.lastShotAt??-20)<.38?
   "Постріл виконано: снаряд летить до цілі.":"Ціль є, захисник готовий до атаки.";
- if(nearby.every(e=>e.trait==="flying"||e.air))return "Не вражає повітряні цілі: потрібні спеціальні захисники.";
+ if(nearby.every(e=>e.trait==="flying"||e.air&&e.id!=="boss"))return "Не вражає повітряні цілі: потрібні спеціальні захисники.";
  if(nearby.every(e=>e.trait==="burrow"))return "Ціль під землею: потрібен виконавець або арешт майна.";
  if(g.level.special.fog&&nearby.every(e=>e.x>5.5))return "Туман приховує противника: потрібне виявлення або зближення.";
  if(nearby.some(e=>!e.reveal))return "Замаскована ціль: спершу використайте Сповіщення.";
@@ -347,10 +360,10 @@ export function damageEnemy(g,e,raw,tool=null,extra=1){
  if(!g.enemies.includes(e))return 0;
  let mult=typeMultiplier(tool,e.scheme,g.mode);
  if(e.id==="boss"){
-  if(g.level.world===2){
-   if(tool!=="integrity")mult*=.5;
-   if(g.enemies.some(x=>x.id==="tentacle"&&x.hp>0))mult*=.25;
-  }
+  // GDD: the Octopus head takes x0.25 only while a tentacle lives. A
+  // permanent x0.5 for non-integrity tools (there is no integrity shooter)
+  // left an 18 000 HP head practically unkillable.
+  if(g.level.world===2&&g.enemies.some(x=>x.id==="tentacle"&&x.hp>0))mult*=.25;
   if(g.level.world===1&&g.enemies.some(x=>x.id==="offshore_safe"&&x.hp>0))mult=0;
   if(g.level.world===3&&g.enemies.some(x=>x.trait==="hydra_head"&&x.hp>0))mult=0;
   if(g.level.world===1&&e.phase===2&&!["enforcement","expert"].includes(tool))mult*=.2;
@@ -396,6 +409,8 @@ export function damageEnemy(g,e,raw,tool=null,extra=1){
   if(e.phase!==prev){
    if(g.level.world===1){e.air=e.phase===2;if(e.phase===3)e.speed=.58;}
    g.lastHint=`⚠️ ${e.name}: фаза ${e.phase}. Змінюйте тактику!`;
+   if(g.level.world===1&&e.phase===2)g.lastHint="Граф злетів на «Активах»! Виконавчі інструменти б'ють на повну, решта — ледь-ледь. Фіктивних банкрутів збиває Арбітражний керуючий.";
+   if(g.level.world===1&&e.phase===3)g.lastHint="Граф тікає! «Обмеження боржника» зупиняє його, «Арешт майна» — сильний удар.";
    effect(g,"phase",e.lane,e.x,"ФАЗА "+e.phase);
    if(e.phase===3&&g.level.world===0){g.bossGuardReady=true;g.lastHint="Барон готує фінальний підпис! Натисніть 🛑 біля його доріжки."; }
   }
@@ -698,7 +713,7 @@ function enemyTurn(g,e,delta){
  if(g.time<e.stunUntil)move=0;
  // Bosses wait behind their safes / heads; otherwise the immune body simply
  // walked to the house while the heads were still alive.
- if(bossImmune(g,e))move=0;
+ if(bossImmune(g,e)||bossAnchored(g,e))move=0;
  const nearby=g.defenders.filter(d=>d.lane===e.lane&&blocksPath(d)&&Math.abs(d.col+.5-e.x)<CONTACT).sort((a,b)=>b.col-a.col);
  const blocker=nearby[0];
  // Timed contact abilities restart when the enemy faces a different unit.
@@ -713,7 +728,9 @@ function enemyTurn(g,e,delta){
   // commission). A hacker needed 2FA/KEP, which unlock only in world 4.
   if(w===0&&e.phase===2)call("raider",e.lane,Math.min(9,e.x+.7));
   if(w===1&&e.phase===1)call("burrower",e.lane,Math.min(9,e.x+.7));
-  if(w===1&&e.phase===2)call("bankrupt",e.lane,Math.min(9,e.x+.7));
+  // Bankrupts enter from the edge like any summons: spawning them next to a
+  // boss deep in the field left no time for a trustee to react.
+  if(w===1&&e.phase===2)call("bankrupt",e.lane,9.2);
   if(w===2)for(let lane=0;lane<5;lane++)if(g.level.activeLanes.includes(lane)&&lane%2===0)call("briber",lane,9.2);
   // Stealing seals is the phishing head's job (GDD); the body draining too
   // starved the economy below what CNAP income can recover.

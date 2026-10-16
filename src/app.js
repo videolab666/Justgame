@@ -95,7 +95,7 @@ function chooseSuggested(){
  const recommend=[
   ["registrar","cnap","notary","notification","senior","mine","commission","archive"],
   ["executor","cnap","limitation","trustee","private_executor","station","notary","registrar"],
-  ["whistleblower","cnap","integrity","order","expert","intern","legal_aid","registrar"],
+  ["whistleblower","cnap","integrity","order","expert","intern","legal_aid","registrar","notary","mine"],
   ["twofactor","cnap","shield","notification","expert","apostille","digital_office","registrar","notary","mine"]
  ][world];
  const owned=new Set(unlocked.map(x=>x.id));

@@ -83,3 +83,34 @@ test('an immune boss waits behind its parts instead of walking to the house',()=
   assert.equal(boss.x,8,'world '+(world+1));
  }
 });
+test('bosses walk the centre lane',async()=>{
+ const {makeWavePlan}=await import('../src/engine.js');
+ for(let w=0;w<4;w++)assert.equal(makeWavePlan(getLevel(w,10)).find(a=>a.id==='boss').lane,2);
+});
+test('flying Count hovers in phase 2 and every shooter can still hit him',async()=>{
+ const {canTarget}=await import('../src/engine.js');
+ const g=makeGame(getLevel(1,10),['registrar']);
+ g.plan=[];g.nextSky=1e9;
+ const boss=spawn(g,'boss',2,6);
+ g.enemies=g.enemies.filter(e=>e.id==='boss');
+ damageEnemy(g,boss,boss.maxHp*.2,'enforcement'); // x2 vs debt -> 60 % HP
+ assert.equal(boss.phase,2);assert.equal(boss.air,true);
+ const x=boss.x;
+ for(let i=0;i<50;i++)tick(g,.1);
+ assert.equal(boss.x,x,'hovers in place');
+ assert.equal(canTarget(g,{kind:'shooter',tool:'registry'},boss),true);
+ const hp=boss.hp;damageEnemy(g,boss,100,'registry');
+ assert.ok(Math.abs(hp-boss.hp-20)<1e-6,'non-enforcement x0.2');
+});
+test('Octopus waits behind its tentacles, then takes full damage',()=>{
+ const g=makeGame(getLevel(2,10),['registrar']);
+ g.plan=[];g.nextSky=1e9;
+ const boss=spawn(g,'boss',2,8.5);
+ for(let i=0;i<50;i++)tick(g,.1);
+ assert.equal(boss.x,8.5,'anchored while tentacles live');
+ for(const t of g.enemies.filter(e=>e.id==='tentacle'))damageEnemy(g,t,1e5,'integrity');
+ const hp=boss.hp;damageEnemy(g,boss,100,'registry');
+ assert.equal(hp-boss.hp,100,'no permanent x0.5 for non-integrity tools');
+ for(let i=0;i<20;i++)tick(g,.1);
+ assert.ok(boss.x<8.5,'walks once free');
+});

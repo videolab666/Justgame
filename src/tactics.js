@@ -39,7 +39,6 @@ function score(u,e){
  if(e.id==="mini_boss"&&u.tool!=="expert")m=Math.min(m,.5);
  if(e.trait==="tentacle"&&u.tool!=="integrity")m*=.5;
  if(e.id==="boss"){
-  if(e.scheme==="corruption"&&u.tool!=="integrity")m*=.5;
   if(e.scheme==="cyber"&&u.tool!=="digital")m*=.25;
  }
  if(u.kind==="trap")return 115*m;
@@ -75,7 +74,7 @@ const SPECIAL={
 const BOSS_NOTES=[
  "Барон: у третій фазі застосуйте ручну Заборону 🛑 на його доріжці.",
  "Граф: виявіть та знищіть чотири сейфи, лише тоді голова вразлива.",
- "Спрут: спершу знищіть п'ять щупалець; потрібен антикорупційний інструмент.",
+ "Спрут: стоїть, доки живі щупальця. Викривач біля щупалець знищує кілька одразу; далі голову б'ють усі.",
  "Гідра: виснажте три голови будь-якою зброєю, добийте їх 2FA на їхніх клітинках, потім протримайтесь 30 секунд."
 ];
 export function getCounterAdvice(id,{level=null,deck=[],owned=UNITS}={}){
