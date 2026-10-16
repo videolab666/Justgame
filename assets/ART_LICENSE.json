@@ -9,5 +9,10 @@
   "specialBossParts": 5,
   "mascot": "assets/yusya.svg",
   "countIncludingMascot": 62,
-  "groundTextures": 4
+  "groundTextures": 4,
+  "characterRefresh": "2026-10-16",
+  "characterRedesignCount": 27,
+  "characterDesignGuide": "docs/CHARACTER_VISUAL_IDENTITY.md",
+  "newCharacterArt": "Original SVG drawings, no third-party art",
+  "battlefieldPolish": "4 refined themed ground SVGs and authored combat VFX"
 }

@@ -59,3 +59,14 @@ python3 -m http.server 8000
 ## Оригінальна музика і заставки
 
 Кожен із чотирьох світів має власну джазову музичну тему (Web Audio API, без зовнішніх файлів і чужих мелодій). Після бою спочатку відтворюється анімована заставка перемоги/поразки зі звуковою відбивкою, після цього — статистика. Виправлено влучання на близькій відстані та перезапуск анімацій захисників. [Подробиці й авторство](docs/AUDIO_COMBAT_RELEASE.md).
+
+
+## Battlefield polish — October 16, 2026
+
+- 27 individually redrawn original SVG characters with different silhouettes, hair/headwear, expressions and equipment.
+- Four enhanced terrain backgrounds with house safe zone, warning lanes, colored weapon roles and hit effects.
+- Important shooting fix: a foe pressed against the front edge of the registrar no longer falls outside the shooting filter; stamps always launch behind their actual target.
+- Shield absorbs a hit visibly. Boss invulnerability produces a visible protection notice instead of apparently missed shots.
+- Browser QA includes a 27-sprite gallery, fixed 2:1 board geometry and mobile tests.
+
+Detailed character audit: docs/CHARACTER_VISUAL_IDENTITY.md
