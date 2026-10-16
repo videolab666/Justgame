@@ -19,10 +19,16 @@ export const FIRST_SPAWN={tutorial:8,normal:18};
 // After the field is cleared the next wave is pulled forward to this lull.
 export const WAVE_LULL={tutorial:3,normal:7};
 export const BOSS_MIN_TIME=125;
+// Hand-tuned exceptions to the stage x world curve (balance bot, novice).
+// 1-4: last tutorial level, a schemer flood over five lanes plus the first
+// masked broker; the stage-4 budget fits the other worlds, not this one.
+export const LEVEL_BUDGET={"1-4":13};
 export function levelBudget(level){
- // Blackout already halves unpowered income and fire rate: fewer attackers.
- const blackout=level.special?.blackout?.8:1;
- return Math.round(STAGE_BUDGET[level.stage-1]*WORLD_BUDGET[level.world]*blackout);
+ if(LEVEL_BUDGET[level.id])return LEVEL_BUDGET[level.id];
+ // Blackout halves unpowered income and fire rate; fog hides the right half
+ // of the field, so shooters get roughly half the time on target.
+ const special=level.special?.blackout?.8:level.special?.fog?.85:1;
+ return Math.round(STAGE_BUDGET[level.stage-1]*WORLD_BUDGET[level.world]*special);
 }
 export function makeWavePlan(level,seed=0){
  const list=[],waves=level.waves,shares=WAVE_SHARES[waves]||WAVE_SHARES[3];
@@ -54,13 +60,18 @@ export function makeWavePlan(level,seed=0){
  const newest=pool[pool.length-1];
  const cost=id=>id==="usb"&&level.stage>=7?3:(ENEMY_BY_ID[id]?.threat||1);
  const total=levelBudget(level);
- let t=level.stage===1?FIRST_SPAWN.tutorial:FIRST_SPAWN.normal;
+ let t=level.stage===1?FIRST_SPAWN.tutorial:FIRST_SPAWN.normal,carry=0;
  for(let w=0;w<waves;w++){
   const final=w===waves-1;
-  let budget=Math.max(1,Math.round(total*shares[w]));
+  let budget=Math.max(1,Math.round(total*shares[w]))+carry;carry=0;
   const ids=[];
   // The level's newest threat opens wave 2 alone, once the economy is up.
-  if(w===Math.min(1,waves-1)&&newest!=="schemer"&&cost(newest)<=budget){ids.push(newest);budget-=cost(newest);}
+  // If it costs more than the wave's share, the overdraft comes out of the
+  // next wave (otherwise wave 2 became a schemer flood over every lane).
+  if(w===Math.min(1,waves-1)&&newest!=="schemer"&&newest!=="golem"){
+   ids.push(newest);budget-=cost(newest);
+   if(budget<0){carry=budget;budget=0;}
+  }
   let guard=0;
   while(budget>0&&guard++<40){
    // The opening wave never demands a specialised counter (threat <= 2).

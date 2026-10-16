@@ -79,3 +79,13 @@ test("2FA keeps full pulse rate in a blackout and ignores phishing",async()=>{
  assert.ok(!g.enemies.includes(phisher)||phisher.hp<start-150,"trap dealt full damage");
  assert.ok(trap.disabledUntil<=0,"phishing never disabled 2FA");
 });
+test("the newest threat opens wave 2 even when it costs more than that wave",()=>{
+ const plan=makeWavePlan(getLevel(2,5));
+ assert.equal(plan.find(a=>a.wave===2).id,"lustrated");
+});
+test("the paper golem only ever comes in the final wave",()=>{
+ for(const level of ALL){
+  const plan=makeWavePlan(level);
+  for(const a of plan)if(a.id==="golem")assert.equal(a.wave,level.waves,level.id);
+ }
+});
