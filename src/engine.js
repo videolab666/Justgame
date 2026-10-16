@@ -12,7 +12,7 @@ export function typeMultiplier(tool,scheme,mode="normal"){
 export const WAVE_SHARES={2:[.35,.65],3:[.18,.32,.5],4:[.12,.2,.28,.4]};
 // Threat budget of a whole level by stage (1..10); index 9 is the boss level,
 // whose boss supplies most of the pressure.
-export const STAGE_BUDGET=[6,10,13,16,20,23,26,29,33,24];
+export const STAGE_BUDGET=[6,8,13,16,20,23,26,27,27,24];
 export const WORLD_BUDGET=[1,.8,1.1,.9];
 // Seconds before the first spawn, so the player can place 2-3 cards first.
 export const FIRST_SPAWN={tutorial:8,normal:18};
