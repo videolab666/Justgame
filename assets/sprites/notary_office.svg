@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 144" role="img" aria-label="Оригінальний мультяшний персонаж"><defs>
  <linearGradient id="coat" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#547cb1"/><stop offset="1" stop-color="#154c6c"/></linearGradient>
  <linearGradient id="paper" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#fff9eb"/><stop offset="1" stop-color="#eadac0"/></linearGradient>
- <filter id="ds" x="-35%" width="170%" y="-35%" height="170%"><feDropShadow dx="1" dy="3" stdDeviation="3" flood-color="#133e5d" flood-opacity=".22"/></filter></defs>
+ <filter id="ds" x="-35%" width="170%" y="-35%" height="170%"><feDropShadow dx="1" dy="3" stdDeviation="3" flood-color="#133e5d" flood-opacity=".22"/></filter><filter id="vol" x="-5%" y="-5%" width="110%" height="110%" color-interpolation-filters="sRGB"><feGaussianBlur in="SourceAlpha" stdDeviation="3" result="b"/><feOffset in="b" dx="3" dy="4" result="lo"/><feComposite in="SourceAlpha" in2="lo" operator="out" result="rim"/><feFlood flood-color="#fff8e4" flood-opacity=".55"/><feComposite in2="rim" operator="in" result="light"/><feOffset in="b" dx="-4" dy="-5" result="so"/><feComposite in="SourceAlpha" in2="so" operator="out" result="edge"/><feFlood flood-color="#1c1d3a" flood-opacity=".32"/><feComposite in2="edge" operator="in" result="shade"/><feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="light"/><feMergeNode in="shade"/></feMerge></filter></defs>
  <ellipse cx="64" cy="135" rx="45" ry="7" fill="#173f5a" opacity=".18"/>
- <g filter="url(#ds)"><rect x="22" y="39" width="85" height="88" rx="13" fill="#d9e9fa" stroke="#2e6682" stroke-width="6"/>
+ <g filter="url(#ds)"><g filter="url(#vol)"><rect x="22" y="39" width="85" height="88" rx="13" fill="#d9e9fa" stroke="#2e6682" stroke-width="6"/>
  <path d="M15 43 64 14 114 43Z" fill="#3d8ca0" stroke="#1c526b" stroke-width="6" stroke-linejoin="round"/>
  <rect x="42" y="69" width="44" height="27" rx="5" fill="#b2e2ef" stroke="#367287" stroke-width="3"/>
  <rect x="48" y="104" width="33" height="23" fill="#7a9eac" stroke="#357187" stroke-width="3"/>
- <path d="M18 129H111" stroke="#d6a75d" stroke-width="8" stroke-linecap="round"/><rect x="25" y="48" width="78" height="16" rx="4" fill="#f6df9f" stroke="#d4ac5d" stroke-width="2"/><text x="64" y="60" font-family="Arial,sans-serif" font-size="9" font-weight="bold" text-anchor="middle" fill="#255272">НОТАРІУС</text></g></svg>
+ <path d="M18 129H111" stroke="#d6a75d" stroke-width="8" stroke-linecap="round"/><rect x="25" y="48" width="78" height="16" rx="4" fill="#f6df9f" stroke="#d4ac5d" stroke-width="2"/><text x="64" y="60" font-family="Arial,sans-serif" font-size="9" font-weight="bold" text-anchor="middle" fill="#255272">НОТАРІУС</text></g></g></svg>

@@ -1,6 +1,44 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 144" role="img" aria-label="Оригінальний мультяшний персонаж"><defs>
- <linearGradient id="coat" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#86527e"/><stop offset="1" stop-color="#653652"/></linearGradient>
- <linearGradient id="paper" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#fff9eb"/><stop offset="1" stop-color="#eadac0"/></linearGradient>
- <filter id="ds" x="-35%" width="170%" y="-35%" height="170%"><feDropShadow dx="1" dy="3" stdDeviation="3" flood-color="#133e5d" flood-opacity=".22"/></filter></defs>
- <ellipse cx="64" cy="135" rx="45" ry="7" fill="#173f5a" opacity=".18"/>
- <g filter="url(#ds)"><ellipse cx="64" cy="95" rx="42" ry="42" fill="#8d5a82" stroke="#633d70" stroke-width="6"/><circle cx="64" cy="55" r="34" fill="#d7ada6" stroke="#795469" stroke-width="4"/><rect x="34" y="3" width="63" height="42" rx="3" fill="#573951"/><rect x="22" y="36" width="87" height="9" rx="2" fill="#573951"/><circle cx="53" cy="56" r="5" fill="#49374e"/><circle cx="78" cy="56" r="5" fill="#49374e"/><path d="M48 78Q64 92 81 78" fill="none" stroke="#765565" stroke-width="5"/><circle cx="63" cy="114" r="14" fill="#efce82" stroke="#ab8349" stroke-width="5"/></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 144" role="img" aria-label="Граф Борговій"><defs>
+ <linearGradient id="coat" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#5b3a6e"/><stop offset="1" stop-color="#2f1d3d"/></linearGradient>
+ <linearGradient id="lining" x1="0" x2="0" y1="0" y2="1"><stop stop-color="#d0405e"/><stop offset="1" stop-color="#7d1d3a"/></linearGradient>
+ <linearGradient id="gold" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#ffe08a"/><stop offset="1" stop-color="#c98b2b"/></linearGradient>
+ <linearGradient id="bag" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#d8b07a"/><stop offset="1" stop-color="#9c7144"/></linearGradient>
+ <filter id="ds" x="-35%" width="170%" y="-35%" height="170%"><feDropShadow dx="1" dy="3" stdDeviation="3" flood-color="#133e5d" flood-opacity=".22"/></filter><filter id="vol" x="-5%" y="-5%" width="110%" height="110%" color-interpolation-filters="sRGB"><feGaussianBlur in="SourceAlpha" stdDeviation="3" result="b"/><feOffset in="b" dx="3" dy="4" result="lo"/><feComposite in="SourceAlpha" in2="lo" operator="out" result="rim"/><feFlood flood-color="#fff8e4" flood-opacity=".55"/><feComposite in2="rim" operator="in" result="light"/><feOffset in="b" dx="-4" dy="-5" result="so"/><feComposite in="SourceAlpha" in2="so" operator="out" result="edge"/><feFlood flood-color="#1c1d3a" flood-opacity=".32"/><feComposite in2="edge" operator="in" result="shade"/><feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="light"/><feMergeNode in="shade"/></feMerge></filter></defs>
+ <ellipse cx="64" cy="135" rx="47" ry="7" fill="#173f5a" opacity=".2"/>
+ <g filter="url(#ds)"><g filter="url(#vol)">
+  <path d="M14 30Q28 56 30 82L18 134H110L98 82Q100 56 114 30Q92 46 64 46Q36 46 14 30Z" fill="url(#lining)" stroke="#2a1430" stroke-width="3.5" stroke-linejoin="round"/>
+  <path d="M30 82L20 134H40L44 92Z M98 82L108 134H88L84 92Z" fill="url(#coat)" stroke="#2a1430" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M48 126L46 137M80 126L82 137" stroke="#1f1426" stroke-width="11" stroke-linecap="round"/>
+  <path d="M40 128L42 88Q50 80 64 80Q78 80 86 88L88 128Z" fill="url(#coat)" stroke="#2a1430" stroke-width="3.5" stroke-linejoin="round"/>
+  <path d="M54 82L64 100 74 82" fill="#f4eef6" stroke="#2a1430" stroke-width="2.5" stroke-linejoin="round"/>
+  <path d="M50 84Q64 112 78 84" fill="none" stroke="url(#gold)" stroke-width="3" stroke-dasharray="3 2"/>
+  <circle cx="64" cy="104" r="7" fill="url(#gold)" stroke="#8a5a14" stroke-width="2"/>
+  <path d="M61.5 101.5H66M61.5 104H66M63 100V108" stroke="#8a5a14" stroke-width="1.6" stroke-linecap="round"/>
+  <path d="M42 96Q30 104 28 112" fill="none" stroke="#4a2f5a" stroke-width="11" stroke-linecap="round"/>
+  <g transform="translate(22 114)">
+   <path d="M-12 -6Q-16 18 0 20Q16 18 12 -6Q6 -10 0 -9Q-6 -10 -12 -6Z" fill="url(#bag)" stroke="#5f3f1d" stroke-width="2.6" stroke-linejoin="round"/>
+   <path d="M-8 -8Q0 -2 8 -8" fill="none" stroke="#5f3f1d" stroke-width="3" stroke-linecap="round"/>
+   <path d="M-4 3H4M-4 7H4M-1 -1V13" stroke="#6b4a24" stroke-width="2.2" stroke-linecap="round"/>
+  </g>
+  <circle cx="27" cy="108" r="5.5" fill="#d9c7d6" stroke="#4f3b52" stroke-width="2.5"/>
+  <path d="M86 96Q95 103 99 106" fill="none" stroke="#4a2f5a" stroke-width="11" stroke-linecap="round"/>
+  <g transform="translate(109 80) rotate(14)">
+   <path d="M-10 -2H10V26Q0 22 -10 26Z" fill="#fff8e8" stroke="#4f3b52" stroke-width="2.4" stroke-linejoin="round"/>
+   <path d="M-6 4H6M-6 9H4M-6 14H6" stroke="#b33a55" stroke-width="2" stroke-linecap="round"/>
+   <text x="0" y="22" text-anchor="middle" font-family="Arial,sans-serif" font-size="6.5" font-weight="900" fill="#b33a55">БОРГ</text>
+  </g>
+  <circle cx="99" cy="106" r="5.5" fill="#d9c7d6" stroke="#4f3b52" stroke-width="2.5"/>
+  <path d="M38 58Q38 74 46 82H82Q90 74 90 58Z" fill="#2f1d3d"/>
+  <ellipse cx="64" cy="58" rx="22" ry="25" fill="#e2d2df" stroke="#4f3b52" stroke-width="3.5"/>
+  <path d="M41 50Q42 30 64 30Q86 30 87 50L80 44 72 48 64 39 56 48 48 44Z" fill="#2a1a33" stroke="#1a1020" stroke-width="2.5" stroke-linejoin="round"/>
+  <ellipse cx="55" cy="58" rx="5.6" ry="6.6" fill="#fff6d0" stroke="#2a3346" stroke-width="1.5"/>
+  <ellipse cx="73" cy="58" rx="5.6" ry="6.6" fill="#fff6d0" stroke="#2a3346" stroke-width="1.5"/>
+  <ellipse cx="53.4" cy="59" rx="3.3" ry="4.3" fill="#b3263f"/><ellipse cx="71.4" cy="59" rx="3.3" ry="4.3" fill="#b3263f"/>
+  <ellipse cx="53.4" cy="59" rx="1.5" ry="3" fill="#1a1020"/><ellipse cx="71.4" cy="59" rx="1.5" ry="3" fill="#1a1020"/>
+  <circle cx="54.6" cy="56.6" r="1.3" fill="#fff"/><circle cx="72.6" cy="56.6" r="1.3" fill="#fff"/>
+  <path d="M46 50L60 54M82 50L68 54" stroke="#1a1020" stroke-width="3.4" stroke-linecap="round"/>
+  <path d="M64 61Q61 67 65 68" fill="none" stroke="#9d8299" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M53 73Q64 81 75 73" fill="#5a1f33" stroke="#4f3b52" stroke-width="2.4" stroke-linejoin="round"/>
+  <path d="M57 74.5L58.5 79 60 75.3M68 75.3L69.5 79 71 74.5" fill="#fff" stroke="#4f3b52" stroke-width="1" stroke-linejoin="round"/>
+  <path d="M20 31Q30 40 40 44" fill="none" stroke="#fff" stroke-opacity=".2" stroke-width="3" stroke-linecap="round"/>
+ </g></g></svg>

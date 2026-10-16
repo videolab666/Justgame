@@ -1,6 +1,48 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 144" role="img" aria-label="Оригінальний мультяшний персонаж"><defs>
- <linearGradient id="coat" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#9d557f"/><stop offset="1" stop-color="#653652"/></linearGradient>
- <linearGradient id="paper" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#fff9eb"/><stop offset="1" stop-color="#eadac0"/></linearGradient>
- <filter id="ds" x="-35%" width="170%" y="-35%" height="170%"><feDropShadow dx="1" dy="3" stdDeviation="3" flood-color="#133e5d" flood-opacity=".22"/></filter></defs>
- <ellipse cx="64" cy="135" rx="45" ry="7" fill="#173f5a" opacity=".18"/>
- <g filter="url(#ds)"><path d="M18 100 35 49H93L110 100 99 132H24Z" fill="#9f5b82" stroke="#673a67" stroke-width="6"/><circle cx="64" cy="56" r="30" fill="#e4b59e" stroke="#7a536a" stroke-width="5"/><path d="M27 31H104V39H27Z" fill="#573954"/><rect x="42" y="8" width="44" height="28" rx="3" fill="#573954"/><circle cx="52" cy="56" r="5" fill="#3f304e"/><circle cx="77" cy="56" r="5" fill="#3f304e"/><path d="M49 77Q61 87 64 78 71 88 82 77" fill="none" stroke="#6c4358" stroke-width="5"/><circle cx="101" cy="105" r="23" fill="#ae4f70" stroke="#612e58" stroke-width="3"/><path d="M89.5 105 l6.44 7.36 16.099999999999998 -18.400000000000002" stroke="#fff" fill="none" stroke-width="4" stroke-linecap="round"/></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 144" role="img" aria-label="Барон Рейдерон"><defs>
+ <linearGradient id="coat" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#a65d8a"/><stop offset="1" stop-color="#5f3150"/></linearGradient>
+ <linearGradient id="cape" x1="0" x2="0" y1="0" y2="1"><stop stop-color="#3d2645"/><stop offset="1" stop-color="#22152b"/></linearGradient>
+ <linearGradient id="gold" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#ffe08a"/><stop offset="1" stop-color="#c98b2b"/></linearGradient>
+ <linearGradient id="paper" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#fff9eb"/><stop offset="1" stop-color="#e6d3b3"/></linearGradient>
+ <filter id="ds" x="-35%" width="170%" y="-35%" height="170%"><feDropShadow dx="1" dy="3" stdDeviation="3" flood-color="#133e5d" flood-opacity=".22"/></filter><filter id="vol" x="-5%" y="-5%" width="110%" height="110%" color-interpolation-filters="sRGB"><feGaussianBlur in="SourceAlpha" stdDeviation="3" result="b"/><feOffset in="b" dx="3" dy="4" result="lo"/><feComposite in="SourceAlpha" in2="lo" operator="out" result="rim"/><feFlood flood-color="#fff8e4" flood-opacity=".55"/><feComposite in2="rim" operator="in" result="light"/><feOffset in="b" dx="-4" dy="-5" result="so"/><feComposite in="SourceAlpha" in2="so" operator="out" result="edge"/><feFlood flood-color="#1c1d3a" flood-opacity=".32"/><feComposite in2="edge" operator="in" result="shade"/><feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="light"/><feMergeNode in="shade"/></feMerge></filter></defs>
+ <ellipse cx="64" cy="135" rx="46" ry="7" fill="#173f5a" opacity=".2"/>
+ <g filter="url(#ds)"><g filter="url(#vol)">
+  <path d="M30 80Q18 108 22 134H106Q110 106 98 80Z" fill="url(#cape)" stroke="#1d1224" stroke-width="3.5" stroke-linejoin="round"/>
+  <path d="M46 126L44 137M80 126L82 137" stroke="#2b1d2f" stroke-width="11" stroke-linecap="round"/>
+  <path d="M36 128L40 90Q48 80 63 80Q80 80 88 90L92 128Z" fill="url(#coat)" stroke="#3e2240" stroke-width="3.5" stroke-linejoin="round"/>
+  <path d="M52 82L63 104 75 82" fill="#fff6e6" stroke="#3e2240" stroke-width="2.5" stroke-linejoin="round"/>
+  <path d="M63 86L58 92 63 96 68 92Z" fill="#b8324f"/>
+  <path d="M42 96Q63 112 88 120" fill="none" stroke="#c43e57" stroke-width="7" stroke-linecap="round"/>
+  <circle cx="57" cy="112" r="2.2" fill="#ffe08a"/><circle cx="69" cy="114" r="2.2" fill="#ffe08a"/>
+  <path d="M40 96Q27 103 22 110" fill="none" stroke="#7d4166" stroke-width="11" stroke-linecap="round"/>
+  <g transform="translate(18 112) rotate(-28)">
+   <circle cx="0" cy="0" r="9" fill="none" stroke="url(#gold)" stroke-width="5.5"/>
+   <path d="M-2 8V36M-2 26H7M-2 33H5" stroke="#b07a22" stroke-width="5.5" stroke-linecap="round"/>
+   <path d="M-2 8V36M-2 26H7M-2 33H5" stroke="url(#gold)" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <circle cx="22" cy="109" r="5.5" fill="#e8b49d" stroke="#5b3a4f" stroke-width="2.5"/>
+  <path d="M88 96Q99 101 102 108" fill="none" stroke="#7d4166" stroke-width="11" stroke-linecap="round"/>
+  <g transform="translate(104 108) rotate(10)">
+   <rect x="-12" y="-14" width="24" height="30" rx="3" fill="url(#paper)" stroke="#5b3a4f" stroke-width="2.5"/>
+   <path d="M-7 -7H7M-7 -1H5M-7 5H3" stroke="#9c8b7a" stroke-width="2" stroke-linecap="round"/>
+   <circle cx="5" cy="11" r="6" fill="#c43e57" stroke="#7a1e35" stroke-width="2"/>
+   <path d="M2.5 11l2 2 3.5-4" stroke="#ffe0e6" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+  </g>
+  <circle cx="101" cy="111" r="5.5" fill="#e8b49d" stroke="#5b3a4f" stroke-width="2.5"/>
+  <ellipse cx="63" cy="58" rx="23" ry="24" fill="#ebbea4" stroke="#5b3a4f" stroke-width="3.5"/>
+  <path d="M41 60Q38 66 43 68M85 60Q88 66 83 68" fill="#ebbea4" stroke="#5b3a4f" stroke-width="2.5"/>
+  <ellipse cx="54" cy="57" rx="5.6" ry="6.4" fill="#fff" stroke="#2a3346" stroke-width="1.5"/>
+  <ellipse cx="72" cy="57" rx="5.6" ry="6.4" fill="#fff" stroke="#2a3346" stroke-width="1.5"/>
+  <ellipse cx="52.4" cy="58" rx="3.4" ry="4.2" fill="#2a2235"/><ellipse cx="70.4" cy="58" rx="3.4" ry="4.2" fill="#2a2235"/>
+  <circle cx="53.6" cy="55.8" r="1.4" fill="#fff"/><circle cx="71.6" cy="55.8" r="1.4" fill="#fff"/>
+  <path d="M46 49.5L59 53M80 49L67 53" stroke="#2c2230" stroke-width="3.2" stroke-linecap="round"/>
+  <circle cx="72" cy="57" r="9" fill="#e9f6ff" fill-opacity=".18" stroke="url(#gold)" stroke-width="2.6"/>
+  <path d="M80 61Q86 72 84 84" fill="none" stroke="#d9a441" stroke-width="1.4" stroke-dasharray="2 2"/>
+  <path d="M63 60Q60 66 64 68" fill="none" stroke="#a9776a" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M63 70Q55 66 49 70Q45 73 47 76Q49 73 53 73Q59 74 63 72Q67 74 73 73Q77 73 79 76Q81 73 77 70Q71 66 63 70Z" fill="#3a2a35"/>
+  <path d="M56 78Q63 82 71 77" fill="none" stroke="#6c3a4b" stroke-width="2.6" stroke-linecap="round"/>
+  <ellipse cx="62" cy="37" rx="33" ry="6.5" fill="#2e1f33" stroke="#1a1020" stroke-width="2.5"/>
+  <path d="M43 36L45 5Q62 1 80 5L82 36Z" fill="#3b2742" stroke="#1a1020" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M44.3 28L81.4 28 81.7 34 44 34Z" fill="#c43e57"/>
+  <rect x="57" y="25.5" width="11" height="10" rx="2" fill="url(#gold)" stroke="#8a5a14" stroke-width="1.6"/>
+  <path d="M49 9Q51 22 50 30" stroke="#ffffff" stroke-opacity=".18" stroke-width="4" stroke-linecap="round"/>
+ </g></g></svg>

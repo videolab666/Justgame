@@ -88,6 +88,10 @@ const landscape=(w,cls="")=>`<img class="world-art ${cls}" src="./assets/worlds/
 const btn=(action,label,classes="btn",props="")=>`<button type="button" class="${classes}" data-act="${action}" ${props}>${label}</button>`;
 function persist(){try{localStorage.setItem(KEY,JSON.stringify(save));}catch{/* private browsing: play without persistence */}}
 function rank(){const n=Object.values(save.completed).reduce((s,x)=>s+x,0);return n>=120?"Почесний захисник прав":n>=90?"Начальник управління":n>=60?"Начальник відділу":n>=35?"Головний спеціаліст":n>=15?"Спеціаліст":"Стажер";}
+// "Open all levels" (settings): lets a player continue on another device
+// without replaying. Only access changes; stars stay the real ones.
+const ALL_OPEN=Object.fromEntries(WORLDS.flatMap((w,i)=>Array.from({length:10},(_,k)=>[levelId(i,k+1),0])));
+function access(){return save.settings.allLevels?ALL_OPEN:save.completed;}
 function totalStars(){return Object.values(save.completed).reduce((a,b)=>a+b,0);}
 function wrapper(main,active=""){
  const gameOn=view==="play";
@@ -124,16 +128,17 @@ function renderHome(){
  <div class="world-grid">${WORLDS.map((w,i)=>`<button class="world-card" data-act="world" data-world="${i}">${landscape(i,"world-art-sm")}<span class="world-emoji">${w.emoji}</span><strong>${w.name}</strong><p>${w.subtitle}</p></button>`).join("")}</div></section>`);
 }
 function worldCard(w,i){
- const unlocked=levelUnlocked(i,1,save.completed),done=Array.from({length:10},(_,k)=>save.completed[levelId(i,k+1)]!==undefined).filter(Boolean).length;
+ const unlocked=levelUnlocked(i,1,access()),done=Array.from({length:10},(_,k)=>save.completed[levelId(i,k+1)]!==undefined).filter(Boolean).length;
  return `<button type="button" class="world-card ${!unlocked?"locked":""}" data-act="world" data-world="${i}" ${!unlocked?"disabled":""}>${landscape(i,"world-art-sm")}<span class="world-emoji">${w.emoji}</span><strong>${i+1}. ${w.name}</strong><p>${w.subtitle}<br>${w.summary}</p><div class="progress-track"><div class="progress-fill" style="width:${done*10}%"></div></div><small>${unlocked?`${done}/10 справ`:"🔒 Спершу завершіть попередній світ"}</small></button>`;
 }
 function renderWorlds(){
  return wrapper(`<div class="main"><div class="eyebrow">Подорож родини Коваленків</div><h1 class="section-title">Оберіть світ</h1><div class="hint">🦉 ${STORY[Math.min(3,world)]}</div><div class="world-grid" style="margin-top:21px">${WORLDS.map(worldCard).join("")}</div>
- <p class="muted">Збереження автоматичне. Рівні відкриваються по черзі.</p></div>`);
+ <p class="muted">Збереження автоматичне. Рівні відкриваються по черзі.</p>
+ ${save.settings.allLevels?'<p class="muted">🔓 Усі рівні та картки відкрито. Вимкнути можна в Налаштуваннях.</p>':'<div class="open-all"><p>Вже грали на іншому пристрої?</p>'+btn("open-all","🔓 Відкрити всі рівні","btn btn-quiet")+'</div>'}</div>`);
 }
 function renderLevels(){
  const w=WORLDS[world],items=Array.from({length:10},(_,i)=>{
-  const st=i+1,id=levelId(world,st),open=levelUnlocked(world,st,save.completed),n=save.completed[id];
+  const st=i+1,id=levelId(world,st),open=levelUnlocked(world,st,access()),n=save.completed[id];
   return `<button type="button" class="level-tile ${!open?"locked":""}" data-act="level" data-stage="${st}" ${!open?"disabled":""}>
   <strong>${world+1}·${st}</strong><span>${E(w.titles[i])}</span><em>${open?(n!==undefined?"★".repeat(n)+"☆".repeat(3-n):"▶ Грати"):"🔒"}</em></button>`;
  }).join("");
@@ -142,7 +147,7 @@ function renderLevels(){
 }
 function slotLimit(){return 8+(totalStars()>=15?1:0)+(totalStars()>=60?1:0);}
 function chooseSuggested(){
- const unlocked=challenge?UNITS:unlockedUnits(save.completed),max=slotLimit();
+ const unlocked=challenge?UNITS:unlockedUnits(access()),max=slotLimit();
  const recommend=[
   ["registrar","cnap","notary","notification","senior","mine","commission","archive"],
   ["executor","cnap","limitation","trustee","private_executor","station","notary","registrar"],
@@ -165,7 +170,7 @@ function unitCard(u,{selected=false,disabled=false,cooldown=0}={}){
  <small>⏱ ${u.cooldown} с</small>${cooldown>.2?`<span class="cooldown">${Math.ceil(cooldown)}</span>`:""}</button>`;
 }
 
-function availableUnits(){return challenge?UNITS:unlockedUnits(save.completed);}
+function availableUnits(){return challenge?UNITS:unlockedUnits(access());}
 /** Lanes of every special threat. Before the battle the plan is rebuilt with
  * the same seed the battle will use, so the preview matches the fight. */
 function encounterPlan(){
@@ -236,7 +241,7 @@ function renderCounterModal(){
 }
 
 function renderDeck(){
- const avail=challenge?UNITS:unlockedUnits(save.completed);const disabled=level.activeLanes.length===1&&level.stage===1;
+ const avail=challenge?UNITS:unlockedUnits(access());const disabled=level.activeLanes.length===1&&level.stage===1;
  const types=[...new Set(level.enemies.map(id=>ENEMY_BY_ID[id]?.scheme).filter(Boolean))];
  const warns=types.filter(s=>!deck.some(id=>UNIT_BY_ID[id]?.tool&& (TOOLS[UNIT_BY_ID[id].tool]?.multipliers[Object.keys(TYPES).indexOf(s)]||0)>=1.5));
  return wrapper(`<main class="main"><div class="eyebrow">${challenge?"Особливий режим":"Справа "+level.id+" · "+WORLDS[world].name}</div><h1 class="section-title">${E(level.name)}</h1>
@@ -441,7 +446,7 @@ function rewardDialog(){
   '<div class="dialog-actions">'+btn("reward-continue","Продовжити ▶","btn btn-primary")+'</div>';
 }
 function rewardFor(id){
- if(challenge||save.completed[id]!==undefined)return null;
+ if(challenge||save.settings.allLevels||save.completed[id]!==undefined)return null;
  return UNLOCK_REWARDS[id]||null;
 }
 /* ---- Phones: landscape battle layout, rotate prompt, touch input ------- */
@@ -794,7 +799,7 @@ function renderAlmanac(){
 }
 function renderSettings(){
  return wrapper(`<main class="main" style="max-width:830px;margin:0 auto"><h1 class="section-title">Налаштування</h1>
- <div class="panel">${[["sound","Звукові ефекти"],["music","Фонова музика"],["autoCollect","Автоматично збирати печатки"],["tutorials","Навчальні картки (пауза при новому ворогові чи картці)"],["reducedMotion","Менше руху та ефектів"],["highContrast","Висококонтрастний режим"],["largeText","Збільшити текст"]].map(([id,label])=>`<label class="setting-row"><strong>${label}</strong><input type="checkbox" data-setting="${id}" ${save.settings[id]?"checked":""}></label>`).join("")}
+ <div class="panel">${[["sound","Звукові ефекти"],["music","Фонова музика"],["autoCollect","Автоматично збирати печатки"],["tutorials","Навчальні картки (пауза при новому ворогові чи картці)"],["allLevels","Відкрити всі рівні та картки (щоб продовжити з іншого пристрою)"],["reducedMotion","Менше руху та ефектів"],["highContrast","Висококонтрастний режим"],["largeText","Збільшити текст"]].map(([id,label])=>`<label class="setting-row"><strong>${label}</strong><input type="checkbox" data-setting="${id}" ${save.settings[id]?"checked":""}></label>`).join("")}
  <label class="setting-row"><strong>Гучність музики: <output data-volume-label>${save.settings.musicVolume}%</output></strong><input type="range" min="0" max="100" step="5" data-volume value="${save.settings.musicVolume}" aria-label="Гучність музики"></label>
  <p class="notice">Чотири оригінальні музичні теми світів; звук запускається після дії гравця. Можна окремо вимкнути музику і ефекти.</p>
  <p class="notice">Налаштування та прогрес зберігаються тільки у вашому браузері. Дані на сервер не передаються.</p>
@@ -1127,7 +1132,7 @@ function goLevel(w,s){
 }
 function startGame(){
  if(!deck.length)return;
- const tutorialFlow=level.id==="1-1"&&!challenge&&save.settings.tutorials!==false&&save.completed["1-1"]===undefined;
+ const tutorialFlow=level.id==="1-1"&&!challenge&&save.settings.tutorials!==false&&!save.settings.allLevels&&save.completed["1-1"]===undefined;
  game=makeGame(level,deck,save.mode,{...save.settings,careerBonus:totalStars()>=35?25:0,tutorialFlow,rewardCard:rewardFor(level.id)},challenge);selected=deck[0];shownEnd=false;outroElapsed=0;latestShotSound=0;lastShotSfxAt=-10;lastRollerUid=0;
  game.lastHint=level.tutorial||`Світ ${world+1}. Захистіть будівлю, використовуючи відповідні інструменти.`;
  introQueue=[];intro=null;fieldHint=null;
@@ -1170,9 +1175,9 @@ function action(name,el){
   chooseSuggested();setView("deck");return;
  }
  if(name==="worlds"){game=null;challenge=null;setView("worlds");return;}
- if(name==="world"){const i=Number(el.dataset.world);if(levelUnlocked(i,1,save.completed)){world=i;setView("levels");}return;}
+ if(name==="world"){const i=Number(el.dataset.world);if(levelUnlocked(i,1,access())){world=i;setView("levels");}return;}
  if(name==="levels"){game=null;if(challenge){challenge=null;setView("worlds");}else setView("levels");return;}
- if(name==="level"){const st=Number(el.dataset.stage);if(levelUnlocked(world,st,save.completed))goLevel(world,st);return;}
+ if(name==="level"){const st=Number(el.dataset.stage);if(levelUnlocked(world,st,access()))goLevel(world,st);return;}
  if(name==="start"){startGame();return;}
  if(name==="threat-tip"){selectedThreat=el?.dataset?.enemy||selectedThreat;modal="threat";render();return;}
  if(name==="hint"){selectedThreat=game?.enemies.find(e=>e.trait!=="neutral")?.id||encounterThreats()[0]||"schemer";modal="threat";render();return;}
@@ -1205,6 +1210,7 @@ function action(name,el){
  }
  if(name==="legend"&&game){modal="legend";render();return;}
  if(name==="install"&&installPrompt){installPrompt.prompt();installPrompt.userChoice?.finally?.(()=>{installPrompt=null;render();});return;}
+ if(name==="open-all"){save.settings.allLevels=true;persist();render();return;}
  if(name==="install-close"){save.installTipClosed=true;persist();render();return;}
  if(name==="play-portrait"){allowPortrait=true;applyDeviceMode();return;}
  if(name==="reward-pick"&&game?.rewardDrop){modal="reward";sound(1040,.3);render();return;}

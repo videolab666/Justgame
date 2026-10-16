@@ -1,9 +1,28 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 144" role="img" aria-label="Оригінальний мультяшний персонаж"><defs>
- <linearGradient id="coat" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#9d557f"/><stop offset="1" stop-color="#653652"/></linearGradient>
- <linearGradient id="paper" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#fff9eb"/><stop offset="1" stop-color="#eadac0"/></linearGradient>
- <filter id="ds" x="-35%" width="170%" y="-35%" height="170%"><feDropShadow dx="1" dy="3" stdDeviation="3" flood-color="#133e5d" flood-opacity=".22"/></filter></defs>
- <ellipse cx="64" cy="135" rx="45" ry="7" fill="#173f5a" opacity=".18"/>
- <g filter="url(#ds)"><path d="M24 124Q20 97 42 91L86 90Q112 95 107 124V132H24Z" fill="url(#coat)" stroke="#674861" stroke-width="4"/><path d="M54 90L64 127 78 90" fill="#f5efe2" stroke="#c4c5c0" stroke-width="2"/><path d="M62 99L66 125 72 99" fill="#c46c89"/><path d="M36 108 21 94" stroke="#674861" stroke-width="13" stroke-linecap="round"/><path d="M92 107 112 90" stroke="#674861" stroke-width="13" stroke-linecap="round"/><circle cx="64" cy="113" r="6" fill="#a36b85" stroke="#674861" stroke-width="2"/><ellipse cx="65" cy="65" rx="33" ry="38" fill="#d9b0a7" stroke="#8d6270" stroke-width="3"/><path d="M28 54Q30 12 65 16 104 19 99 53Z" fill="#604763" stroke="#593b5d" stroke-width="5"/><path d="M24 48H105" stroke="#d58ca5" stroke-width="7" stroke-linecap="round"/>
- <ellipse cx="53" cy="67" rx="4" ry="6" fill="#1a3a56"/><ellipse cx="78" cy="67" rx="4" ry="6" fill="#1a3a56"/>
- <circle cx="55" cy="65" r="1.5" fill="#fff"/><circle cx="80" cy="65" r="1.5" fill="#fff"/>
- <path d="M56 84Q66 81 75 82" fill="none" stroke="#765263" stroke-width="3" stroke-linecap="round"/><g transform="translate(24 103)"><path d="M-16-25H16 M-16 25H16" stroke="#846a54" stroke-width="6" stroke-linecap="round"/><path d="M-13-23Q-13-7 0 0 -13 10 -13 23H13Q13 10 0 0 13-7 13-23Z" fill="#d5f4ea" stroke="#386c82" stroke-width="3"/><path d="M-9 -17H9L0-4ZM-10 19H10L0 7Z" fill="#dba35e"/></g></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 144" role="img" aria-label="Черга-змія"><defs>
+ <linearGradient id="skin" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#9fc07a"/><stop offset="1" stop-color="#5f8a4a"/></linearGradient>
+ <linearGradient id="paper" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#fffaf0"/><stop offset="1" stop-color="#e6d6b8"/></linearGradient>
+ <filter id="ds" x="-35%" width="170%" y="-35%" height="170%"><feDropShadow dx="1" dy="3" stdDeviation="3" flood-color="#133e5d" flood-opacity=".22"/></filter><filter id="vol" x="-5%" y="-5%" width="110%" height="110%" color-interpolation-filters="sRGB"><feGaussianBlur in="SourceAlpha" stdDeviation="3" result="b"/><feOffset in="b" dx="3" dy="4" result="lo"/><feComposite in="SourceAlpha" in2="lo" operator="out" result="rim"/><feFlood flood-color="#fff8e4" flood-opacity=".55"/><feComposite in2="rim" operator="in" result="light"/><feOffset in="b" dx="-4" dy="-5" result="so"/><feComposite in="SourceAlpha" in2="so" operator="out" result="edge"/><feFlood flood-color="#1c1d3a" flood-opacity=".32"/><feComposite in2="edge" operator="in" result="shade"/><feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="light"/><feMergeNode in="shade"/></feMerge></filter></defs>
+ <ellipse cx="68" cy="134" rx="48" ry="7" fill="#173f5a" opacity=".2"/>
+ <g filter="url(#ds)"><g filter="url(#vol)">
+  <path id="spine" d="M38 66C60 56 92 56 96 78C100 98 58 92 54 108C50 124 86 130 112 120" fill="none" stroke="#2f4a2a" stroke-width="25" stroke-linecap="round"/>
+  <path d="M38 66C60 56 92 56 96 78C100 98 58 92 54 108C50 124 86 130 112 120" fill="none" stroke="url(#skin)" stroke-width="19" stroke-linecap="round"/>
+  <path d="M38 66C60 56 92 56 96 78C100 98 58 92 54 108C50 124 86 130 112 120" fill="none" stroke="url(#paper)" stroke-width="9" stroke-dasharray="9 7" stroke-dashoffset="-6"/>
+  <path d="M38 66C60 56 92 56 96 78C100 98 58 92 54 108C50 124 86 130 112 120" fill="none" stroke="#c43e57" stroke-width="2" stroke-dasharray="3 13" stroke-dashoffset="-9"/>
+  <path d="M112 120l10-4-4 8 6 2-10 2" fill="#5f8a4a" stroke="#2f4a2a" stroke-width="2.4" stroke-linejoin="round"/>
+  <path d="M10 66Q8 44 28 38Q50 34 54 54Q56 72 38 78Q16 82 10 66Z" fill="url(#skin)" stroke="#2f4a2a" stroke-width="3.5"/>
+  <path d="M14 70Q24 74 36 70" fill="none" stroke="#2f4a2a" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M14 70L4 72 9 76 3 79 13 77" fill="#e6587a" stroke="#8a2443" stroke-width="1.6" stroke-linejoin="round"/>
+  <ellipse cx="25" cy="52" rx="6.6" ry="7.4" fill="#fff" stroke="#2a3346" stroke-width="1.5"/>
+  <ellipse cx="42" cy="51" rx="6.6" ry="7.4" fill="#fff" stroke="#2a3346" stroke-width="1.5"/>
+  <ellipse cx="23" cy="53" rx="3.6" ry="4.8" fill="#2a2235"/><ellipse cx="40" cy="52" rx="3.6" ry="4.8" fill="#2a2235"/>
+  <circle cx="24.2" cy="50.6" r="1.5" fill="#fff"/><circle cx="41.2" cy="49.6" r="1.5" fill="#fff"/>
+  <circle cx="25" cy="52" r="9" fill="none" stroke="#3b3140" stroke-width="2.4"/>
+  <circle cx="42" cy="51" r="9" fill="none" stroke="#3b3140" stroke-width="2.4"/>
+  <path d="M34 51.5H33M51 50L55 48" stroke="#3b3140" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M16 42L31 45M50 40L37 45" stroke="#2f4a2a" stroke-width="3" stroke-linecap="round"/>
+  <g transform="translate(70 24) rotate(-8)">
+   <rect x="-17" y="-11" width="34" height="22" rx="3" fill="url(#paper)" stroke="#5b4a3a" stroke-width="2.4"/>
+   <text x="0" y="5" text-anchor="middle" font-family="Arial,sans-serif" font-size="12" font-weight="900" fill="#c43e57">№ 99</text>
+  </g>
+  <path d="M52 40Q56 32 60 30" fill="none" stroke="#5b4a3a" stroke-width="1.6" stroke-dasharray="2 2"/>
+ </g></g></svg>

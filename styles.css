@@ -892,3 +892,7 @@ body.mend .result-actions .btn{padding:7px 10px;font-size:13px}
  .deck-summary{position:sticky;bottom:0;z-index:5;margin:8px 0 0;padding:6px 10px;background:#f9f5e9ee;border-top:1px solid #d2e0dc}
 }
 body.mend .outro-character .game-art{height:30dvh;width:100%;object-fit:contain}
+
+/* "Open all levels" offer under the world map. */
+.open-all{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:10px}
+.open-all p{margin:0;color:#496477}

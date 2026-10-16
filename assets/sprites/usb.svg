@@ -1,6 +1,27 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 144" role="img" aria-label="Оригінальний мультяшний персонаж"><defs>
- <linearGradient id="coat" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#87516d"/><stop offset="1" stop-color="#653652"/></linearGradient>
- <linearGradient id="paper" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#fff9eb"/><stop offset="1" stop-color="#eadac0"/></linearGradient>
- <filter id="ds" x="-35%" width="170%" y="-35%" height="170%"><feDropShadow dx="1" dy="3" stdDeviation="3" flood-color="#133e5d" flood-opacity=".22"/></filter></defs>
- <ellipse cx="64" cy="135" rx="45" ry="7" fill="#173f5a" opacity=".18"/>
- <g filter="url(#ds)"><rect x="30" y="41" width="66" height="78" rx="12" fill="#a373a4" stroke="#583e64" stroke-width="6"/><rect x="40" y="23" width="46" height="28" rx="4" fill="#d4ced5" stroke="#68536e" stroke-width="5"/><path d="M52 24V36 M74 24V36" stroke="#79586c" stroke-width="5"/><circle cx="51" cy="78" r="5" fill="#402c57"/><circle cx="77" cy="78" r="5" fill="#402c57"/><path d="M51 94Q64 108 78 94" fill="none" stroke="#402c57" stroke-width="4"/><path d="M44 116 34 130m50-14 12 14" stroke="#745d73" stroke-width="8"/></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 144" role="img" aria-label="Шкідлива флешка"><defs>
+ <linearGradient id="body" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#8d63b8"/><stop offset="1" stop-color="#53347a"/></linearGradient>
+ <linearGradient id="metal" x1="0" x2="1" y1="0" y2="0"><stop stop-color="#e6edf2"/><stop offset=".5" stop-color="#b8c4cf"/><stop offset="1" stop-color="#8e9cab"/></linearGradient>
+ <filter id="ds" x="-35%" width="170%" y="-35%" height="170%"><feDropShadow dx="1" dy="3" stdDeviation="3" flood-color="#133e5d" flood-opacity=".22"/></filter><filter id="vol" x="-5%" y="-5%" width="110%" height="110%" color-interpolation-filters="sRGB"><feGaussianBlur in="SourceAlpha" stdDeviation="3" result="b"/><feOffset in="b" dx="3" dy="4" result="lo"/><feComposite in="SourceAlpha" in2="lo" operator="out" result="rim"/><feFlood flood-color="#fff8e4" flood-opacity=".55"/><feComposite in2="rim" operator="in" result="light"/><feOffset in="b" dx="-4" dy="-5" result="so"/><feComposite in="SourceAlpha" in2="so" operator="out" result="edge"/><feFlood flood-color="#1c1d3a" flood-opacity=".32"/><feComposite in2="edge" operator="in" result="shade"/><feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="light"/><feMergeNode in="shade"/></feMerge></filter></defs>
+ <ellipse cx="64" cy="135" rx="38" ry="6" fill="#173f5a" opacity=".2"/>
+ <g filter="url(#ds)"><g filter="url(#vol)">
+  <path d="M50 116L42 132M78 116L86 132" stroke="#3a2457" stroke-width="7" stroke-linecap="round"/>
+  <path d="M36 132H48M80 132H92" stroke="#3a2457" stroke-width="7" stroke-linecap="round"/>
+  <rect x="44" y="10" width="40" height="30" rx="3" fill="url(#metal)" stroke="#4b5866" stroke-width="3.5"/>
+  <rect x="52" y="18" width="8" height="7" rx="1" fill="#4b5866"/><rect x="68" y="18" width="8" height="7" rx="1" fill="#4b5866"/>
+  <rect x="34" y="36" width="60" height="84" rx="14" fill="url(#body)" stroke="#2f1c47" stroke-width="3.5"/>
+  <path d="M42 46Q44 40 52 40" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width="4" stroke-linecap="round"/>
+  <rect x="42" y="86" width="44" height="26" rx="4" fill="#f4ecd8" stroke="#2f1c47" stroke-width="2.5"/>
+  <path d="M64 90a6.5 6 0 0 1 6.5 6c0 2.4-1.4 3.4-2.4 4v2.6h-8.2V100c-1-.6-2.4-1.6-2.4-4a6.5 6 0 0 1 6.5-6z" fill="#2f1c47"/>
+  <circle cx="61.3" cy="96.3" r="1.7" fill="#f4ecd8"/><circle cx="66.7" cy="96.3" r="1.7" fill="#f4ecd8"/>
+  <path d="M50 106L78 110M50 110L78 106" stroke="#c43e57" stroke-width="2.4" stroke-linecap="round"/>
+  <ellipse cx="53" cy="62" rx="7.5" ry="8.5" fill="#fff" stroke="#2a3346" stroke-width="1.6"/>
+  <ellipse cx="75" cy="62" rx="7.5" ry="8.5" fill="#fff" stroke="#2a3346" stroke-width="1.6"/>
+  <ellipse cx="50.8" cy="63.5" rx="4.4" ry="5.4" fill="#2a2235"/><ellipse cx="72.8" cy="63.5" rx="4.4" ry="5.4" fill="#2a2235"/>
+  <circle cx="52.2" cy="60.8" r="1.7" fill="#fff"/><circle cx="74.2" cy="60.8" r="1.7" fill="#fff"/>
+  <path d="M43 49L60 55M85 49L68 55" stroke="#1f1230" stroke-width="3.6" stroke-linecap="round"/>
+  <path d="M52 77Q64 71 76 77" fill="none" stroke="#1f1230" stroke-width="3" stroke-linecap="round"/>
+  <path d="M60 75.5L61.5 79 63 75M66 75L67.5 79 69 75.5" fill="#fff" stroke="#1f1230" stroke-width="1" stroke-linejoin="round"/>
+  <path d="M34 72Q20 76 18 92M94 72Q108 70 112 58" fill="none" stroke="#2f1c47" stroke-width="6" stroke-linecap="round"/>
+  <path d="M110 44L104 54H112L106 64" fill="none" stroke="#ffd34d" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M22 98l-6 4M16 92l-6-1" stroke="#ffd34d" stroke-width="2.6" stroke-linecap="round"/>
+ </g></g></svg>
