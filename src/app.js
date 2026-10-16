@@ -154,7 +154,7 @@ function renderDeck(){
 function cellContent(lane,col){
  const d=game.defenders.find(x=>x.lane===lane&&x.col===col),lock=game.locks.some(x=>x.lane===lane&&x.col===col);
  let inner=lock?'<span class="locked-cell">🚫</span>':"";
- if(d)inner+=`<span data-tool="${E(d.tool||"none")}" data-kind="${E(d.kind)}" class="defender ${d.shieldHp>0?"shielded":""} ${game.time<d.disabledUntil?"disabled":""} ${game.time-(d.lastShotAt??-10)<.38?"firing":""} ${game.time-d.placedAt<.28?"placing":""} ${game.time-(d.lastDamagedAt??-10)<.22?"hurt":""}"><span class="sprite">${art(d.id,"board-illustration")}</span>${["shooter","intern","lobber","splash","air","slow","sniper","global"].includes(d.kind)?'<span class="attack-arm" aria-hidden="true"><span class="attack-hand"></span><span class="attack-item"></span></span>':""}<small>${E(d.name.split(" ")[0])}</small><span class="health" style="width:${Math.max(0,d.hp/d.maxHp)*96}%"></span></span>`;
+ if(d)inner+=`<span data-tool="${E(d.tool||"none")}" data-kind="${E(d.kind)}" class="defender ${d.shieldHp>0?"shielded":""} ${game.time<d.disabledUntil?"disabled":""} ${game.time-(d.lastShotAt??-10)<.38?"firing":""} ${game.time-d.placedAt<.28?"placing":""} ${game.time-(d.lastDamagedAt??-10)<.22?"hurt":""}"><span class="sprite">${art(d.id,"board-illustration")}</span><span class="unit-status" aria-hidden="true"></span>${["shooter","intern","lobber","splash","air","slow","sniper","global"].includes(d.kind)?'<span class="attack-arm" aria-hidden="true"><span class="attack-hand"></span><span class="attack-item"></span></span>':""}<small>${E(d.name.split(" ")[0])}</small><span class="health" style="width:${Math.max(0,d.hp/d.maxHp)*96}%"></span></span>`;
  return inner;
 }
 function renderPlay(){
@@ -230,8 +230,10 @@ function syncGameFrame(){
   const status=card.querySelector("small");
   if(status)status.textContent=game.seal>=unit.cost?"Готово":"Бракує 🟡";
  }
+ const hotRows=new Set(game.enemies.filter(e=>e.hp>0&&e.x<=6.5&&e.trait!=="neutral").map(e=>e.lane));
  for(const cell of root.querySelectorAll(".board > .cell")){
   const row=+cell.dataset.lane,col=+cell.dataset.col;
+  cell.classList.toggle("lane-under-attack",hotRows.has(row));
   const d=game.defenders.find(x=>x.lane===row&&x.col===col);
   const lock=game.locks.find(x=>x.lane===row&&x.col===col);
   const key=(d?d.uid+":"+d.id:"empty")+":"+(lock?lock.enemyUid??"locked":"free");
@@ -242,7 +244,20 @@ function syncGameFrame(){
   }
   const sprite=cell.querySelector(".defender");
   if(sprite&&d){
-   cell.title=d.name+" — "+(explainFiring(game,d)||"Підтримка оборони.");
+   const reason=explainFiring(game,d)||"Підтримка оборони.";
+   cell.title=d.name+" — "+reason;
+   const badge=sprite.querySelector(".unit-status");
+   if(badge){
+    const icon=reason.includes("Туман")?"🌫":
+     reason.includes("Замаскована")?"👁":
+     reason.includes("повітряні")?"✈":
+     reason.includes("під землею")?"🕳":
+     reason.includes("заблоковано")||reason.includes("дезорієнтовано")?"⛔":
+     reason.includes("позаду")?"↩":"";
+    if(badge.textContent!==icon)badge.textContent=icon;
+    badge.classList.toggle("visible",!!icon);
+    badge.title=reason;
+   }
    sprite.classList.toggle("firing",game.time-(d.lastShotAt??-10)<.38);
    sprite.classList.toggle("placing",game.time-d.placedAt<.28);
    sprite.classList.toggle("hurt",game.time-(d.lastDamagedAt??-10)<.22);
@@ -318,6 +333,7 @@ function syncGameFrame(){
   }else{
    el.style.left=p.x*100/9+"%";el.style.top=p.row*20+"%";
    el.style.transform="translate(-50%,-50%)";
+   el.style.setProperty("--shot-angle",p.ballistic?"-18deg":"0deg");
   }
  }
  for(const el of Array.from(shotLayer.children))if(!shotsAlive.has(el.dataset.projectile))el.remove();
@@ -360,6 +376,7 @@ function syncGameFrame(){
    el=document.createElement("span");el.dataset.fx=id;el.className="battle-fx";el.textContent=fx.text;fxLayer.append(el);
   }
   el.className="battle-fx fx-"+fx.kind;
+  el.dataset.world=String(level.world+1);
   el.style.left=fx.x*100/9+"%";el.style.top=fx.lane*20+1+"%";
   el.style.opacity=Math.min(1,fx.ttl*2);
  }

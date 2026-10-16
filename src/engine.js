@@ -253,9 +253,22 @@ export function damageEnemy(g,e,raw,tool=null,extra=1){
  if(e.id==="mini_boss"&&tool!=="expert")mult=Math.min(mult,.5);
  if(e.id==="tentacle"&&tool!=="integrity")mult*=.5;
  let n=Math.max(0,raw*mult*extra);
- if(e.shield>0 && tool!=="enforcement"){const absorbed=Math.min(e.shield,n);e.shield-=absorbed;n-=absorbed;}
+ if(e.shield>0 && tool!=="enforcement"){
+  const absorbed=Math.min(e.shield,n);
+  e.shield-=absorbed;n-=absorbed;
+  if(absorbed>0){
+   // The projectile hit; the visible shield consumed it. Do not make this
+   // look like a mysterious missed shot to the player.
+   effect(g,"shield-impact",e.lane,e.x,"🛡",.42);
+   emitBurst(g,"shield",e.lane,e.x,4);
+  }
+ }
  e.hp-=n;e.lastHitTool=tool;if(n>0)e.lastHitAt=g.time;
  if(n>0&&Math.random()<.24)effect(g,"damage",e.lane,e.x,mult>=1.5?"✔ ×"+mult:mult<1?"×"+mult:"");
+ if(n===0&&raw>0&&e.id==="boss"&&g.time-(e.lastImmuneAt??-99)>1.1){
+  e.lastImmuneAt=g.time;
+  effect(g,"immune",e.lane,e.x,"ЗАХИСТ",.55);
+ }
  if(e.id==="boss"){
   const prev=e.phase;e.phase=e.hp>e.maxHp*.7?1:e.hp>e.maxHp*.35?2:3;
   if(e.phase!==prev){
@@ -311,7 +324,7 @@ export function useGuard(g,lane,automatic=false){
  */
 export function emitBurst(g,kind,lane,x,count=6){
  if(g.settings?.reducedMotion)return;
- const palette={stamp:"ink",chain:"ice",writ:"paper",dossier:"paper",clip:"spark",dove:"gold",beam:"cyan",mine:"gold",guard:"gold",blast:"spark",sweep:"paper",forgery:"paper",cyber:"cyan",debt:"gold",corruption:"paper",bureaucracy:"ink"};
+ const palette={stamp:"ink",chain:"ice",writ:"paper",dossier:"paper",clip:"spark",dove:"gold",beam:"cyan",shield:"cyan",mine:"gold",guard:"gold",blast:"spark",sweep:"paper",forgery:"paper",cyber:"cyan",debt:"gold",corruption:"paper",bureaucracy:"ink"};
  const variant=palette[kind]||"ink";
  const amount=Math.min(14,Math.max(0,count));
  for(let i=0;i<amount;i++){
