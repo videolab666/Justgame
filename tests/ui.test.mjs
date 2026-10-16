@@ -23,7 +23,7 @@ function createUI(source){
  class Audio{constructor(){this.paused=true;this.volume=1;}play(){this.paused=false;return Promise.resolve();}pause(){this.paused=true;}getAttribute(){return this.src;}}
  const symbols={...data,...engine,...tactics,...life,Soundtrack,MusicPlayer,Audio,document,window,localStorage,requestAnimationFrame,fetch};
  const load=new Function(...Object.keys(symbols),
-  noImports+';return {action,goLevel,startGame,setView,finish,advanceCinematic,cine:()=>cine,html:()=>root.innerHTML,game:()=>game,mode:()=>view};');
+  noImports+';return {action,goLevel,startGame,setView,finish,advanceCinematic,cine:()=>cine,mini:()=>mini,fakeFields:()=>mini.fakes.map(k=>FORGERY_FAKES[k][0]),quizAnswer:()=>QUIZ[level.mini].items[mini.questions[mini.index]][1],html:()=>root.innerHTML,game:()=>game,mode:()=>view};');
  return load(...Object.values(symbols));
 }
 const source=await readFile(new URL('../src/app.js',import.meta.url),'utf8');
@@ -136,7 +136,9 @@ test('the very first battle is a guided tutorial instead of a coach card',()=>{
 test('after a bonus case the "next case" button opens the next level',()=>{
  const game=createUI(source);
  game.goLevel(0,5);
- for(const i of [0,1,2])game.action('mini-choice',{dataset:{idx:String(i)}});
+ for(const i of game.fakeFields())game.action('mini-choice',{dataset:{idx:String(i)}});
+ assert.match(game.html(),/Завершити справу/);
+ game.action('mini-finish');
  assert.equal(game.mode(),'result');
  game.action('next-level');
  assert.equal(game.mode(),'deck');
@@ -149,4 +151,34 @@ test('the asset hunt explains its cells and keys',()=>{
  assert.match(html,/asset-cell/);
  assert.match(html,/сусідніх клітинках/);
  assert.doesNotMatch(html,/□/);
+});
+
+test('forgery hunt: every find is explained, three wrong marks give a new copy',()=>{
+ const game=createUI(source);
+ game.goLevel(0,5);
+ const fakes=game.fakeFields();
+ assert.equal(fakes.length,3);
+ game.action('mini-choice',{dataset:{idx:String(fakes[0])}});
+ assert.equal(game.mini().notes.length,1);
+ const real=[0,1,2,3,4,5,6,7,8].filter(i=>!fakes.includes(i));
+ for(const i of real.slice(0,3))game.action('mini-choice',{dataset:{idx:String(i)}});
+ assert.equal(game.mini().marked.length,0,'restarted with a new copy');
+ assert.match(game.html(),/нова копія/);
+});
+test('quizzes explain each answer and wait for "Далі"',()=>{
+ for(const [w,s] of [[2,8],[3,5]]){
+  const game=createUI(source);
+  game.goLevel(w,s);
+  const first=game.mini().questions.slice();
+  assert.equal(first.length,5);
+  for(let q=0;q<5;q++){
+   const right=game.quizAnswer();
+   game.action('mini-choice',{dataset:{idx:String(q<4?right:1-right)}});
+   assert.match(game.html(),q<4?/Вірно/:/правильно —/);
+   game.action('mini-next');
+  }
+  assert.match(game.html(),/Правильних відповідей: <strong>4<\/strong>/);
+  game.action('mini-finish');
+  assert.equal(game.mode(),'result');
+ }
 });

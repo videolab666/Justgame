@@ -718,37 +718,113 @@ function renderMini(){
  const heading={forgery:"🔍 Знайди підробку",assets:"🏙️ Знайди майно боржника",acts:"📋 Нормативний чи індивідуальний?",phishing:"📱 Справжнє чи фейк?"}[type];
  let body="";
  if(type==="forgery"){
-  body=`<p>Знайди три підозрілі реквізити. Це умовні навчальні документи, а не справжня перевірка.</p>
-  <div class="split" style="grid-template-columns:1fr 1fr"><div class="panel"><h3>Оригінал</h3><p>Дата: 12.05.2026</p><p>Реєстр: № 4728</p><p>Підпис: Коваленко</p><p>Адреса: Дніпро</p></div>
-  <div class="panel"><h3>Підозрілий</h3>${["Дата: 12.05.2036","Реєстр: номер відсутній","Підпис: Каваленко","Адреса: Дніпро"].map((x,i)=>`<button type="button" class="btn ${mini.marked.includes(i)?"btn-primary":""}" style="display:block;width:100%;margin:7px 0" data-act="mini-choice" data-idx="${i}">${E(x)} ${mini.marked.includes(i)?"✔":""}</button>`).join("")}</div></div><p>Знайдено: ${mini.marked.length}/3</p>`;
+  body=forgeryBoard();
  }else if(type==="assets"){
   body=assetsBoard();
  }else{
-  const questions=type==="acts"?[
-   ["Порядок видачі довідок громадянам","Нормативний","Індивідуальний",0],
-   ["Наказ про призначення конкретної особи","Нормативний","Індивідуальний",1],
-   ["Загальні правила обробки заяв","Нормативний","Індивідуальний",0],
-   ["Наказ про відпустку працівника","Нормативний","Індивідуальний",1],
-   ["Положення про загальну процедуру","Нормативний","Індивідуальний",0]
-  ]:[
-   ["«Терміново надішліть пароль від КЕП»","Безпечно","Шахрайство",1],
-   ["«Сплатіть борг на особисту картку працівника»","Безпечно","Шахрайство",1],
-   ["«Перевірте свій статус у застосунку, відкривши його самостійно»","Безпечно","Шахрайство",0],
-   ["«Перейдіть за коротким посиланням для відновлення реєстру»","Безпечно","Шахрайство",1],
-   ["«Не передавайте одноразові коди стороннім»","Безпечно","Шахрайство",0]
-  ];
-  const q=questions[mini.index%questions.length];
-  body=`<p>Запитання ${mini.index+1}/5 · Правильних відповідей: ${mini.correct}</p><div class="panel"><h3>${E(q[0])}</h3>
-  <div class="quiz-list">${[1,2].map((j,i)=>`<button data-act="mini-choice" data-idx="${i}">${E(q[j])}</button>`).join("")}</div></div><p class="notice">Навчальне спрощення, не правовий висновок.</p>`;
+  body=quizBoard(type);
  }
  return wrapper(`<main class="main" style="max-width:970px;margin:auto"><div class="eyebrow">Бонусна справа ${level.id}</div><h1 class="section-title">${heading}</h1><div class="panel">${body}<p class="muted">${E(mini.feedback||{assets:"🦉 Почни з будь-якого об'єкта, а далі орієнтуйся на цифри.",acts:"🦉 Нормативний акт — загальні правила для багатьох; індивідуальний — щодо конкретної особи.",phishing:"🦉 Офіційні сервіси не просять паролів і кодів."}[type]||"🦉 Уважно читай реквізити та не поспішай.")}</p></div><div class="dialog-actions">${btn("mini-retry","↻ Спочатку","btn btn-quiet")}${btn("levels","← На карту","btn btn-dark")}</div></main>`);
 }
 function startMini(){
- mini={marked:[],opened:[],tries:0,found:0,index:0,correct:0,feedback:""};
+ mini={marked:[],opened:[],tries:0,found:0,index:0,correct:0,feedback:"",mistakes:0,notes:[],reveal:null,done:false};
+ // "Знайди підробку": three random forgeries in the copy every attempt.
+ mini.fakes=[...FORGERY_FAKES.keys()].sort(()=>Math.random()-.5).slice(0,FORGERY_TO_FIND);
+ // Quizzes: five of the ten questions, in a new order.
+ mini.questions=QUIZ[level.mini]?[...QUIZ[level.mini].items.keys()].sort(()=>Math.random()-.5).slice(0,QUIZ_ROUND):[];
  // "Знайди майно": a fresh hiding place every attempt.
  const cells=[...Array(ASSET_CELLS).keys()].sort(()=>Math.random()-.5);
  mini.assets=cells.slice(0,ASSET_COUNT);
  mini.kinds=Array.from({length:ASSET_CELLS},()=>Math.floor(Math.random()*ASSET_KINDS.length));
+}
+/* ---- Bonus case "Знайди підробку" ------------------------------------- */
+const FORGERY_TO_FIND=3,FORGERY_MISTAKES=3;
+const FORGERY_DOC=[
+ ["Номер у реєстрі","НВК 248731"],
+ ["Дата посвідчення","12.05.2026"],
+ ["Довіритель","Коваленко Ірина Петрівна"],
+ ["РНОКПП довірителя","3012457896"],
+ ["Представник","Мельник Олег Андрійович"],
+ ["Повноваження","продаж квартири: м. Дніпро, вул. Січових Стрільців, 15, кв. 7"],
+ ["Строк дії","до 12.05.2027"],
+ ["Нотаріус","приватний нотаріус Шевченко О. В."],
+ ["Підпис і печатка","є"]
+];
+// [field index, forged value, why it gives the forgery away]
+const FORGERY_FAKES=[
+ [0,"номер відсутній","Немає номера в реєстрі — справжність довіреності неможливо перевірити."],
+ [1,"12.05.2036","Дата посвідчення в майбутньому — такого документа ще не могло бути."],
+ [2,"Каваленко Ірина Петрівна","Прізвище довірителя відрізняється від оригіналу: Коваленко → Каваленко."],
+ [3,"301245789","РНОКПП складається з 10 цифр, а тут лише 9."],
+ [5,"продаж будь-якого майна довірителя","Повноваження розширено: в оригіналі — лише одна конкретна квартира."],
+ [6,"до 12.05.2025","Строк дії закінчився ще до дати посвідчення — так не буває."],
+ [8,"печатка відсутня","Без підпису й печатки нотаріуса довіреність не має сили."],
+ [7,"«нотаріус» Шевченко О. В. (без номера свідоцтва)","Нотаріуса не впізнати: в оригіналі — приватний нотаріус, тут — сумнівний «нотаріус» без даних."]
+];
+function forgeryValue(field){
+ const fake=mini.fakes.map(k=>FORGERY_FAKES[k]).find(f=>f[0]===field);
+ return fake?fake[1]:FORGERY_DOC[field][1];
+}
+function forgeryBoard(){
+ const found=mini.marked.length;
+ const original=FORGERY_DOC.map(([k,v])=>'<div class="doc-row"><span>'+E(k)+'</span><b>'+E(v)+'</b></div>').join("");
+ const copy=FORGERY_DOC.map(([k],i)=>{
+  const hit=mini.marked.includes(i);
+  return '<button type="button" class="doc-row doc-pick'+(hit?" hit":"")+'" data-act="mini-choice" data-idx="'+i+'" '+(hit||mini.done?"disabled":"")+'><span>'+E(k)+'</span><b>'+E(forgeryValue(i))+'</b>'+(hit?'<i>✔</i>':"")+'</button>';
+ }).join("");
+ const notes=mini.notes.length?'<ol class="doc-notes">'+mini.notes.map(n=>'<li>'+E(n)+'</li>').join("")+'</ol>':"";
+ return '<p>Перед тобою <strong>нотаріальна довіреність</strong> і її копія, яку приніс «представник». Порівняй їх і натисни на <strong>три реквізити копії</strong>, що відрізняються від оригіналу.</p>'+
+  '<p class="asset-status">Знайдено: <strong>'+found+'</strong> з '+FORGERY_TO_FIND+' · Помилкових позначок: <strong>'+mini.mistakes+'</strong> з '+FORGERY_MISTAKES+'</p>'+
+  '<div class="doc-compare"><div class="doc-card"><h3>📄 Оригінал</h3>'+original+'</div><div class="doc-card suspect"><h3>🕵️ Копія від «представника»</h3>'+copy+'</div></div>'+notes+
+  (mini.done?'<div class="mini-summary">✔ Усі три підробки знайдено! Справжність довіреності перевіряють за Єдиним реєстром довіреностей.<div class="dialog-actions">'+btn("mini-finish","Завершити справу ✔","btn btn-primary")+'</div></div>':"")+
+  '<p class="notice">Навчальний приклад: усі імена й номери вигадані.</p>';
+}
+/* ---- Quizzes "Нормативний чи індивідуальний?" and "Справжнє чи фейк?" -- */
+const QUIZ_ROUND=5,QUIZ_PASS=3;
+const QUIZ={
+ acts:{options:["Нормативний","Індивідуальний"],items:[
+  ["Порядок видачі довідок громадянам",0,"Загальні правила для всіх, хто звернеться, діють багаторазово — це нормативний акт."],
+  ["Загальні правила обробки заяв",0,"Правила стосуються невизначеного кола заявників і застосовуються щоразу — нормативний."],
+  ["Положення про загальну процедуру розгляду звернень",0,"Встановлює процедуру для всіх звернень — нормативний."],
+  ["Інструкція, обов'язкова для всіх державних реєстраторів",0,"Загальні вимоги для багатьох посадовців, діють постійно — нормативний."],
+  ["Вимоги до оформлення заяв для всіх заявників",0,"Звернені до невизначеного кола осіб — нормативний."],
+  ["Наказ про призначення конкретної особи на посаду",1,"Стосується однієї людини й вичерпується виконанням — індивідуальний."],
+  ["Наказ про відпустку працівника",1,"Конкретна особа й конкретна подія — індивідуальний."],
+  ["Рішення про видачу дозволу конкретній компанії",1,"Адресоване одному суб'єкту — індивідуальний."],
+  ["Наказ про заохочення працівниці відділу",1,"Стосується конкретної людини — індивідуальний."],
+  ["Рішення про відмову конкретному заявнику",1,"Одна особа, один випадок — індивідуальний."]
+ ]},
+ phishing:{options:["Безпечно","Шахрайство"],items:[
+  ["SMS: «Ваш рахунок заблоковано! Перейдіть за посиланням bit.ly/… і введіть дані картки»",1,"Скорочене посилання й прохання ввести дані картки — класичний фішинг."],
+  ["Лист: «Терміново надішліть пароль від КЕП, інакше документ анулюють»",1,"Ніхто не має права просити пароль від вашого електронного підпису."],
+  ["Повідомлення: «Сплатіть борг на особисту картку працівника виконавчої служби»",1,"Офіційні платежі — лише за офіційними реквізитами, не на особисті картки."],
+  ["Дзвінок «зі служби безпеки банку»: «Назвіть код із SMS, щоб скасувати операцію»",1,"Код із SMS не повідомляють нікому, навіть «банку»."],
+  ["«Ви виграли смартфон! Оплатіть лише доставку за посиланням»",1,"Неочікуваний виграш і оплата за посиланням — шахрайська схема."],
+  ["Лист «від реєстру» з вкладенням «Документи.zip.exe»",1,"Виконуваний файл, замаскований під архів, — шкідлива програма."],
+  ["Нагадування: «Перевірте статус заяви в застосунку, відкривши його самостійно»",0,"Не просить переходити за посиланням чи передавати дані — безпечне повідомлення."],
+  ["«Вашу заяву прийнято, номер звернення 2026-1452. Відповідати не потрібно»",0,"Лише інформує й нічого не вимагає — безпечно."],
+  ["Сервіс нагадує: «Не передавайте одноразові коди стороннім»",0,"Корисна порада без посилань і прохань — безпечно."],
+  ["Запрошення на прийом, дата й адреса якого збігаються з бронюванням на офіційному сайті",0,"Дані збігаються з тим, що ви самі забронювали, — безпечно."]
+ ]}
+};
+function quizBoard(type){
+ const quiz=QUIZ[type],total=mini.questions.length;
+ if(mini.done){
+  const pass=mini.correct>=QUIZ_PASS;
+  return '<div class="mini-summary'+(pass?"":" fail")+'"><h3>'+(pass?"✔ Справу розглянуто!":"Спробуй ще раз")+'</h3><p>Правильних відповідей: <strong>'+mini.correct+'</strong> з '+total+(pass?".":". Потрібно щонайменше "+QUIZ_PASS+".")+'</p>'+
+   '<div class="dialog-actions">'+(pass?btn("mini-finish","Завершити справу ✔","btn btn-primary"):btn("mini-retry","↻ Нові запитання","btn btn-primary"))+'</div></div>';
+ }
+ const [text,answer,why]=quiz.items[mini.questions[mini.index]];
+ const rv=mini.reveal;
+ const options=quiz.options.map((label,i)=>{
+  const cls=rv?(i===answer?" right":i===rv.chosen?" wrong":""):"";
+  return '<button type="button" class="quiz-option'+cls+'" data-act="mini-choice" data-idx="'+i+'" '+(rv?"disabled":"")+'>'+E(label)+(rv&&i===answer?" ✔":rv&&i===rv.chosen?" ✖":"")+'</button>';
+ }).join("");
+ return '<p class="asset-status">Запитання <strong>'+(mini.index+1)+'</strong> з '+total+' · Правильних відповідей: <strong>'+mini.correct+'</strong></p>'+
+  '<div class="panel quiz-card"><h3>'+E(text)+'</h3><div class="quiz-list">'+options+'</div>'+
+  (rv?'<div class="quiz-why'+(rv.ok?" ok":" bad")+'"><strong>'+(rv.ok?"✔ Вірно!":"✖ Ні, правильно — «"+E(quiz.options[answer])+"».")+'</strong> '+E(why)+
+   '<div class="dialog-actions">'+btn("mini-next",mini.index+1<total?"Далі ▶":"Підсумок ▶","btn btn-primary")+'</div></div>':"")+
+  '</div><p class="notice">Навчальне спрощення, не правовий висновок.</p>';
 }
 /* ---- Bonus case "Знайди майно боржника" (minesweeper-like) ------------ */
 const ASSET_SIDE=6,ASSET_CELLS=36,ASSET_COUNT=3,ASSET_QUERIES=10;
@@ -784,9 +860,17 @@ function completeMini(){
 }
 function miniAction(i){
  if(level.mini==="forgery"){
-  if(i===3){mini.feedback="Цей реквізит збігається з оригіналом.";return;}
-  if(!mini.marked.includes(i))mini.marked.push(i);
-  mini.feedback="Знайдено невідповідність!";if(mini.marked.length>=3){completeMini();}
+  if(mini.done||mini.marked.includes(i))return;
+  const fake=mini.fakes.map(k=>FORGERY_FAKES[k]).find(f=>f[0]===i);
+  if(fake){
+   mini.marked.push(i);mini.notes.push(FORGERY_DOC[i][0]+": "+fake[2]);
+   mini.feedback="Знайдено невідповідність! "+fake[2];
+   if(mini.marked.length>=FORGERY_TO_FIND){mini.done=true;mini.feedback="";}
+  }else{
+   mini.mistakes++;
+   if(mini.mistakes>=FORGERY_MISTAKES){startMini();mini.feedback="Забагато помилкових позначок — ось нова копія. Порівнюй кожен рядок з оригіналом.";}
+   else mini.feedback="«"+FORGERY_DOC[i][0]+"» збігається з оригіналом. Помилкових позначок: "+mini.mistakes+" з "+FORGERY_MISTAKES+".";
+  }
  }else if(level.mini==="assets"){
   if(mini.opened.includes(i))return;
   mini.opened.push(i);mini.tries++;
@@ -802,9 +886,10 @@ function miniAction(i){
    mini.feedback="Запити вичерпано (знайдено "+found+" з "+ASSET_COUNT+"). Боржник переховав майно — спробуй ще раз, спираючись на цифри.";
   }
  }else{
-  const answer=(level.mini==="acts"?[0,1,0,1,0]:[1,1,0,1,0])[mini.index];
-  if(i===answer){mini.correct++;mini.feedback="✔ Вірно!";}else{mini.feedback="Спробуйте врахувати правило з підказки Юсі.";}
-  mini.index++;if(mini.index===5){if(mini.correct>=3)completeMini();else{const prev=mini.correct;startMini();mini.feedback=`Правильно ${prev}/5. Для перемоги потрібно 3.`;}}
+  if(mini.reveal||mini.done)return;
+  const answer=QUIZ[level.mini].items[mini.questions[mini.index]][1];
+  mini.reveal={chosen:i,ok:i===answer};if(i===answer)mini.correct++;
+  mini.feedback="";
  }
 }
 const introKey=item=>item.kind==="unit"?item.id:item.id==="boss"?"boss:"+(level.bossData?.id||"boss"):item.id;
@@ -1060,6 +1145,8 @@ function action(name,el){
  if(name==="reset-confirm"){save=structuredClone(defaults);persist();modal="";setView("home");return;}
  if(name==="mini-choice"){miniAction(Number(el.dataset.idx));render();return;}
  if(name==="mini-retry"){startMini();render();return;}
+ if(name==="mini-next"&&mini?.reveal){mini.reveal=null;mini.index++;if(mini.index>=mini.questions.length)mini.done=true;render();return;}
+ if(name==="mini-finish"&&mini?.done){completeMini();return;}
  if(name==="certificate"){modal="certificate";render();return;}
  if(name==="print"){window.print();return;}
 }

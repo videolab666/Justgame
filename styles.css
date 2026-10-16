@@ -753,3 +753,32 @@ body.reduced-motion .reward-rays,body.reduced-motion .reward-flash,body.reduced-
 .asset-cell.n1,.asset-key.n1{color:#1f6fb2}.asset-cell.n2,.asset-key.n2{color:#2f8f3a}.asset-cell.n3,.asset-key.n3{color:#c0392b}
 .asset-cell.n0 small{opacity:.6}
 .asset-grid .asset-cell:disabled{opacity:1;cursor:default}
+
+/* "Знайди підробку": original vs suspicious copy. */
+.doc-compare{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:10px 0}
+.doc-card{background:#fffdf6;border:2px solid #e2d6b4;border-radius:14px;padding:12px 14px;display:grid;gap:6px}
+.doc-card.suspect{background:#fbfbff;border-color:#c7cfe6}
+.doc-card h3{margin:0 0 4px}
+.doc-row{display:grid;grid-template-columns:42% 1fr auto;gap:8px;align-items:center;text-align:left;padding:7px 9px;border-radius:9px;border:1px solid #eee5cc;background:#fff;font-size:14px}
+.doc-row span{color:#5e6b72;font-size:12px;font-weight:700}
+.doc-row b{color:#18374f}
+.doc-pick{cursor:pointer;border:2px solid #c9d6e8;font:inherit}
+.doc-pick:not(:disabled):hover{background:#fff7d6;border-color:#e2b85c}
+.doc-pick.hit{background:#e5f6e8;border-color:#5aa36b;opacity:1}
+.doc-pick.hit i{font-style:normal;color:#2f8f3a;font-weight:1000}
+.doc-pick:disabled{cursor:default;opacity:1}
+.doc-notes{margin:6px 0;padding-left:22px;display:grid;gap:4px;color:#26475d}
+.mini-summary{margin:12px 0;padding:14px 16px;border-radius:14px;background:#e9f7ec;border:2px solid #9fd3ab;font-weight:700}
+.mini-summary.fail{background:#fff1e8;border-color:#efbf9c}
+.mini-summary h3{margin:0 0 6px}
+/* Quizzes: answer, explanation, next. */
+.quiz-card h3{margin-top:0}
+.quiz-option{padding:16px;text-align:left;background:#fff;border:2px solid #b1d6d0;border-radius:14px;color:#183d57;font-weight:800;cursor:pointer}
+.quiz-option:not(:disabled):hover{background:#e4f4e8}
+.quiz-option:disabled{cursor:default;opacity:1}
+.quiz-option.right{background:#e5f6e8;border-color:#5aa36b}
+.quiz-option.wrong{background:#fde9e7;border-color:#d9776b}
+.quiz-why{margin-top:12px;padding:12px 14px;border-radius:12px;line-height:1.45}
+.quiz-why.ok{background:#e9f7ec;border:1px solid #9fd3ab}
+.quiz-why.bad{background:#fff1e8;border:1px solid #efbf9c}
+@media(max-width:700px){.doc-compare{grid-template-columns:1fr}.doc-row{grid-template-columns:1fr auto}.doc-row span{grid-column:1/-1}}
