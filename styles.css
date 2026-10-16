@@ -834,3 +834,61 @@ body.mb .dialog{max-height:92dvh}
 .install-tip>span{font-size:26px}
 .install-tip p{margin:0;flex:1;line-height:1.35}
 .install-tip .btn{padding:6px 12px}
+
+/* An animation-free flash must not stay on screen as a white sheet. */
+body.reduced-motion .reward-flash{display:none}
+@media(prefers-reduced-motion:reduce){.reward-flash{display:none}}
+/* Landscape phone: new-card dialog side by side (card | text). */
+body.mb .reward-dialog{display:grid;grid-template-columns:150px 1fr;column-gap:16px;align-items:center;text-align:left;overflow-y:auto;width:min(620px,94vw);padding:12px 18px}
+body.mb .reward-dialog>*{grid-column:2;margin:2px 0}
+body.mb .reward-dialog .reward-stage{grid-column:1;grid-row:1 / span 6;height:auto;margin:0}
+body.mb .reward-dialog .reward-rays{width:240px;height:240px}
+body.mb .reward-dialog .reward-card{width:110px}
+body.mb .reward-dialog h2{font-size:22px}
+body.mb .reward-dialog .hint{padding:8px 12px;font-size:13px;line-height:1.35}
+body.mb .reward-dialog .muted{font-size:12px}
+body.mb .reward-dialog .dialog-actions{justify-content:flex-start;margin-top:6px}
+/* Landscape phone: outro and result fit one screen without the header. */
+body.mend .screen{padding:0;min-height:0;max-width:none}
+body.mend .shell{border:0;border-radius:0;box-shadow:none}
+body.mend .header,body.mend .footline{display:none!important}
+body.mend .outro-scene{min-height:100dvh;padding:8px calc(env(safe-area-inset-right) + 12px) 8px calc(env(safe-area-inset-left) + 12px)}
+body.mend .outro-scene:after{border-width:6px}
+body.mend .outro-curtain{gap:4px}
+body.mend .outro-eyebrow{font-size:10px;padding:3px 12px}
+body.mend .outro-title{font-size:clamp(26px,11dvh,40px);margin:0}
+body.mend .outro-subtitle{font-size:13px}
+body.mend .outro-characters{min-height:0;height:30dvh;margin-top:0}
+body.mend .outro-character{height:100%;width:22%}
+body.mend .outro-center{font-size:36px}
+body.mend .outro-stars{font-size:30px;min-height:0}
+body.mend .outro-warning{padding:6px 12px;font-size:12px;margin:2px 0}
+body.mend .outro-progress{margin:2px auto}
+body.mend .outro-scene .btn{padding:6px 14px}
+body.mend main.main{max-width:none!important;padding:0!important}
+body.mend .result-panel{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);grid-template-rows:1fr auto;column-gap:16px;height:100dvh;border:0;border-radius:0;
+ padding:10px calc(env(safe-area-inset-right) + 14px) 10px calc(env(safe-area-inset-left) + 14px)!important}
+body.mend .result-head{grid-column:1;grid-row:1;align-self:center}
+body.mend .result-head .large-emoji{font-size:38px;line-height:1}
+body.mend .result-head .section-title{font-size:24px;margin:4px 0 6px}
+body.mend .result-head p{margin:4px 0;font-size:14px}
+body.mend .result-head .stars{font-size:26px}
+body.mend .result-notes{grid-column:2;grid-row:1 / span 2;overflow-y:auto;text-align:left;font-size:13px}
+body.mend .result-notes .hint{margin-top:0!important;margin-bottom:8px;padding:10px 12px}
+body.mend .result-actions{grid-column:1;grid-row:2;margin-top:6px;gap:6px}
+body.mend .result-actions .btn{padding:7px 10px;font-size:13px}
+/* Landscape phone, menus: one-row header, start button always in reach. */
+@media (orientation:landscape) and (max-height:520px){
+ .screen{padding:0 env(safe-area-inset-right) 0 env(safe-area-inset-left)}
+ .shell{border-width:0;border-radius:0;overflow:clip}
+ .header{padding:4px 12px;flex-wrap:nowrap;gap:10px}
+ .brand small{display:none}
+ .brand strong{font-size:18px}
+ .brand-icon{font-size:22px;padding:2px 6px;border-radius:10px;box-shadow:0 3px 0 #c7932e}
+ .nav{flex-wrap:nowrap;gap:6px}
+ .nav .btn{padding:4px 10px;font-size:13px;box-shadow:none}
+ .main{padding:10px 14px}
+ .section-title{font-size:24px;margin:4px 0 10px}
+ .deck-summary{position:sticky;bottom:0;z-index:5;margin:8px 0 0;padding:6px 10px;background:#f9f5e9ee;border-top:1px solid #d2e0dc}
+}
+body.mend .outro-character .game-art{height:30dvh;width:100%;object-fit:contain}

@@ -457,6 +457,8 @@ function applyDeviceMode(){
  body.classList.toggle("mb",phoneBattle());
  if(phoneBattle()&&(window.scrollY||window.scrollX))window.scrollTo?.(0,0);
  body.classList.toggle("need-rotate",needRotate());
+ // Victory/defeat screens: no site header, everything on one screen.
+ body.classList.toggle("mend",!!phoneLandscape?.matches&&(view==="outro"||view==="result"));
 }
 for(const q of [phoneLandscape,phonePortrait])q?.addEventListener?.("change",()=>{applyDeviceMode();if(modal==="intro")positionIntro();});
 /** On phones the owl panel is hidden: her new lines go to the field bar. */
@@ -770,14 +772,14 @@ function renderResult(){
   ?`Відбито хвиль: ${Math.max(0,game.stageWave-1)}. Особистий рекорд: ${save.endlessBest||0}.`
   :success?"Захисники впоралися. Ви зберегли права родини!":`Прорвався ${e?.name||"схемник"}. Спробуйте іншу колоду та інструмент захисту.`;
  const reward=UNLOCK_REWARDS[level.id]?UNIT_BY_ID[UNLOCK_REWARDS[level.id]]:null;
- return wrapper(`<main class="main" style="max-width:830px;margin:0 auto"><div class="panel" style="text-align:center;padding:36px">
- <div class="large-emoji">${success?"🏆":"📰"}</div><div class="eyebrow">${challenge?"Особливий режим":success?"Справу розглянуто":"Юстиційний вісник"}</div>
+ return wrapper(`<main class="main" style="max-width:830px;margin:0 auto"><div class="panel result-panel" style="text-align:center;padding:36px">
+ <div class="result-head"><div class="large-emoji">${success?"🏆":"📰"}</div><div class="eyebrow">${challenge?"Особливий режим":success?"Справу розглянуто":"Юстиційний вісник"}</div>
  <h1 class="section-title">${game?.challenge?.kind==="endless"?"Кінець облоги":success?"Права захищено!":"Схема прорвалася!"}</h1><p>${E(text)}</p>
- ${success?`<div class="stars">${"★".repeat(stars)}${"☆".repeat(3-stars)}</div><p>${reward?"Нова картка: "+reward.icon+" "+E(reward.name):"Відкрито наступну справу та сторінку Альманаху."}</p>`:""}
- ${!success&&e?.id&&threatNote(e.id,level)?`<div class="hint" style="text-align:left;margin-top:20px"><strong>🦉 Як зупинити наступного разу:</strong><p>${E(threatNote(e.id,level))}</p></div>`:""}
+ ${success?`<div class="stars">${"★".repeat(stars)}${"☆".repeat(3-stars)}</div><p>${reward?"Нова картка: "+reward.icon+" "+E(reward.name):"Відкрито наступну справу та сторінку Альманаху."}</p>`:""}</div>
+ <div class="result-notes">${!success&&e?.id&&threatNote(e.id,level)?`<div class="hint" style="text-align:left;margin-top:20px"><strong>🦉 Як зупинити наступного разу:</strong><p>${E(threatNote(e.id,level))}</p></div>`:""}
  <div class="hint" style="text-align:left;margin-top:20px"><strong>📘 Як це в житті:</strong><p>${E(e?.tip||FACTS.general)}</p>${e?.id?lifeBlock("enemy",e.id):""}
-</div>
- <div class="dialog-actions" style="justify-content:center">${btn("retry","↻ Спробувати ще","btn btn-quiet")}${btn("levels","🗺️ До рівнів","btn btn-dark")}${success&&!challenge?btn("next-level","Наступна справа →","btn btn-primary"):""}
+</div></div>
+ <div class="dialog-actions result-actions" style="justify-content:center">${btn("retry","↻ Спробувати ще","btn btn-quiet")}${btn("levels","🗺️ До рівнів","btn btn-dark")}${success&&!challenge?btn("next-level","Наступна справа →","btn btn-primary"):""}
  ${success&&!challenge&&level.id==="4-10"?btn("certificate","🎓 Сертифікат","btn btn-primary"):""}</div>
  </div></main>`);
 }
