@@ -19,10 +19,11 @@ test("Hydra requires digital finisher and recommends 2FA",()=>{
  const advice=getCounterAdvice("hydra_phish",{level:getLevel(3,10),deck:["twofactor","expert"],owned:UNITS});
  assert.equal(advice.recommended[0].id,"twofactor");
  assert.ok(advice.recommended.every(u=>u.tool==="digital"));
- assert.match(advice.note,/відростає/);
+ assert.match(advice.note,/виснажує/);
+ assert.match(advice.note,/2FA/);
 });
 test("boss mechanic notes are world-specific",()=>{
- for(const [w,frag] of [[0,"Заборону"],[1,"сейфи"],[2,"щупалець"],[3,"цифровими"]])
+ for(const [w,frag] of [[0,"Заборону"],[1,"сейфи"],[2,"щупалець"],[3,"2FA"]])
   assert.ok(getCounterAdvice("boss",{level:getLevel(w,10)}).note.includes(frag));
 });
 test("unit availability labels are accurate",()=>{

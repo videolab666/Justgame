@@ -34,7 +34,7 @@ test('five corrupt tentacles protect the boss head',()=>{
  damageEnemy(g,boss,400,'integrity');
  assert.ok(old-boss.hp>withParts);
 });
-test('Hydra heads multiply if finished by a non-digital tool',()=>{
+test('Hydra heads are only exhausted by ordinary tools and finished by 2FA',()=>{
  const g=makeGame(getLevel(3,10),['twofactor']);
  g.plan=[];
  const boss=spawn(g,'boss',2,8);
@@ -45,11 +45,25 @@ test('Hydra heads multiply if finished by a non-digital tool',()=>{
  damageEnemy(g,boss,500,'digital');
  assert.equal(boss.hp,old);
  damageEnemy(g,head,20000,'registry');
- const after=g.enemies.filter(x=>x.trait==='hydra_head');
- assert.equal(after.length,4);
- assert.equal(after.some(x=>x.uid===head.uid),false);
- damageEnemy(g,after[0],20000,'digital');
- assert.equal(g.enemies.filter(x=>x.trait==='hydra_head').length,3);
+ assert.equal(head.hp,1,'non-digital damage stops at 1 HP');
+ assert.equal(g.enemies.includes(head),true);
+ assert.equal(g.enemies.filter(x=>x.trait==='hydra_head').length,3,'no regrowth');
+ damageEnemy(g,head,20000,'registry');
+ assert.equal(head.hp,1);
+ damageEnemy(g,head,20,'digital');
+ assert.equal(g.enemies.includes(head),false);
+ assert.equal(g.enemies.filter(x=>x.trait==='hydra_head').length,2);
+});
+test('2FA placed on a head cell finishes an exhausted head',()=>{
+ const g=makeGame(getLevel(3,10),['twofactor']);
+ g.plan=[];g.seal=1000;g.nextSky=1e9;
+ spawn(g,'boss',2,8);
+ const head=g.enemies.find(x=>x.id==='hydra_call');
+ damageEnemy(g,head,1e6,'registry');
+ assert.equal(place(g,'twofactor',head.lane,Math.floor(head.x)).ok,true);
+ // The call head jams the trap for 4 s first; it still finishes the head.
+ for(let i=0;i<300&&g.enemies.includes(head);i++)tick(g,1/30);
+ assert.equal(g.enemies.includes(head),false);
 });
 test('Hydra body death initiates final survival timer rather than instant campaign victory',()=>{
  const g=makeGame(getLevel(3,10),['twofactor']);
@@ -59,4 +73,13 @@ test('Hydra body death initiates final survival timer rather than instant campai
  damageEnemy(g,boss,20000,'digital');
  assert.ok(g.finalSurvivalUntil>=g.time+29);
  assert.ok(g.lastHint.includes('30 секунд'));
+});
+test('an immune boss waits behind its parts instead of walking to the house',()=>{
+ for(const world of [1,3]){
+  const g=makeGame(getLevel(world,10),['registrar']);
+  g.plan=[];g.nextSky=1e9;
+  const boss=spawn(g,'boss',2,8);
+  for(let i=0;i<300;i++)tick(g,1/30);
+  assert.equal(boss.x,8,'world '+(world+1));
+ }
 });

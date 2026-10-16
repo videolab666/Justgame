@@ -66,9 +66,9 @@ export function spawn(g,id,lane,x=9.3){
  const parts={
   offshore_safe:{name:"Сейф-офшор",icon:"🔒",scheme:"debt",hp:800,speed:0,trait:"offshore_safe",tip:"Сховані активи потребують виявлення."},
   tentacle:{name:"Щупальце підкупу",icon:"🐙",scheme:"corruption",hp:1500,speed:0,trait:"tentacle",tip:"Запобігання корупції потребує перевірки."},
-  hydra_phish:{name:"Голова фішингу",icon:"🎣",scheme:"cyber",hp:5000,speed:0,trait:"hydra_head",tip:"Перевіряйте посилання."},
-  hydra_call:{name:"Голова дзвінків",icon:"☎️",scheme:"cyber",hp:5000,speed:0,trait:"hydra_head",tip:"Не розголошуйте коди по телефону."},
-  hydra_malware:{name:"Голова шкідливого ПЗ",icon:"💾",scheme:"cyber",hp:5000,speed:0,trait:"hydra_head",tip:"Невідомі носії небезпечні."}
+  hydra_phish:{name:"Голова фішингу",icon:"🎣",scheme:"cyber",hp:2000,speed:0,trait:"hydra_head",tip:"Перевіряйте посилання."},
+  hydra_call:{name:"Голова дзвінків",icon:"☎️",scheme:"cyber",hp:2000,speed:0,trait:"hydra_head",tip:"Не розголошуйте коди по телефону."},
+  hydra_malware:{name:"Голова шкідливого ПЗ",icon:"💾",scheme:"cyber",hp:2000,speed:0,trait:"hydra_head",tip:"Невідомі носії небезпечні."}
  };
  let data=parts[id]|| (id==="boss"?g.level.bossData:id==="mini_boss"?{name:"Липовий експерт",icon:"🥼",scheme:"bureaucracy",hp:2500,speed:.6,trait:"mini_boss",tip:"Перевіряйте кваліфікацію експертів у визначених законом реєстрах."}:ENEMY_BY_ID[id]); if(!data)return null;
  const hpMod=g.mode==="young"?.6:g.mode==="expert"?1.3:1;
@@ -105,7 +105,32 @@ export function collectToken(g,id){
 }
 export function collectAll(g){for(const token of [...g.tokens])collectToken(g,token.uid);}
 const same=(a,b)=>a.lane===b.lane&&a.col===b.col;
+// Distance from a defender's centre at which a walking enemy stops and bites.
+// Every contact effect (mine, seize, smash, trap) must use this same reach,
+// otherwise an enemy can stand in front of a unit that never "feels" it.
+export const CONTACT=.65;
+const SEIZE_TIME=2.5,GIANT_WINDUP=1.2,GIANT_SMASH_EVERY=1.8,JUMP_TIME=.7;
+// Bosses and their stationary parts are never removed by a lane guard.
+const GUARD_IMMUNE=new Set(["offshore_safe","tentacle","hydra_head"]);
+const isGuardImmune=e=>e.id==="boss"||GUARD_IMMUNE.has(e.trait);
+/** True while a boss cannot take damage because its parts are alive. */
+function bossImmune(g,e){
+ if(e.id!=="boss")return false;
+ if(g.level.world===1)return g.enemies.some(x=>x.id==="offshore_safe"&&x.hp>0);
+ if(g.level.world===3)return g.enemies.some(x=>x.trait==="hydra_head"&&x.hp>0);
+ return false;
+}
 function at(g,lane,col){return g.defenders.find(d=>d.lane===lane&&d.col===col&&d.hp>0);}
+/** Units that physically stop walking enemies. 2FA is a floor trap: enemies
+ * walk over it and take damage instead of chewing through it. */
+function blocksPath(d){return d.hp>0&&d.kind!=="trap";}
+/** Keep a minion spawned in another lane from appearing behind that lane's
+ * defenders (it would look like it walked straight through them). */
+function frontOfDefenders(g,lane,x){
+ const passed=g.defenders.filter(d=>d.lane===lane&&blocksPath(d)&&d.col+.5-CONTACT>x);
+ if(!passed.length)return x;
+ return Math.max(...passed.map(d=>d.col+.5+CONTACT-.02));
+}
 function isProtected(g,d){return !!d.shieldHp||g.defenders.some(other=>other.kind==="integrity"&&Math.abs(other.lane-d.lane)<=1&&Math.abs(other.col-d.col)<=1);}
 function powered(g,d){return !g.level.special.blackout||d.kind==="power"||g.defenders.some(o=>o.kind==="power"&&Math.abs(o.col-d.col)<=1&&Math.abs(o.lane-d.lane)<=1);}
 function revealInRange(g,e){
@@ -247,7 +272,8 @@ export function damageEnemy(g,e,raw,tool=null,extra=1){
   if(g.level.world===1&&g.enemies.some(x=>x.id==="offshore_safe"&&x.hp>0))mult=0;
   if(g.level.world===3&&g.enemies.some(x=>x.trait==="hydra_head"&&x.hp>0))mult=0;
   if(g.level.world===1&&e.phase===2&&!["enforcement","expert"].includes(tool))mult*=.2;
-  if(g.level.world===3&&e.phase<3&&tool!=="digital")mult*=.25;
+  // (No extra x0.25 for the Hydra body: the heads already teach "use 2FA",
+  // and the stacked penalty left the walking body nearly unkillable.)
   if(g.level.world===0&&e.hp<=e.maxHp*.35&&!g.bossGuardUsed)mult=0;
  }
  if(e.id==="mini_boss"&&tool!=="expert")mult=Math.min(mult,.5);
@@ -261,6 +287,20 @@ export function damageEnemy(g,e,raw,tool=null,extra=1){
    // look like a mysterious missed shot to the player.
    effect(g,"shield-impact",e.lane,e.x,"🛡",.42);
    emitBurst(g,"shield",e.lane,e.x,4);
+  }
+ }
+ if(e.trait==="hydra_head"&&tool!=="digital"){
+  // Ordinary weapons can only exhaust a head (down to 1 HP); 2FA must finish
+  // it. Previously automatic shooters kept finishing heads, each regrew
+  // twice and the final boss could become an endless loop.
+  // Any weapon wears a head down at full strength (no x0.5 cyber penalty):
+  // the lesson is "finish with 2FA", not "out-damage the resistance".
+  if(mult>0&&mult<1)n/=mult;
+  n=Math.min(n,Math.max(0,e.hp-1));
+  if(e.hp-n<=1&&!e.exhausted){
+   e.exhausted=true;
+   g.lastHint="Голову Гідри виснажено! Добийте її 2FA: поставте її на клітинку з головою.";
+   effect(g,"exhausted",e.lane,e.x,"ДОБИЙТЕ 2FA",1.2);
   }
  }
  e.hp-=n;e.lastHitTool=tool;if(n>0)e.lastHitAt=g.time;
@@ -279,23 +319,12 @@ export function damageEnemy(g,e,raw,tool=null,extra=1){
   }
  }
  if(e.hp>0)return n;
- if(e.trait==="hydra_head"&&tool!=="digital"){
-  // A wrong finishing tool cannot permanently destroy a Hydra head.
-  const current=g.enemies.filter(x=>x.trait==="hydra_head"&&x.uid!==e.uid).length;
-  const splits=current>=8?1:2;
-  for(let i=0;i<splits;i++){
-   const h=spawn(g,e.id,e.lane,Math.min(8.5,e.x+i*.25));
-   h.hp=h.maxHp*.5;
-  }
-  g.lastHint="Голова відросла! Використовуйте 2FA, щоб зупинити Гідру.";
-  effect(g,"regrow",e.lane,e.x,"ГОЛОВА ВІДРОСЛА");
- }
  if(e.trait==="revive"&&!e.revived&&tool!=="integrity"){
   e.revived=true;e.hp=e.maxHp*.5;effect(g,"revive",e.lane,e.x,"ПОВЕРНУВСЯ");return n;
  }
  if(e.trait==="split"&&!e.spawnedMinions){
   e.spawnedMinions=true;
-  for(const lane of [e.lane-1,e.lane+1])if(g.level.activeLanes.includes(lane))spawn(g,"schemer",lane,e.x);
+  for(const lane of [e.lane-1,e.lane+1])if(g.level.activeLanes.includes(lane))spawn(g,"schemer",lane,frontOfDefenders(g,lane,e.x));
  }
  if(e.trait==="disguised_split"&&!e.spawnedMinions){
   for(let j=0;j<2;j++)spawn(g,"schemer",e.lane,e.x+(.2*j));
@@ -305,15 +334,18 @@ export function damageEnemy(g,e,raw,tool=null,extra=1){
  return n;
 }
 export function useGuard(g,lane,automatic=false){
- if(g.phase!=="playing"||g.usedGuards[lane]||!g.level.activeLanes.includes(lane))return false;
+ if(g.phase!=="playing"||!g.level.activeLanes.includes(lane))return false;
  if(!automatic){
-  if(!(g.level.boss&&g.level.world===0))return false;
+  // The Baron's final "Заборона" is a separate, one-off action. It must stay
+  // available even if an ordinary breach already spent this lane's guard,
+  // otherwise a random boss lane could make the level unwinnable.
+  if(!(g.level.boss&&g.level.world===0)||g.bossGuardUsed)return false;
   const boss=g.enemies.find(e=>e.id==="boss"&&e.lane===lane);
   if(!boss||boss.phase<3)return false;
   g.bossGuardUsed=true;damageEnemy(g,boss,boss.maxHp,"registry",3);
- }
+ }else if(g.usedGuards[lane])return false;
  g.usedGuards[lane]=true;
- for(const e of [...g.enemies])if(e.lane===lane)removeEnemy(g,e);
+ for(const e of [...g.enemies])if(e.lane===lane&&!isGuardImmune(e))removeEnemy(g,e);
  effect(g,"guard",lane,3.5,"ЗАБОРОНА");emitBurst(g,"guard",lane,3.5,11);
  return true;
 }
@@ -373,6 +405,8 @@ export function fireProjectile(g,d,target,raw,bonus=1){
  const shot={
   uid:uid(g),kind:style.kind,sourceKind:d.kind,sourceUid:d.uid,
   lane:d.lane,tool:d.tool,damage:raw,bonus,targetUid:target.uid,
+  // Straight shots only travel forward: never hit an enemy behind the shooter.
+  minX:d.col+.02,
   x:sourceX,row:fromRow,startX:sourceX,startRow:fromRow,
   endX:targetX,endRow:toRow,age:0,
   duration:ballistic?Math.max(.5,Math.min(1.5,Math.hypot(targetX-sourceX,(toRow-fromRow)*1.25)/style.speed)):
@@ -442,7 +476,7 @@ export function advanceProjectiles(g,delta){
   p.x+=p.speed*delta;
   // Resolve the first enemy crossed by the stamp, not an enemy behind it.
   const first=g.enemies
-   .filter(e=>e.lane===p.lane&&e.hp>0&&
+   .filter(e=>e.lane===p.lane&&e.hp>0&&e.x>(p.minX??-Infinity)&&
        e.x>=oldX-.38&&e.x<=p.x+.38&&canTarget(g,pSource(p),e))
    .sort((a,b)=>a.x-b.x)[0];
   if(first){
@@ -481,14 +515,21 @@ function attack(g,d,delta){
   return;
  }
  if(d.kind==="trap"){
-  for(const e of [...g.enemies])if(e.scheme==="cyber"&&e.lane===d.lane&&Math.abs(e.x-(d.col+.5))<.6){
-   if(d.timer<=0){damageEnemy(g,e,20,"digital");d.timer=1;e.stunUntil=Math.max(e.stunUntil,g.time+.35);}
-  }
+  if(d.timer>0)return;
+  // One pulse hits every cyber enemy on the cell. Hitting only the first one
+  // let the immune Hydra body absorb every pulse aimed at a head.
+  const inCell=g.enemies.filter(e=>e.scheme==="cyber"&&e.hp>0&&e.lane===d.lane&&Math.abs(e.x-(d.col+.5))<.6);
+  for(const e of inCell){damageEnemy(g,e,20,"digital");e.stunUntil=Math.max(e.stunUntil,g.time+.35);}
+  if(inCell.length)d.timer=1;
   return;
  }
  if(d.kind==="mine"){
   if(g.time-d.placedAt<14)return;
-  const e=g.enemies.find(e=>e.lane===d.lane&&Math.abs(e.x-(d.col+.5))<.62);
+  // Same reach as the enemy's bite: a blocked enemy stops at ~CONTACT from
+  // the centre, so a smaller radius let enemies eat an armed mine unharmed.
+  // Flying units pass over it and peaceful debtors are not "arrested".
+  const e=g.enemies.find(e=>e.lane===d.lane&&e.hp>0&&Math.abs(e.x-(d.col+.5))<=CONTACT&&
+   !e.air&&!["flying","neutral"].includes(e.trait)&&!GUARD_IMMUNE.has(e.trait));
   if(e){damageEnemy(g,e,spec.damage,"enforcement");g.defenders.splice(g.defenders.indexOf(d),1);effect(g,"mine",d.lane,d.col+.5,"АРЕШТ");emitBurst(g,"mine",d.lane,d.col+.5,12);}
   return;
  }
@@ -503,8 +544,11 @@ function attack(g,d,delta){
  }
  if(d.kind==="sniper"){
   candidates=candidates.filter(e=>Math.abs(e.x-(d.col+.5))<=3.5);
-  candidates.sort((a,b)=>(Number(!a.reveal)-Number(!b.reveal))||(b.hp-a.hp));
- }else if(d.kind==="global"){candidates.sort((a,b)=>a.x-b.x);}
+  // GDD: disguised targets first, then the healthiest. Untouchable bosses
+  // go last so the expert does not waste every beam on them.
+  candidates.sort((a,b)=>(Number(bossImmune(g,a))-Number(bossImmune(g,b)))||
+   (Number(!b.reveal)-Number(!a.reveal))||(b.hp-a.hp));
+ }else if(d.kind==="global"){candidates.sort((a,b)=>(Number(bossImmune(g,a))-Number(bossImmune(g,b)))||a.x-b.x);}
  else candidates.sort((a,b)=>a.x-b.x);
  if(d.kind==="lobber"&&g.level.boss&&g.level.world===1){
   const hidden=g.enemies.filter(x=>x.id==="offshore_safe"&&!x.reveal);
@@ -525,8 +569,13 @@ function defeat(g,e){
  g.lastThreat=e;
  if(e.trait==="neutral"){g.seal+=50;removeEnemy(g,e,true);return;}
  g.breaches++;
- if(e.id==="boss"&&g.level.world===0){
-  g.phase="lost";g.lastHint="Барон завершив переоформлення. Зупиніть його спеціальною Забороною у третій фазі.";return;
+ if(e.id==="boss"){
+  // A lane guard must not one-shot a boss: earlier only the Baron counted as
+  // a defeat and every other boss was simply "mowed" for a free win.
+  g.phase="lost";
+  g.lastHint=g.level.world===0?"Барон завершив переоформлення. Зупиніть його спеціальною Забороною у третій фазі.":
+   `${e.name} прорвався до будівлі. Боса заборона не зупиняє — його треба перемогти.`;
+  return;
  }
  if(!g.usedGuards[e.lane]){useGuard(g,e.lane,true);return;}
  if(g.mode==="young"){removeEnemy(g,e);return;}
@@ -549,12 +598,26 @@ function enemyTurn(g,e,delta){
   }
   e.specialUntil=g.time+12;return;
  }
+ if(e.jumpStart!=null){
+  // Visible leap over one unit instead of an instant 1.35-cell teleport,
+  // which looked like the enemy walked straight through the defender.
+  const t=Math.min(1,(g.time-e.jumpStart)/JUMP_TIME);
+  e.x=e.jumpFrom+(e.jumpTo-e.jumpFrom)*t;e.lift=4*t*(1-t);
+  if(t>=1){e.jumpStart=null;e.lift=0;}
+  if(e.x<=.06)defeat(g,e);
+  return;
+ }
  const rowHaste=g.enemies.some(x=>x!==e&&x.lane===e.lane&&x.trait==="haste")?1.3:1;
  let move=(e.speed/4.5)*delta*rowHaste;
  if(g.time<e.frozenUntil)move*=e.scheme==="debt"?.02:.5;
  if(g.time<e.stunUntil)move=0;
- const nearby=g.defenders.filter(d=>d.lane===e.lane&&Math.abs(d.col+.5-e.x)<.65).sort((a,b)=>b.col-a.col);
+ // Bosses wait behind their safes / heads; otherwise the immune body simply
+ // walked to the house while the heads were still alive.
+ if(bossImmune(g,e))move=0;
+ const nearby=g.defenders.filter(d=>d.lane===e.lane&&blocksPath(d)&&Math.abs(d.col+.5-e.x)<CONTACT).sort((a,b)=>b.col-a.col);
  const blocker=nearby[0];
+ // Timed contact abilities restart when the enemy faces a different unit.
+ if(blocker?.uid!==e.contactUid){e.contactUid=blocker?.uid;e.contactTime=0;e.smashAt=null;}
  if(e.id==="boss"&&g.time>e.specialUntil){
   const w=g.level.world;
   if(w===0&&e.phase===1)spawn(g,"poa",e.lane,Math.min(9,e.x+.5));
@@ -562,7 +625,14 @@ function enemyTurn(g,e,delta){
   if(w===1&&e.phase===1)spawn(g,"burrower",e.lane,Math.min(9,e.x+.7));
   if(w===1&&e.phase===2)spawn(g,"bankrupt",e.lane,Math.min(9,e.x+.7));
   if(w===2)for(let lane=0;lane<5;lane++)if(g.level.activeLanes.includes(lane)&&lane%2===0)spawn(g,"briber",lane,9.2);
-  if(w===3){g.seal=Math.max(0,g.seal-25);spawn(g,e.phase===1?"phisher":e.phase===2?"caller":"usb",e.lane,9.2);}
+  // Stealing seals is the phishing head's job (GDD); the body draining too
+  // starved the economy below what CNAP income can recover.
+  if(w===3){
+   // Spread the summons over the field instead of always flooding the
+   // body's own lane, where they soaked up every shot aimed at a head.
+   const lanes=g.level.activeLanes,lane=lanes[Math.floor(g.time*7.3)%lanes.length];
+   spawn(g,e.phase===1?"phisher":e.phase===2?"caller":"usb",lane,9.2);
+  }
   e.specialUntil=g.time+13;effect(g,"phase",e.lane,e.x,"СХЕМА!");
  }
  if(e.trait==="mini_boss"&&g.time>e.specialUntil){
@@ -578,11 +648,21 @@ function enemyTurn(g,e,delta){
  }
  if(blocker&&!e.air&&!["burrow","flying","neutral"].includes(e.trait)){
   if(["jump","disguised_jump"].includes(e.trait)&&!e.jumped&&blocker.id!=="notary_office"){
-   e.jumped=true;e.x-=1.35;effect(g,"jump",e.lane,e.x,"СТРИБОК");
-  }else if(e.trait==="seize"&&!g.locks.some(x=>x.lane===blocker.lane&&x.col===blocker.col)){
-   g.locks.push({lane:blocker.lane,col:blocker.col,enemyUid:e.uid,lost:{...blocker}});
-   removeDefender(g,blocker,"seize");
-   effect(g,"seize",e.lane,e.x,"ФАЛЬШИВИЙ ЗАПИС");
+   // Land just behind the jumped unit (outside its contact reach).
+   e.jumped=true;e.jumpFrom=e.x;e.jumpTo=blocker.col+.5-CONTACT-.05;e.jumpStart=g.time;e.lift=0;
+   effect(g,"jump",e.lane,e.x,"СТРИБОК",.9);
+  }else if(e.trait==="seize"&&blocker.tool!=="notary"&&!isProtected(g,blocker)&&
+   !g.locks.some(x=>x.lane===blocker.lane&&x.col===blocker.col)){
+   // Re-registration takes time: the raider has to stand at the unit first,
+   // so the player can react. Notaries and protected units resist it and
+   // are bitten normally instead (else-branch below).
+   e.contactTime+=delta;e.attackUntil=g.time+.36;
+   if(e.contactTime>=SEIZE_TIME){
+    g.locks.push({lane:blocker.lane,col:blocker.col,enemyUid:e.uid,lost:{...blocker}});
+    removeDefender(g,blocker,"seize");
+    effect(g,"seize",e.lane,e.x,"ФАЛЬШИВИЙ ЗАПИС");
+    e.contactTime=0;
+   }
   }else{
    if(e.trait==="phish"&&g.time>e.specialUntil&&!blocker.shieldHp){blocker.disabledUntil=g.time+5;e.specialUntil=g.time+10;effect(g,"phish",e.lane,e.x,"ФІШИНГ");}
    if(e.trait==="call"&&g.time>e.specialUntil&&!blocker.shieldHp){blocker.disabledUntil=g.time+3;e.specialUntil=g.time+8;}
@@ -596,7 +676,16 @@ function enemyTurn(g,e,delta){
     blocker.lastDamagedAt=g.time;
     if(blocker.hp<=0)removeDefender(g,blocker,"down");
     removeEnemy(g,e);return;}
-   let dmg=e.trait==="giant"?2500:100*delta;
+   let dmg=100*delta;
+   if(e.trait==="giant"){
+    // A windup smash, not 2500 damage every frame: at 60 FPS the golem used
+    // to flatten even the 8000-HP notary office in a few frames and visibly
+    // walked through the row.
+    e.attackUntil=g.time+.36;
+    if(e.smashAt==null)e.smashAt=g.time+GIANT_WINDUP;
+    if(g.time>=e.smashAt){dmg=2500;e.smashAt=g.time+GIANT_SMASH_EVERY;effect(g,"smash",e.lane,e.x,"ГУП!");}
+    else dmg=0;
+   }
    if(blocker.shieldHp>0){const absorbed=Math.min(blocker.shieldHp,dmg);blocker.shieldHp-=absorbed;dmg-=absorbed;}
    blocker.hp-=dmg;
    if(dmg>0){blocker.lastDamagedAt=g.time;e.attackUntil=g.time+.36;}

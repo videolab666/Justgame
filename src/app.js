@@ -157,6 +157,12 @@ function cellContent(lane,col){
  if(d)inner+=`<span data-tool="${E(d.tool||"none")}" data-kind="${E(d.kind)}" class="defender ${d.shieldHp>0?"shielded":""} ${game.time<d.disabledUntil?"disabled":""} ${game.time-(d.lastShotAt??-10)<.38?"firing":""} ${game.time-d.placedAt<.28?"placing":""} ${game.time-(d.lastDamagedAt??-10)<.22?"hurt":""}"><span class="sprite">${art(d.id,"board-illustration")}</span><span class="unit-status" aria-hidden="true"></span>${["shooter","intern","lobber","splash","air","slow","sniper","global"].includes(d.kind)?'<span class="attack-arm" aria-hidden="true"><span class="attack-hand"></span><span class="attack-item"></span></span>':""}<small>${E(d.name.split(" ")[0])}</small><span class="health" style="width:${Math.max(0,d.hp/d.maxHp)*96}%"></span></span>`;
  return inner;
 }
+/** The Baron's final "Заборона" stays usable even if this lane's guard
+ * was already spent on an ordinary breach (mirrors engine useGuard). */
+function bossGuardAvailable(lane){
+ return !!(level.boss&&level.world===0&&game.bossGuardReady&&!game.bossGuardUsed&&
+  game.enemies.some(e=>e.id==="boss"&&e.lane===lane&&e.phase===3));
+}
 function renderPlay(){
  if(!game)return renderHome();
  const remaining=game.plan.length-game.spawned,progress=currentProgress(game),status=game.phase!=="playing"?" · Завершено":"";
@@ -174,8 +180,8 @@ function renderPlay(){
  const shots=game.projectiles.map(p=>`<span class="projectile shot-${p.kind}" data-projectile="${p.uid}" aria-hidden="true"></span>`).join("");
  const fx=game.effects.map(e=>`<span data-fx="${e.id}" style="position:absolute;left:${e.x*100/9}%;top:${e.lane*20+1}%;font-size:12px;font-weight:900;color:#fdfbf3;text-shadow:1px 2px #174563,0 0 5px #173752;white-space:nowrap">${E(e.text)}</span>`).join("");
  const guards=Array.from({length:5},(_,l)=>{
-  const manual=level.boss&&level.world===0&&game.bossGuardReady&&game.enemies.some(e=>e.id==="boss"&&e.lane===l&&e.phase===3);
-  return `<button type="button" class="guard ${game.usedGuards[l]?"used":""}" data-act="guard" data-lane="${l}" ${game.usedGuards[l]||!manual?"disabled":""} title="${manual?"Активувати заборону проти Барона":"Заборона спрацьовує автоматично під час прориву"}">🛑</button>`;
+  const manual=bossGuardAvailable(l);
+  return `<button type="button" class="guard ${game.usedGuards[l]&&!manual?"used":""}" data-act="guard" data-lane="${l}" ${!manual?"disabled":""} title="${manual?"Активувати заборону проти Барона":"Заборона спрацьовує автоматично під час прориву"}">🛑</button>`;
  }).join("");
  return wrapper(`<main class="main" style="padding:12px"><section class="game-shell">
  <div class="game-top"><div class="seal-pill">✦ ${Math.floor(game.seal)}</div>
@@ -281,6 +287,10 @@ function syncGameFrame(){
    el.querySelector(".eicon").append(im);layer.append(el);
   }
   el.style.left=(e.x*100/9)+"%";el.style.top=(e.lane*20+.35)+"%";
+  // Arc of a jump over a defender (engine sets lift 0..1 while airborne).
+  const lift=e.lift||0;
+  el.style.transform=lift>0?"translateX(-50%) translateY("+(-lift*55)+"%) rotate("+(-lift*12)+"deg)":"";
+  el.classList.toggle("jumping",lift>0);
   el.classList.toggle("flying",e.trait==="flying"||e.air);
   el.classList.toggle("taking-hit",game.time-(e.lastHitAt??-10)<.18);
   el.classList.toggle("attacking",game.time<(e.attackUntil??-10));
@@ -383,9 +393,9 @@ function syncGameFrame(){
  }
  for(const el of Array.from(fxLayer.children))if(!fxs.has(el.dataset.fx))el.remove();
  for(const guard of root.querySelectorAll(".house-strip .guard")){
-  const lane=+guard.dataset.lane,manual=level.boss&&level.world===0&&game.bossGuardReady&&game.enemies.some(e=>e.id==="boss"&&e.lane===lane&&e.phase===3);
-  guard.disabled=game.usedGuards[lane]||!manual;
-  guard.classList.toggle("used",game.usedGuards[lane]);
+  const lane=+guard.dataset.lane,manual=bossGuardAvailable(lane);
+  guard.disabled=!manual;
+  guard.classList.toggle("used",game.usedGuards[lane]&&!manual);
   const approaching=game.enemies.some(e=>e.lane===lane&&e.hp>0&&e.x<4.5&&e.trait!=="neutral");
   guard.classList.toggle("lane-danger",approaching&&!game.usedGuards[lane]);
   guard.title=manual?"Активувати заборону проти Барона":"Заборона спрацьовує автоматично під час прориву";
@@ -732,7 +742,10 @@ function loop(ts){
  const delta=Math.min((ts-prevTs)/1000,.1);prevTs=ts;
  if(view==="play"&&game?.phase==="playing"&&!modal&&!document.hidden){
   soundtrack.setScene("battle",world,Math.min(1,game.stageWave/Math.max(1,game.maxWave)));
-  tick(game,delta*speed);
+  // Fixed sub-steps keep collisions identical at x2 speed and on slow
+  // frames (a single big tick used to be clamped and lose game time).
+  let rest=delta*speed;
+  while(rest>1e-6&&game.phase==="playing"){const step=Math.min(rest,1/30);tick(game,step);rest-=step;}
   if(game.phase!=="playing"){finish();}
   else if(ts-lastRender>34){lastRender=ts;syncGameFrame();}
  }
