@@ -8,7 +8,7 @@ export function typeMultiplier(tool,scheme,mode="normal"){
 // Wave pacing (docs/BALANCE.md). A level spends a threat budget (GDD 15.3
 // threat points) instead of a head count, so a golem or a raider "costs" more
 // than a schemer. The opening wave is small on purpose: it is the window in
-// which building ЦНАП is a real choice rather than a guaranteed loss.
+// which building ДРАЦС (income) is a real choice rather than a guaranteed loss.
 export const WAVE_SHARES={2:[.35,.65],3:[.18,.32,.5],4:[.12,.2,.28,.4]};
 // Threat budget of a whole level by stage (1..10); index 9 is the boss level,
 // whose boss supplies most of the pressure.
@@ -294,7 +294,7 @@ export function availablePlacement(g,id,lane,col){
  if(u.kind==="restore")return locked?null:"Потрібна клітинка з фальшивим записом.";
  if(locked)return "Скасувати фальшивий запис може Комісія зі скарг.";
  if(u.kind==="shield")return current&&!current.shieldHp?null:"Оберіть незахищеного захисника.";
- if(u.kind==="upgrade")return current?.id==="cnap"?null:"Цифровий офіс ставлять на ЦНАП.";
+ if(u.kind==="upgrade")return current?.id==="cnap"?null:"Цифровий офіс ставлять на ДРАЦС.";
  if(current && !["blast","sweep"].includes(u.kind))return "Клітинка вже зайнята.";
  return null;
 }
