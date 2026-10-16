@@ -430,7 +430,7 @@ function rewardDialog(){
 }
 function rewardFor(id){
  if(challenge||save.completed[id]!==undefined)return null;
- return UNLOCK_REWARDS[id]||{"1-10":"executor","2-10":"whistleblower","3-10":"twofactor"}[id]||null;
+ return UNLOCK_REWARDS[id]||null;
 }
 function syncGameFrame(){
  if(view!=="play"||!game||modal)return;

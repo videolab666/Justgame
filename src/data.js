@@ -8,24 +8,24 @@ export const UNITS=[
 U("registrar","Державний реєстратор","🏛️",100,7,300,"shooter","registry",20,1.4,"start","Печатки перевірки проти підробок."),
 U("cnap","ДРАЦС","🏠",50,7,300,"income",null,25,24,"1-1","Виробляє печатки довіри."),
 U("notary","Нотаріус","🖋️",50,35,4000,"wall","notary",10,1,"1-2","Міцно тримає оборону."),
-U("mine","Арешт майна","🔒",25,35,300,"mine","enforcement",1800,14,"1-3","Спрацьовує після підготовки."),
+U("mine","Арешт майна","🔒",25,35,300,"mine","enforcement",1800,14,"1-4","Спрацьовує після підготовки."),
 U("notification","Сповіщення","📱",75,20,300,"reveal","digital",0,0,"1-3","Розкриває замаскованих шахраїв."),
 U("commission","Комісія зі скарг","⚖️",100,35,1,"restore","registry",0,0,"1-6","Прибирає фальшивий запис."),
 U("archive","Архів БТІ","🗄️",50,35,300,"healer",null,200,20,"1-7","Відновлює сусідніх захисників."),
 U("senior","Старший реєстратор","👩‍💼",200,20,300,"shooter","registry",40,1.4,"1-8","Подвійна перевірка документів."),
-U("executor","Державний виконавець","📜",125,20,300,"lobber","enforcement",40,3,"2-1","Постанови перелітають через щити."),
+U("executor","Державний виконавець","📜",125,20,300,"lobber","enforcement",40,3,"1-10","Постанови перелітають через щити."),
 U("limitation","Обмеження боржника","⛓️",175,20,300,"slow","enforcement",15,2,"2-1","Сповільнює та зупиняє боржників."),
 U("trustee","Арбітражний керуючий","🧮",125,20,300,"air","enforcement",30,1.5,"2-2","Помічає фіктивних банкрутів."),
 U("station","Зарядна станція","🔋",75,20,400,"power",null,0,0,"2-3","Підтримує захист під час блекауту."),
 U("private_executor","Приватний виконавець","💼",300,35,300,"splash","enforcement",80,3,"2-5","Постанова впливає на сусідні клітинки."),
 U("notary_office","Нотаріальна контора","🏢",125,50,8000,"wall","notary",0,0,"2-7","Її не можна перестрибнути."),
-U("whistleblower","Викривач","📣",150,50,1,"blast","integrity",1500,0,"3-1","Викриває корупцію навколо."),
+U("whistleblower","Викривач","📣",150,50,1,"blast","integrity",1500,0,"2-10","Викриває корупцію навколо."),
 U("integrity","Спецперевірка","🔦",125,20,300,"integrity","integrity",0,0,"3-1","Захищає від підкупу."),
 U("order","Зареєстрований наказ","📋",75,20,200,"boost","registry",0,0,"3-2","Посилює оборону свого ряду."),
 U("expert","Судовий експерт","🔬",225,35,300,"sniper","expert",60,2.5,"3-3","Виявляє приховані підробки."),
 U("intern","Стажер","🎒",0,35,150,"intern","registry",10,2,"3-5","Через хвилину підвищує кваліфікацію."),
 U("legal_aid","Безоплатна правнича допомога","📘",125,50,1,"sweep",null,1800,0,"3-7","Поширює правовий захист на весь ряд."),
-U("twofactor","Двофакторна автентифікація","🔐",100,20,300,"trap","digital",20,1,"4-1","Захист від кіберзагроз у клітинці."),
+U("twofactor","Двофакторна автентифікація","🔐",100,20,300,"trap","digital",20,1,"3-10","Захист від кіберзагроз у клітинці."),
 U("shield","КЕП-щит","🛡️",125,35,3000,"shield","digital",0,0,"4-1","Захищає іншого юніта від перехоплення."),
 U("apostille","Апостиль","🕊️",150,35,300,"global","expert",50,8,"4-2","Працює по всьому полю."),
 U("digital_office","Цифровий офіс","🏙️",150,20,300,"upgrade",null,50,24,"4-5","Покращує роботу ДРАЦС.")
@@ -95,8 +95,10 @@ export const WORLDS=[
 {id:"digital",name:"Цифровий фронт",subtitle:"Реєстри під захистом",emoji:"💠",summary:"Фішинг, КЕП, кібергігієна",enemyIds:["schemer","phisher","hacker","caller","usb","queue","unregistered"],titles:["Другий фактор","Збережи ключ","Небезпечний лист","Нічні реєстри","Справжнє чи фейк?","Цифровий офіс","Фішингова атака","Серверна зміна","Зламати схему","Гідра Фішингу"]}
 ];
 // Must match UNITS[].unlock: the result screen announces exactly these cards.
+// Rule: at most one new card reaches the player before each main battle
+// (tests/unlocks.test.mjs); bosses hand over the next world's signature card.
 export const UNLOCK_REWARDS={
-"1-1":"cnap","1-2":"notary","1-3":"notification","1-4":"mine","1-6":"commission","1-7":"archive","1-8":"senior",
+"1-1":"cnap","1-2":"notary","1-3":"notification","1-4":"mine","1-10":"executor","2-10":"whistleblower","3-10":"twofactor","1-6":"commission","1-7":"archive","1-8":"senior",
 "2-1":"limitation","2-2":"trustee","2-3":"station","2-5":"private_executor","2-7":"notary_office",
 "3-1":"integrity","3-2":"order","3-3":"expert","3-5":"intern","3-7":"legal_aid",
 "4-1":"shield","4-2":"apostille","4-5":"digital_office"
@@ -131,12 +133,7 @@ export function getLevel(world,stage){
   tutorial:world===0&&stage<=4?["Обери картку захисника, а потім клітинку на полі.","Збирай золоті печатки, щоб ставити більше захисників.","Проти підробок особливо корисні реєстратори й нотаріуси.","Замаскованого маклера виявляє «Сповіщення»."][stage-1]:null};
 }
 export function unlockedUnits(completed){
- const available=UNITS.filter(u=>u.unlock==="start"||completed[u.unlock]!==undefined);
- // Each next world's signature unit is awarded when the preceding boss is cleared.
- if(completed["1-10"]!==undefined&&!available.some(u=>u.id==="executor"))available.push(UNIT_BY_ID.executor);
- if(completed["2-10"]!==undefined&&!available.some(u=>u.id==="whistleblower"))available.push(UNIT_BY_ID.whistleblower);
- if(completed["3-10"]!==undefined&&!available.some(u=>u.id==="twofactor"))available.push(UNIT_BY_ID.twofactor);
- return available;
+ return UNITS.filter(u=>u.unlock==="start"||completed[u.unlock]!==undefined);
 }
 export function levelUnlocked(world,stage,completed){
  if(world===0&&stage===1)return true;

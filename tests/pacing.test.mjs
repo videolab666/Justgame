@@ -63,9 +63,10 @@ test("Baron summons a world-1 threat in phase 2, not a hacker",()=>{
  assert.ok(!g.enemies.some(e=>e.id==="hacker"));
 });
 test("result-screen rewards match the level that actually unlocks the card",async()=>{
- const {UNLOCK_REWARDS,UNIT_BY_ID}=await import("../src/data.js");
- // Mine is deliberately available one level before its announcement.
- for(const [lvl,id] of Object.entries(UNLOCK_REWARDS))if(id!=="mine")assert.equal(UNIT_BY_ID[id].unlock,lvl,id);
+ const {UNLOCK_REWARDS,UNIT_BY_ID,UNITS}=await import("../src/data.js");
+ for(const [lvl,id] of Object.entries(UNLOCK_REWARDS))assert.equal(UNIT_BY_ID[id].unlock,lvl,id);
+ // ...and every unlockable card is announced somewhere.
+ for(const u of UNITS)if(u.unlock!=="start")assert.equal(UNLOCK_REWARDS[u.unlock],u.id,u.id);
 });
 test("2FA keeps full pulse rate in a blackout and ignores phishing",async()=>{
  const {place}=await import("../src/engine.js");
