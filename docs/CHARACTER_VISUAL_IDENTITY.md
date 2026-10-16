@@ -33,3 +33,5 @@
 | `mini_boss` | bald, goggles, labcoat | fake-certificate |
 
 Перевірка: SVG XML, кількість ассетів та headless Chrome, desktop/mobile, попадання й контргайд.
+
+Second-pass differentiation: raider's jagged helmet, broker's long scarf, private executor's glasses/watch, fake-power-of-attorney disguise mask, unregistered-order paper crown, fake expert's antenna, runner's visor and executor crest.
