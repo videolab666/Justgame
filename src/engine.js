@@ -99,6 +99,7 @@ export function makeWavePlan(level,seed=0){
 }
 /** Seconds until the next wave starts, or null while a wave is in progress. */
 export function nextWaveIn(g){
+ if(g.holdWaves)return null;
  const next=g.plan[g.spawned];
  if(!next||next.wave<=g.stageWave)return null;
  return Math.max(0,next.time-g.time);
@@ -123,7 +124,69 @@ export function makeGame(level,deck,mode="normal",settings={},challenge=null){
  if(challenge?.kind==="endless"){
   game.plan=[];game.maxWave=1;queueEndlessWave(game,1);
  }
+ // Guided first battle (PvZ-style): no wave moves until the player has
+ // picked, placed, collected and placed again. Opt-in from the UI.
+ if(settings.tutorialFlow&&!challenge){
+  game.tutorial={step:"pick",until:0};game.holdWaves=true;
+  game.seal=TUTORIAL_START_SEALS+(settings.careerBonus||0);
+  game.nextSky=1e9;
+ }
+ // The last defeated enemy drops this card; the level ends when it is taken.
+ if(settings.rewardCard&&!challenge)game.rewardCard=settings.rewardCard;
  return game;
+}
+// --- Guided first battle -------------------------------------------------
+export const TUTORIAL_START_SEALS=150;
+const TUTORIAL_UNIT="registrar",TUTORIAL_PRAISE=3,TUTORIAL_SKY=4,TUTORIAL_GO=5;
+export const TUTORIAL_TEXT={
+ pick:"Натисни на картку «Державний реєстратор», щоб узяти її.",
+ place:"Тепер натисни на клітинку доріжки — і реєстратор стане на захист.",
+ praise:"Чудово! Реєстратор уже на посту.",
+ collect:"Натисни на печатку ✦, що падає, щоб зібрати її.",
+ afford:"Молодець! Печаток вистачає на ще одного реєстратора.",
+ place2:"Візьми картку реєстратора й постав ще одного!",
+ go:"Не дай Схемникам дійти до будинку!"
+};
+/** Text for the tutorial bar, or "" when the guided battle is over. */
+export function tutorialText(g){
+ const t=g.tutorial;if(!t||t.step==="done")return "";
+ if(t.step==="collect"&&g.time<t.until)return TUTORIAL_TEXT.praise;
+ if(t.step==="afford"&&g.time<t.until)return TUTORIAL_TEXT.afford;
+ return TUTORIAL_TEXT[t.step==="afford"?"place2":t.step]||"";
+}
+/** UI events: "pick" (card chosen) and "place" (defender placed). */
+export function tutorialEvent(g,event,id=TUTORIAL_UNIT){
+ const t=g.tutorial;if(!t||id!==TUTORIAL_UNIT)return;
+ if(event==="pick"&&t.step==="pick")t.step="place";
+ else if(event==="place"&&(t.step==="place"||t.step==="pick")){
+  t.step="collect";t.until=g.time+TUTORIAL_PRAISE;tutorialSeal(g);
+ }else if(event==="place"&&(t.step==="afford"||t.step==="place2")){
+  t.step="go";t.until=g.time+TUTORIAL_GO;g.holdWaves=false;
+  // Waves resume shortly after the second defender stands.
+  const first=g.plan[g.spawned];
+  if(first){const shift=g.time+3-first.time;for(let i=g.spawned;i<g.plan.length;i++)g.plan[i].time+=shift;}
+  g.nextSky=g.time+6;
+ }
+}
+function tutorialSeal(g){
+ const lane=g.level.activeLanes[Math.floor(g.level.activeLanes.length/2)];
+ createToken(g,lane,2+Math.floor(Math.random()*5));
+ g.tokens[g.tokens.length-1].ttl=30;g.tokens[g.tokens.length-1].falling=true;
+ g.tutorial.nextSeal=g.time+TUTORIAL_SKY;
+}
+function tutorialTick(g,delta){
+ const t=g.tutorial;
+ if(g.holdWaves)for(let i=g.spawned;i<g.plan.length;i++)g.plan[i].time+=delta;
+ if(t.step==="collect"||t.step==="afford"||t.step==="place2"){
+  if(g.time>=t.nextSeal&&g.tokens.length<2)tutorialSeal(g);
+ }
+ if(t.step==="collect"&&g.seal>=UNIT_BY_ID[TUTORIAL_UNIT].cost){t.step="afford";t.until=g.time+TUTORIAL_PRAISE;}
+ if(t.step==="go"&&g.time>=t.until)t.step="done";
+}
+/** Player took the dropped reward card: the level can now be won. */
+export function collectReward(g){
+ if(!g.rewardDrop)return false;
+ g.rewardTaken=true;return true;
 }
 export function queueEndlessWave(game,n){
  // Density follows the GDD's B(n) growth while preserving a mobile-safe spawn cap.
@@ -202,7 +265,7 @@ const same=(a,b)=>a.lane===b.lane&&a.col===b.col;
 export const CONTACT=.65;
 // Boss reinforcements; 13 s buried the boss lane under escorts faster than
 // the lane's shooters could reach the boss itself.
-const BOSS_SUMMON_EVERY=16,BOSS_ESCORT_CAP=3,SAFE_AUTO_REVEAL=20;
+const BOSS_SUMMON_EVERY=16,BOSS_ESCORT_CAP=3,SAFE_AUTO_REVEAL=20,REWARD_AUTO_TAKE=30;
 // Hydra (body 8000, heads 2000, 25-seal wallet drain every 12 s) took a novice
 // ~4 min per head and ate ~40 % of their income; malware head drops 1 USB.
 const HYDRA_HEAD_HP=600,HYDRA_BODY_HP=5000;
@@ -332,6 +395,7 @@ export function place(g,id,lane,col){
  g.defenders.push({uid:uid(g),id,name:u.name,icon:u.icon,kind:u.kind,tool:u.tool,lane,col,
  hp:u.hp,maxHp:u.hp,shieldHp:0,timer:0,placedAt:g.time,disabledUntil:0,confusedUntil:0,lastShotAt:-10});
  effect(g,"plant",lane,col+.5,"+");
+ tutorialEvent(g,"place",id);
  return {ok:true};
 }
 
@@ -360,7 +424,7 @@ export function advanceFallen(g,dt){
 function removeEnemy(g,e,silent=false){
  const idx=g.enemies.indexOf(e);if(idx>=0)g.enemies.splice(idx,1);
  if(!silent){
-  g.kills++;
+  g.kills++;g.lastKill={lane:e.lane,x:e.x};
   effect(g,"hit",e.lane,e.x,e.id==="boss"?"СХЕМУ ЗУПИНЕНО":"АНУЛЬОВАНО");
   emitBurst(g,e.scheme,e.lane,e.x,e.id==="boss"?14:8);
  }
@@ -888,6 +952,7 @@ export function tick(g,delta){
  for(const k of Object.keys(g.cooldowns))g.cooldowns[k]=Math.max(0,g.cooldowns[k]-delta);
  for(const t of [...g.tokens]){t.ttl-=delta;if(t.ttl<=0){g.tokens.splice(g.tokens.indexOf(t),1);missedToken(g);}}
  for(const fx of [...g.effects]){fx.ttl-=delta;if(fx.ttl<=0)g.effects.splice(g.effects.indexOf(fx),1);}
+ if(g.tutorial)tutorialTick(g,delta);
  if(g.time>=g.nextSky){
   if(!g.level.special.conveyor)createToken(g,Math.floor(Math.random()*5),Math.floor(Math.random()*9));
   g.nextSky+=g.level.special.blackout?14:10;
@@ -907,7 +972,8 @@ export function tick(g,delta){
   const action=g.plan[g.spawned++];
   if(action.wave>g.stageWave){
    g.stageWave=action.wave;
-   effect(g,"wave",2,4.5,action.wave===g.maxWave?"ВЕЛИКА СХЕМА!":"ХВИЛЯ "+action.wave,2.1);
+   if(action.wave===g.maxWave&&g.maxWave>1)effect(g,"final-wave",2,4.5,"ВЕЛИКА СХЕМА!",2.8);
+   else effect(g,"wave",2,4.5,"ХВИЛЯ "+action.wave,2.1);
   }
   spawn(g,action.id,action.lane);
   if(action.id==="usb"&&g.level.stage>=7){
@@ -930,7 +996,18 @@ export function tick(g,delta){
   if(g.challenge?.kind==="endless"){
    queueEndlessWave(g,g.maxWave+1);
    g.lastHint="🦉 Хвилю "+g.stageWave+" відбито. Готуйтесь до наступної!";
-  }else if(!g.finalSurvivalUntil||g.time>=g.finalSurvivalUntil)g.phase="won";
+  }else if(!g.finalSurvivalUntil||g.time>=g.finalSurvivalUntil){
+   if(g.rewardCard&&!g.rewardTaken){
+    if(!g.rewardDrop){
+     const at=g.lastKill||{lane:g.level.activeLanes[0],x:6};
+     g.rewardDrop={id:g.rewardCard,lane:at.lane,x:cap(at.x,1.2,8.2),at:g.time};
+     g.lastHint="Схему зупинено! Забери нову картку, що випала.";
+    }
+    // Nobody is left on the field; never lock a child out of the win.
+    if(g.time-g.rewardDrop.at>REWARD_AUTO_TAKE)g.rewardTaken=true;
+   }
+   if(!g.rewardCard||g.rewardTaken)g.phase="won";
+  }
  }
 }
 export function currentProgress(g){return g.plan.length?Math.min(100,Math.round(100*g.spawned/g.plan.length)):100;}

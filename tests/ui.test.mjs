@@ -21,7 +21,7 @@ function createUI(source){
  const noImports=source.replace(/^import .*?;\s*$/gm,'');
  const symbols={...data,...engine,...tactics,...life,Soundtrack,document,window,localStorage,requestAnimationFrame,fetch};
  const load=new Function(...Object.keys(symbols),
-  noImports+';return {action,goLevel,startGame,setView,finish,html:()=>root.innerHTML,game:()=>game,mode:()=>view};');
+  noImports+';return {action,goLevel,startGame,setView,finish,advanceCinematic,cine:()=>cine,html:()=>root.innerHTML,game:()=>game,mode:()=>view};');
  return load(...Object.values(symbols));
 }
 const source=await readFile(new URL('../src/app.js',import.meta.url),'utf8');
@@ -107,14 +107,27 @@ test("lost level shows distinct defeat animation BEFORE score screen",()=>{
  assert.equal(ui.mode(),"result");
  assert.match(ui.html(),/Схема прорвалася/);
 });
-test('a new card pauses the first battle with a spotlight coach card',()=>{
+test('a new card pauses the battle with a spotlight coach card after the intro',()=>{
  const game=createUI(source);
- game.goLevel(0,1);game.startGame();
+ game.goLevel(0,2);game.startGame();
+ assert.ok(game.cine(),'the battle opens with the cinematic');
+ assert.doesNotMatch(game.html(),/coach-card/,'no coach card over the cinematic');
+ game.advanceCinematic(30);
+ assert.equal(game.cine(),null);
  assert.match(game.html(),/coach-card/);
  assert.match(game.html(),/Нова картка/);
  assert.match(game.html(),/coach-spot/);
  game.action('intro-next');
  assert.doesNotMatch(game.html(),/coach-card/);
- game.startGame();
+ game.startGame();game.advanceCinematic(30);
  assert.doesNotMatch(game.html(),/coach-card/,'a seen card is not explained twice');
+});
+test('the very first battle is a guided tutorial instead of a coach card',()=>{
+ const game=createUI(source);
+ game.goLevel(0,1);game.startGame();game.advanceCinematic(30);
+ assert.ok(game.game().tutorial,'guided flow is on');
+ assert.equal(game.game().tutorial.step,'pick');
+ assert.doesNotMatch(game.html(),/coach-card/);
+ assert.match(game.html(),/street-scene/);
+ assert.match(game.html(),/tutor-bar/);
 });

@@ -1,5 +1,5 @@
 import {UNITS,UNIT_BY_ID,UNIT_HOW,ENEMIES,ENEMY_BY_ID,WORLDS,TYPES,TOOLS,FACTS,UNLOCK_REWARDS,MINI_LEVELS,STORY,getLevel,levelId,unlockedUnits,levelUnlocked} from "./data.js";
-import {makeGame,makeWavePlan,tick,place,collectToken,collectAll,currentProgress,scoreStars,selectAdvice,useGuard,availablePlacement,explainFiring,waveStatus,ROLLER_FADE} from "./engine.js";
+import {makeGame,makeWavePlan,tick,place,collectToken,collectAll,currentProgress,scoreStars,selectAdvice,useGuard,availablePlacement,explainFiring,waveStatus,ROLLER_FADE,tutorialEvent,tutorialText,collectReward} from "./engine.js";
 import {getThreat,getEncounterThreats,getCounterAdvice,threatNote,threatLanes,lanesLabel} from "./tactics.js";
 import {Soundtrack} from "./music.js";
 import {ENEMY_LIFE,UNIT_LIFE} from "./life.js";
@@ -276,9 +276,11 @@ function renderPlay(){
  <div class="cardbar" aria-label="Колода захисників">${cards}</div>
  <div class="selected-help" aria-live="off"><span>↘ <strong data-selected-name>${E(UNIT_BY_ID[selected]?.name||"Захисник")}</strong></span><span data-selected-desc>${E(unitHow(UNIT_BY_ID[selected])||"Оберіть клітинку для захисту.")}</span></div>
  <div class="field-wrap ${level.special.blackout?"blackout":""} ${level.special.fog?"fog":""}" data-world="${level.world+1}">
+ ${streetScene()}<div class="cine-title" aria-hidden="true"><small>Справа ${E(level.id)} · ${E(WORLDS[level.world].name)}</small><strong>${E(level.name)}</strong></div>
+ <div class="cine-count" aria-live="polite"></div><div class="tutor-bar" aria-live="polite"></div>
  <div class="skyline" aria-hidden="true">${landscape(level.world,"scenery")}</div>
  <div class="board-frame"><div class="house-strip">${guards}</div><div class="board" role="grid" aria-label="Поле оборони, 5 рядків і 9 колонок">
- ${cells}<div class="placement-preview" aria-hidden="true">${art(selected,"preview-art")}</div><div class="projectile-layer" aria-hidden="true">${shots}</div><div class="particle-layer" aria-hidden="true"></div><div class="enemy-layer" aria-hidden="true">${foes}</div><div class="fallen-layer" aria-hidden="true"></div><div class="roller-layer" aria-hidden="true"></div><div class="tokens-layer">${tokens}</div><div class="vfx-layer" aria-hidden="true">${fx}</div></div></div></div>
+ ${cells}<div class="placement-preview" aria-hidden="true">${art(selected,"preview-art")}</div><div class="projectile-layer" aria-hidden="true">${shots}</div><div class="particle-layer" aria-hidden="true"></div><div class="enemy-layer" aria-hidden="true">${foes}</div><div class="fallen-layer" aria-hidden="true"></div><div class="roller-layer" aria-hidden="true"></div><div class="lane-ribbons" aria-hidden="true">${level.activeLanes.map(l=>'<span class="lane-ribbon" style="top:'+(l*20)+'%"></span>').join("")}</div><div class="tokens-layer">${tokens}</div><div class="vfx-layer" aria-hidden="true">${fx}</div></div></div></div>
  <div class="game-bottom"><span>🛡️ Захищено рядків: ${5-game.usedGuards.filter(Boolean).length}/5 · Схемників: ${game.enemies.length} · Пострілів: ${activeAttackers} · Залишилось: ${remaining}</span>
  <span>⌨️ 1–8: картка · Стрілки: клітинка · Enter: поставити · Пробіл: зібрати · P: пауза</span></div>
  </section>${renderThreatLegend()}<div class="owl-message" aria-live="polite"><div class="face" aria-hidden="true">🦉</div><div><strong>Сова Юся</strong>${E(toast||game.lastHint)}</div></div></main>`);
@@ -326,6 +328,107 @@ function syncRollers(){
  for(const el of Array.from(layer.children))if(!seen.has(el.dataset.roller))el.remove();
 }
 let lastRollerUid=0;
+/* ---- PvZ-style onboarding --------------------------------------------
+ * Every battle opens with a short cinematic: the yard, a pan to the street
+ * where this level's enemies wait, back to the yard, the open lanes unroll,
+ * then "Увага… Готуйсь… Захищай!". Any click or key skips it. */
+const CINE=[["title",1.4],["panOut",1.3],["hold",1.8],["panBack",1.3],["unroll",1.1],["ready",.75],["set",.75],["go",.8]];
+const CINE_WORD={ready:"Увага…",set:"Готуйсь…",go:"Захищай!"};
+let cine=null,fieldHint=null;
+function startCinematic(){
+ const reduced=save.settings.reducedMotion;
+ cine={i:reduced?CINE.findIndex(p=>p[0]==="ready"):0,t:0};
+}
+function skipCinematic(){if(cine){cine.i=CINE.length-1;cine.t=0;syncCinematic();}}
+function cinePhase(){return cine?CINE[cine.i][0]:null;}
+/** The camera part can be skipped; during the countdown clicks work normally. */
+function cineSkippable(){return !!cine&&!CINE_WORD[cinePhase()];}
+function advanceCinematic(dt){
+ if(!cine)return;
+ cine.t+=dt;
+ while(cine&&cine.t>=CINE[cine.i][1]){
+  cine.t-=CINE[cine.i][1];cine.i++;
+  if(cine.i>=CINE.length){
+   cine=null;syncCinematic();
+   const wrap=root.querySelector?.(".field-wrap");if(wrap)wrap.scrollLeft=0;
+   showNextIntro();
+  }
+  else if(CINE_WORD[CINE[cine.i][0]])sound(CINE[cine.i][0]==="go"?720:520,.12);
+ }
+ syncCinematic();
+}
+function syncCinematic(){
+ const shell=root.querySelector?.(".game-shell"),wrap=root.querySelector?.(".field-wrap"),board=root.querySelector?.(".board");
+ if(!shell||!wrap||!board)return;
+ const p=cinePhase();
+ shell.classList.toggle("cine-hud",!!p&&!["ready","set","go"].includes(p));
+ shell.classList.toggle("cine-on",!!p);
+ wrap.classList.toggle("cine-street",p==="panOut"||p==="hold");
+ wrap.classList.toggle("cine-titled",p==="title"||p==="panOut");
+ board.classList.toggle("cine-unroll",p==="unroll");
+ const count=wrap.querySelector(".cine-count"),word=CINE_WORD[p]||"";
+ if(count&&count.dataset.word!==word){
+  count.dataset.word=word;count.textContent=word;
+  count.classList.remove("pop");void count.offsetWidth;if(word)count.classList.add("pop");
+ }
+}
+/** Enemies of this level waiting on the street beyond the yard. */
+function streetScene(){
+ const ids=encounterThreats().filter(id=>!["offshore_safe","tentacle","hydra_phish","hydra_call","hydra_malware"].includes(id));
+ const crowd=[];
+ ids.forEach((id,i)=>{const n=id==="schemer"?3:id==="boss"?1:2;for(let k=0;k<n&&crowd.length<9;k++)crowd.push(id);});
+ const foes=crowd.map((id,i)=>{
+  const x=18+((i*37)%64),y=10+((i*53)%70),boss=id==="boss";
+  return '<span class="street-foe'+(boss?" boss":"")+'" style="left:'+x+'%;top:'+y+'%;--d:'+(i*.17).toFixed(2)+'s;z-index:'+(10+Math.round(y))+'">'+art(DISGUISE_TRAITS.includes(ENEMY_BY_ID[id]?.trait)?id+"_disguised":threatArtwork(id),"street-art")+'</span>';
+ }).join("");
+ return '<div class="street-scene" aria-hidden="true"><div class="street-road"></div>'+foes+
+  '<div class="street-caption">Схема вже на вулиці!</div></div>';
+}
+function showFieldHint(text,sec=2.4){fieldHint={text,until:performance.now()+sec*1000};}
+/** Bottom-of-field bar: tutorial step, else a short error/feedback line. */
+function syncTutorBar(){
+ const bar=root.querySelector?.(".tutor-bar");if(!bar||!game)return;
+ const live=fieldHint&&performance.now()<fieldHint.until?fieldHint.text:"";
+ const text=cine?"":(tutorialText(game)||live);
+ if(bar.dataset.text!==text){bar.dataset.text=text;bar.textContent=text;}
+ bar.classList.toggle("visible",!!text);
+ const step=game.tutorial?.step;
+ const wantCard=["pick","afford","place2"].includes(step)&&selected!=="registrar"||step==="pick";
+ for(const card of root.querySelectorAll(".cardbar [data-unit]"))
+  card.classList.toggle("tutor-target",!cine&&wantCard&&card.dataset.unit==="registrar");
+ const wantLane=(step==="place"||step==="afford"||step==="place2")&&selected==="registrar";
+ for(const cell of root.querySelectorAll(".board > .cell"))
+  cell.classList.toggle("tutor-lane",!cine&&wantLane&&level.activeLanes.includes(+cell.dataset.lane)&&!game.defenders.some(d=>d.lane===+cell.dataset.lane&&d.col===+cell.dataset.col));
+}
+/** The card dropped by the last defeated enemy. */
+function syncRewardDrop(){
+ const layer=root.querySelector?.(".tokens-layer");if(!layer||!game)return;
+ let el=layer.querySelector(".reward-drop");
+ const drop=game.rewardDrop&&!game.rewardTaken?game.rewardDrop:null;
+ if(!drop){if(el)el.remove();return;}
+ if(!el){
+  const u=UNIT_BY_ID[drop.id];
+  el=document.createElement("button");el.type="button";el.className="reward-drop";el.dataset.act="reward-pick";
+  el.setAttribute("aria-label","Забрати нову картку: "+(u?.name||""));
+  el.innerHTML='<span class="reward-arrow" aria-hidden="true">⬇</span><span class="reward-card-mini">'+art(drop.id,"reward-mini-art")+'<b>'+(u?.cost??"")+'</b></span>';
+  layer.append(el);sound(880,.2);
+ }
+ el.style.left=drop.x*100/9+"%";el.style.top=drop.lane*20+"%";
+}
+function rewardDialog(){
+ const id=game?.rewardDrop?.id,u=UNIT_BY_ID[id];
+ if(!u)return "";
+ return '<div class="reward-stage" aria-hidden="true"><div class="reward-rays"></div><div class="reward-flash"></div><div class="reward-card">'+art(u.id,"reward-art")+'<span>🟡 '+u.cost+'</span></div></div>'+
+  '<div class="eyebrow">🎁 Нова картка!</div><h2>'+E(u.name)+'</h2>'+
+  '<p class="coach-stats"><span>🟡 '+u.cost+' печаток · ⏱ '+u.cooldown+' с перезарядки</span></p>'+
+  '<p class="hint"><strong>Як грає:</strong> '+E(unitHow(u))+'</p>'+
+  '<p class="muted">Картка з\'явиться у вашій колоді на наступних рівнях.</p>'+
+  '<div class="dialog-actions">'+btn("reward-continue","Продовжити ▶","btn btn-primary")+'</div>';
+}
+function rewardFor(id){
+ if(challenge||save.completed[id]!==undefined)return null;
+ return UNLOCK_REWARDS[id]||{"1-10":"executor","2-10":"whistleblower","3-10":"twofactor"}[id]||null;
+}
 function syncGameFrame(){
  if(view!=="play"||!game||modal)return;
  const $=(s)=>root.querySelector(s);
@@ -454,7 +557,7 @@ function syncGameFrame(){
    "deg) translateY("+(f.age/f.ttl*22)+"px) scale("+(1-f.age/f.ttl*.3)+")";
  }
  for(const el of Array.from(fallenLayer.children))if(!fading.has(el.dataset.fallen))el.remove();
- syncRollers();
+ syncRollers();syncTutorBar();syncRewardDrop();
  const shotKinds={stamp:"✓",clip:"⌁",chain:"❄",writ:"§",dossier:"▣",dove:"✉",beam:""};
  const shotsAlive=new Set();
  const pxPerCol=board.clientWidth/9,pxPerRow=board.clientHeight/5;
@@ -507,12 +610,12 @@ function syncGameFrame(){
  for(const t of game.tokens){
   const id=String(t.uid);tokens.add(id);
   let el=tokenLayer.querySelector('[data-id="'+id+'"]');
-  if(!el){el=document.createElement("button");el.type="button";el.className="token";el.textContent="✦";el.dataset.act="collect";el.dataset.id=id;el.setAttribute("aria-label","Зібрати 25 печаток");tokenLayer.append(el);}
+  if(!el){el=document.createElement("button");el.type="button";el.className="token"+(t.falling?" falling":"");el.textContent="✦";el.dataset.act="collect";el.dataset.id=id;el.setAttribute("aria-label","Зібрати 25 печаток");tokenLayer.append(el);}
   el.style.left=(t.col+.3)*100/9+"%";el.style.top=(t.lane+.15)*20+"%";
   // A seal about to fade blinks, so a missed one is never a surprise.
   el.classList.toggle("expiring",t.ttl<3.5);
  }
- for(const el of Array.from(tokenLayer.children))if(!tokens.has(el.dataset.id))el.remove();
+ for(const el of Array.from(tokenLayer.children))if(!el.classList.contains("reward-drop")&&!tokens.has(el.dataset.id))el.remove();
  const fxs=new Set();
  for(const fx of game.effects){
   const id=String(fx.id);fxs.add(id);
@@ -747,6 +850,7 @@ function renderDialog(){
  if(modal==="pause")content=`<div class="large-emoji">⏸️</div><h2>Пауза</h2><p>Ваша справа чекає. Продовжуйте у зручному темпі.</p>
  <div class="dialog-actions">${btn("close-modal","▶ Продовжити","btn btn-primary")}${btn("retry","↻ Заново","btn btn-quiet")}${btn("levels","🗺️ На карту","btn btn-quiet")}</div>`;
  else if(modal==="threat")content=renderCounterModal();
+ else if(modal==="reward")return '<div class="overlay reward-overlay" role="presentation"><div class="dialog reward-dialog" role="dialog" aria-modal="true" aria-label="Нова картка">'+rewardDialog()+'</div></div>';
  else if(modal==="detail"&&detail){
   const d=detail.kind==="unit"?UNIT_BY_ID[detail.id]:ENEMY_BY_ID[detail.id],isUnit=detail.kind==="unit";
   content=`<div class="detail-illustration">${art(d.id,"detail-art")}</div><div class="eyebrow">Альманах · ${isUnit?"Захисник":"Схемник"}</div><h2>${E(d.name)}</h2>
@@ -805,12 +909,14 @@ function goLevel(w,s){
 }
 function startGame(){
  if(!deck.length)return;
- game=makeGame(level,deck,save.mode,{...save.settings,careerBonus:totalStars()>=35?25:0},challenge);selected=deck[0];shownEnd=false;outroElapsed=0;latestShotSound=0;lastShotSfxAt=-10;lastRollerUid=0;
+ const tutorialFlow=level.id==="1-1"&&!challenge&&save.settings.tutorials!==false&&save.completed["1-1"]===undefined;
+ game=makeGame(level,deck,save.mode,{...save.settings,careerBonus:totalStars()>=35?25:0,tutorialFlow,rewardCard:rewardFor(level.id)},challenge);selected=deck[0];shownEnd=false;outroElapsed=0;latestShotSound=0;lastShotSfxAt=-10;lastRollerUid=0;
  game.lastHint=level.tutorial||`Світ ${world+1}. Захистіть будівлю, використовуючи відповідні інструменти.`;
- introQueue=[];intro=null;
- for(const id of deck)queueIntro({kind:"unit",id});
+ introQueue=[];intro=null;fieldHint=null;
+ // The guided first battle teaches the registrar itself.
+ for(const id of deck)if(!(tutorialFlow&&id==="registrar"))queueIntro({kind:"unit",id});
  setView("play");
- showNextIntro();
+ startCinematic();syncCinematic();
 }
 function finish(){
  if(!game||shownEnd)return;
@@ -858,16 +964,27 @@ function action(name,el){
   if(view==="deck"){
    if(deck.includes(id)&&deck.length>1)deck=deck.filter(x=>x!==id);
    else if(!deck.includes(id)&&deck.length<slotLimit())deck.push(id);
-  }else if(view==="play"){selected=id;syncGameFrame();return;}
+  }else if(view==="play"){
+   const u=UNIT_BY_ID[id];
+   if(game&&u&&game.seal<u.cost){
+    showFieldHint("Не вистачає печаток: «"+u.name+"» коштує "+u.cost+" ✦, а у вас "+Math.floor(game.seal)+".");
+    sound(160,.12);root.querySelector?.(".seal-pill")?.classList.add("short");
+    setTimeout(()=>root.querySelector?.(".seal-pill")?.classList.remove("short"),600);
+    syncGameFrame();return;
+   }
+   selected=id;if(game)tutorialEvent(game,"pick",id);syncGameFrame();return;
+  }
   render();return;
  }
  if(name==="cell"&&view==="play"){
   focus={lane:Number(el.dataset.lane),col:Number(el.dataset.col)};
   const result=place(game,selected,focus.lane,focus.col);
   toast=result.ok?`${UNIT_BY_ID[selected].name}: додано на поле.`:result.error;
-  if(result.ok)sound(540,.09);
+  if(result.ok)sound(540,.09);else showFieldHint(result.error);
   syncGameFrame();return;
  }
+ if(name==="reward-pick"&&game?.rewardDrop){modal="reward";sound(1040,.3);render();return;}
+ if(name==="reward-continue"&&game){collectReward(game);modal="";render();return;}
  if(name==="collect"&&game){collectToken(game,Number(el.dataset.id));sound(950,.12);toast="Отримано 25 печаток довіри!";syncGameFrame();return;}
  if(name==="guard"&&game){const ok=useGuard(game,Number(el.dataset.lane));if(ok)sound(260,.24);toast=ok?"Заборону застосовано!":"У босовій справі дочекайтеся фінальної фази.";syncGameFrame();return;}
  if(name==="speed"){speed=speed===1?2:speed===2?.5:1;const b=root.querySelector?.('[data-act="speed"]');if(b)b.textContent=speed===1?"▶ ×1":speed===2?"▶▶ ×2":"▶ ½";return;}
@@ -910,6 +1027,7 @@ root.addEventListener("pointerover",e=>{
  }
 });
 root.addEventListener("click",e=>{
+ if(view==="play"&&cineSkippable()&&!modal&&!e.target.closest?.(".game-controls")){skipCinematic();return;}
  const el=e.target.closest("[data-act]");
  if(el&&!el.disabled){
   action(el.dataset.act,el);
@@ -943,6 +1061,7 @@ document.addEventListener("keydown",e=>{
  if(e.key==="Escape"&&modal){modal="";render();return;}
  if(view==="outro"&&["Enter","Escape"," "].includes(e.key)){setView("result");e.preventDefault();return;}
  if(view!=="play"||!game||modal)return;
+ if(cineSkippable()){if(["Enter"," ","Escape"].includes(e.key)){skipCinematic();e.preventDefault();}return;}
  const key=e.key.toLowerCase();
  if(key==="p"){modal="pause";render();e.preventDefault();return;}
  if(/^[1-9]$/.test(key)&&deck[Number(key)-1]){selected=deck[Number(key)-1];syncGameFrame();return;}
@@ -973,7 +1092,8 @@ for(const type of ["mouseout","focusout"])document.addEventListener(type,e=>{
 function loop(ts){
  if(!prevTs)prevTs=ts;
  const delta=Math.min((ts-prevTs)/1000,.1);prevTs=ts;
- if(view==="play"&&game?.phase==="playing"&&!modal&&!document.hidden){
+ if(view==="play"&&game&&cine&&!modal&&!document.hidden)advanceCinematic(delta);
+ else if(view==="play"&&game?.phase==="playing"&&!modal&&!document.hidden){
   soundtrack.setScene("battle",world,Math.min(1,game.stageWave/Math.max(1,game.maxWave)));
   // Fixed sub-steps keep collisions identical at x2 speed and on slow
   // frames (a single big tick used to be clamped and lose game time).
