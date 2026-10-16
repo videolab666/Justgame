@@ -5,28 +5,93 @@ export function typeMultiplier(tool,scheme,mode="normal"){
  const n=TOOLS[tool].multipliers[SCHEMES.indexOf(scheme)]??1;
  return mode==="expert"&&n<1?.25:n;
 }
+// Wave pacing (docs/BALANCE.md). A level spends a threat budget (GDD 15.3
+// threat points) instead of a head count, so a golem or a raider "costs" more
+// than a schemer. The opening wave is small on purpose: it is the window in
+// which building ЦНАП is a real choice rather than a guaranteed loss.
+export const WAVE_SHARES={2:[.35,.65],3:[.18,.32,.5],4:[.12,.2,.28,.4]};
+// Threat budget of a whole level by stage (1..10); index 9 is the boss level,
+// whose boss supplies most of the pressure.
+export const STAGE_BUDGET=[6,10,13,16,20,23,26,29,33,24];
+export const WORLD_BUDGET=[1,1,1.1,.9];
+// Seconds before the first spawn, so the player can place 2-3 cards first.
+export const FIRST_SPAWN={tutorial:8,normal:18};
+// After the field is cleared the next wave is pulled forward to this lull.
+export const WAVE_LULL={tutorial:3,normal:7};
+export function levelBudget(level){
+ // Blackout already halves unpowered income and fire rate: fewer attackers.
+ const blackout=level.special?.blackout?.8:1;
+ return Math.round(STAGE_BUDGET[level.stage-1]*WORLD_BUDGET[level.world]*blackout);
+}
 export function makeWavePlan(level,seed=0){
- const list=[],waves=level.waves;
+ const list=[],waves=level.waves,shares=WAVE_SHARES[waves]||WAVE_SHARES[3];
  let s=seed||level.world*1001+level.stage*211+71;
  const rand=()=>{s=(Math.imul(s,1664525)+1013904223)>>>0;return s/4294967296;};
- for(let w=0;w<waves;w++){
-  const start=13+w*(level.stage===1?26:41);
-  const n=level.stage===1?1+w:Math.min(13,2+w*2+Math.floor(level.stage/3));
-  for(let i=0;i<n;i++){
-   const pool=level.enemies;
-   let id=pool[Math.floor(rand()*pool.length)];
-   // Tutorial levels introduce only the currently relevant threats.
-   if(level.world===0&&level.stage<=4){
-    const intro=["schemer","schemer","poa","broker"][level.stage-1];
-    id=i%3===0?intro:"schemer";
-   }
-   if(id==="usb"&&i%3===0)id="usb";
-   list.push({time:start+i*(level.stage===1?5:2.8),id,lane:level.activeLanes[Math.floor(rand()*level.activeLanes.length)],wave:w+1});
+ // Shuffle-bag lanes: every lane is used once before any lane repeats, so a
+ // wave never piles several spawns into one lane by pure luck.
+ let bag=[];
+ const nextLane=()=>{
+  if(!bag.length){bag=[...level.activeLanes];for(let i=bag.length-1;i>0;i--){const j=Math.floor(rand()*(i+1));[bag[i],bag[j]]=[bag[j],bag[i]];}}
+  return bag.pop();
+ };
+ // Lane affinity: each special threat (anything but the basic schemer) keeps
+ // to two lanes per level. Counters are lane-bound, so uniform lanes forced
+ // "every counter in every lane"; now the player can read and answer a lane.
+ const affinity={};
+ const laneFor=id=>{
+  if(id==="schemer"||level.activeLanes.length<=2)return nextLane();
+  if(!affinity[id]){
+   const lanes=[...level.activeLanes];
+   const a=lanes.splice(Math.floor(rand()*lanes.length),1)[0];
+   affinity[id]={lanes:[a,lanes[Math.floor(rand()*lanes.length)]],n:0};
   }
+  const pick=affinity[id];return pick.lanes[pick.n++%2];
+ };
+ const tutorial=level.world===0&&level.stage<=4;
+ const intro=tutorial?["schemer","schemer","poa","broker"][level.stage-1]:null;
+ const pool=tutorial?[...new Set(["schemer",intro])]:level.enemies;
+ const newest=pool[pool.length-1];
+ const cost=id=>id==="usb"&&level.stage>=7?3:(ENEMY_BY_ID[id]?.threat||1);
+ const total=levelBudget(level);
+ let t=level.stage===1?FIRST_SPAWN.tutorial:FIRST_SPAWN.normal;
+ for(let w=0;w<waves;w++){
+  const final=w===waves-1;
+  let budget=Math.max(1,Math.round(total*shares[w]));
+  const ids=[];
+  // The level's newest threat opens wave 2 alone, once the economy is up.
+  if(w===Math.min(1,waves-1)&&newest!=="schemer"&&cost(newest)<=budget){ids.push(newest);budget-=cost(newest);}
+  let guard=0;
+  while(budget>0&&guard++<40){
+   // The opening wave never demands a specialised counter (threat <= 2).
+   let choices=pool.filter(id=>cost(id)<=budget&&(w>0||cost(id)<=2)&&(id!=="golem"||final&&!ids.includes("golem")));
+   if(tutorial)choices=choices.filter(id=>id==="schemer"||ids.length%3===0);
+   if(!choices.length)choices=["schemer"];
+   const id=choices[Math.floor(rand()*choices.length)];
+   ids.push(id);budget-=cost(id);
+  }
+  const spacing=level.stage===1?4:final?2.4:3.4;
+  ids.forEach((id,i)=>list.push({time:t+i*spacing,id,lane:laneFor(id),wave:w+1}));
+  const last=t+(ids.length-1)*spacing;
+  if(final){
+   if(level.boss)list.push({time:last+10,id:"boss",lane:level.activeLanes[Math.floor(rand()*level.activeLanes.length)],wave:waves});
+   if(level.id==="3-5")list.push({time:last+6,id:"mini_boss",lane:2,wave:waves});
+  }
+  // Scheduled gap; tick() pulls it in once the field is clear.
+  t=last+(level.stage===1?14:24);
  }
- if(level.boss)list.push({time:13+(waves-1)*41+24,id:"boss",lane:level.activeLanes[Math.floor(rand()*level.activeLanes.length)],wave:waves});
- if(level.id==="3-5")list.push({time:13+(waves-1)*41+19,id:"mini_boss",lane:2,wave:waves});
  return list.sort((a,b)=>a.time-b.time);
+}
+/** Seconds until the next wave starts, or null while a wave is in progress. */
+export function nextWaveIn(g){
+ const next=g.plan[g.spawned];
+ if(!next||next.wave<=g.stageWave)return null;
+ return Math.max(0,next.time-g.time);
+}
+export function waveStatus(g){
+ const left=nextWaveIn(g);
+ const base="Хвиля "+g.stageWave+"/"+g.maxWave;
+ if(left==null||left<1)return base;
+ return base+" · "+(g.stageWave?"наступна":"перша")+" через "+Math.ceil(left)+" с";
 }
 export function makeGame(level,deck,mode="normal",settings={},challenge=null){
  const game={
@@ -109,6 +174,9 @@ const same=(a,b)=>a.lane===b.lane&&a.col===b.col;
 // Every contact effect (mine, seize, smash, trap) must use this same reach,
 // otherwise an enemy can stand in front of a unit that never "feels" it.
 export const CONTACT=.65;
+// Boss reinforcements; 13 s buried the boss lane under escorts faster than
+// the lane's shooters could reach the boss itself.
+const BOSS_SUMMON_EVERY=16,BOSS_ESCORT_CAP=3;
 const SEIZE_TIME=2.5,GIANT_WINDUP=1.2,GIANT_SMASH_EVERY=1.8,JUMP_TIME=.7;
 // Bosses and their stationary parts are never removed by a lane guard.
 const GUARD_IMMUNE=new Set(["offshore_safe","tentacle","hydra_head"]);
@@ -132,7 +200,8 @@ function frontOfDefenders(g,lane,x){
  return Math.max(...passed.map(d=>d.col+.5+CONTACT-.02));
 }
 function isProtected(g,d){return !!d.shieldHp||g.defenders.some(other=>other.kind==="integrity"&&Math.abs(other.lane-d.lane)<=1&&Math.abs(other.col-d.col)<=1);}
-function powered(g,d){return !g.level.special.blackout||d.kind==="power"||g.defenders.some(o=>o.kind==="power"&&Math.abs(o.col-d.col)<=1&&Math.abs(o.lane-d.lane)<=1);}
+// 2FA lives on the phone, not on the mains: a blackout does not slow it.
+function powered(g,d){return !g.level.special.blackout||d.kind==="power"||d.kind==="trap"||g.defenders.some(o=>o.kind==="power"&&Math.abs(o.col-d.col)<=1&&Math.abs(o.lane-d.lane)<=1);}
 function revealInRange(g,e){
  return g.defenders.some(d=>d.kind==="reveal"&&Math.abs(d.lane-e.lane)<=2&&Math.abs(d.col+.5-e.x)<=2.5);
 }
@@ -535,7 +604,7 @@ function attack(g,d,delta){
   // One pulse hits every cyber enemy on the cell. Hitting only the first one
   // let the immune Hydra body absorb every pulse aimed at a head.
   const inCell=g.enemies.filter(e=>e.scheme==="cyber"&&e.hp>0&&e.lane===d.lane&&Math.abs(e.x-(d.col+.5))<.6);
-  for(const e of inCell){damageEnemy(g,e,20,"digital");e.stunUntil=Math.max(e.stunUntil,g.time+.35);}
+  for(const e of inCell){damageEnemy(g,e,spec.damage,"digital");e.stunUntil=Math.max(e.stunUntil,g.time+.35);}
   if(inCell.length)d.timer=1;
   return;
  }
@@ -634,29 +703,35 @@ function enemyTurn(g,e,delta){
  const blocker=nearby[0];
  // Timed contact abilities restart when the enemy faces a different unit.
  if(blocker?.uid!==e.contactUid){e.contactUid=blocker?.uid;e.contactTime=0;e.smashAt=null;}
- if(e.id==="boss"&&g.time>e.specialUntil){
-  const w=g.level.world;
-  if(w===0&&e.phase===1)spawn(g,"poa",e.lane,Math.min(9,e.x+.5));
-  if(w===0&&e.phase===2)spawn(g,"hacker",e.lane,Math.min(9,e.x+.7));
-  if(w===1&&e.phase===1)spawn(g,"burrower",e.lane,Math.min(9,e.x+.7));
-  if(w===1&&e.phase===2)spawn(g,"bankrupt",e.lane,Math.min(9,e.x+.7));
-  if(w===2)for(let lane=0;lane<5;lane++)if(g.level.activeLanes.includes(lane)&&lane%2===0)spawn(g,"briber",lane,9.2);
+ // Escorts are capped: the fight stays about the boss, not an endless
+ // stream that soaks up every shot in the boss lane.
+ const escorts=g.enemies.filter(x=>x.summonedBy===e.uid&&x.hp>0).length;
+ if(e.id==="boss"&&g.time>e.specialUntil&&escorts<BOSS_ESCORT_CAP){
+  const w=g.level.world,call=(id,lane,x)=>{const m=spawn(g,id,lane,x);if(m)m.summonedBy=e.uid;};
+  if(w===0&&e.phase===1)call("poa",e.lane,Math.min(9,e.x+.5));
+  // "Свій реєстратор": a raider, answered by world-1 cards (notary,
+  // commission). A hacker needed 2FA/KEP, which unlock only in world 4.
+  if(w===0&&e.phase===2)call("raider",e.lane,Math.min(9,e.x+.7));
+  if(w===1&&e.phase===1)call("burrower",e.lane,Math.min(9,e.x+.7));
+  if(w===1&&e.phase===2)call("bankrupt",e.lane,Math.min(9,e.x+.7));
+  if(w===2)for(let lane=0;lane<5;lane++)if(g.level.activeLanes.includes(lane)&&lane%2===0)call("briber",lane,9.2);
   // Stealing seals is the phishing head's job (GDD); the body draining too
   // starved the economy below what CNAP income can recover.
   if(w===3){
    // Spread the summons over the field instead of always flooding the
    // body's own lane, where they soaked up every shot aimed at a head.
    const lanes=g.level.activeLanes,lane=lanes[Math.floor(g.time*7.3)%lanes.length];
-   spawn(g,e.phase===1?"phisher":e.phase===2?"caller":"usb",lane,9.2);
+   call(e.phase===1?"phisher":e.phase===2?"caller":"usb",lane,9.2);
   }
-  e.specialUntil=g.time+13;effect(g,"phase",e.lane,e.x,"СХЕМА!");
+  e.specialUntil=g.time+BOSS_SUMMON_EVERY;effect(g,"phase",e.lane,e.x,"СХЕМА!");
  }
  if(e.trait==="mini_boss"&&g.time>e.specialUntil){
   for(const other of g.enemies)if(other!==e&&Math.abs(other.lane-e.lane)<=2&&Math.abs(other.x-e.x)<2)other.hp=Math.min(other.maxHp,other.hp+300);
   e.specialUntil=g.time+8;effect(g,"heal",e.lane,e.x,"ЛИПОВИЙ ВИСНОВОК");
  }
  if(["phish","call"].includes(e.trait)&&g.time>e.specialUntil){
-  const target=g.defenders.filter(d=>d.lane===e.lane&&e.x>d.col+.5&&e.x-(d.col+.5)<=3&&!d.shieldHp).sort((a,b)=>b.col-a.col)[0];
+  // 2FA is exactly what a phishing link or a fake call cannot switch off.
+  const target=g.defenders.filter(d=>d.lane===e.lane&&d.kind!=="trap"&&e.x>d.col+.5&&e.x-(d.col+.5)<=3&&!d.shieldHp).sort((a,b)=>b.col-a.col)[0];
   if(target){target.disabledUntil=g.time+(e.trait==="phish"?5:3);e.specialUntil=g.time+(e.trait==="phish"?10:8);effect(g,"phish",e.lane,e.x,"НЕВІДОМЕ ПОСИЛАННЯ");}
  }
  if(e.trait==="giant"&&!e.spawnedMinions&&e.hp<e.maxHp*.5){
@@ -722,8 +797,19 @@ export function tick(g,delta){
  for(const fx of [...g.effects]){fx.ttl-=delta;if(fx.ttl<=0)g.effects.splice(g.effects.indexOf(fx),1);}
  if(g.time>=g.nextSky){
   if(!g.level.special.conveyor)createToken(g,Math.floor(Math.random()*5),Math.floor(Math.random()*9));
-  g.nextSky+=g.level.special.blackout?18:10;
+  g.nextSky+=g.level.special.blackout?14:10;
  }
+ // Rubber-band pacing: a cleared field shortens the wait for the next wave
+ // (never lengthens it), so nobody watches an empty board for 20 s.
+ const next=g.plan[g.spawned];
+ if(next&&next.wave>g.stageWave&&!g.enemies.some(e=>e.trait!=="neutral")){
+  g.calm=(g.calm||0)+delta;
+  const lull=g.level.stage===1?WAVE_LULL.tutorial:WAVE_LULL.normal;
+  if(g.stageWave>0&&g.calm>=lull&&next.time>g.time+1){
+   const shift=next.time-(g.time+1);
+   for(let i=g.spawned;i<g.plan.length;i++)g.plan[i].time-=shift;
+  }
+ }else g.calm=0;
  while(g.spawned<g.plan.length&&g.plan[g.spawned].time<=g.time){
   const action=g.plan[g.spawned++];
   if(action.wave>g.stageWave){

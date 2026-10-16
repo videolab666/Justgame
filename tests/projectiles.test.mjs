@@ -93,6 +93,6 @@ test("projectile ceiling protects endless mode mobile sessions",()=>{
 });
 test("effects include a visible banner when a wave starts",()=>{
  const g=makeGame(getLevel(0,1),["registrar"]);
- for(let i=0;i<140;i++)tick(g,.1);
+ for(let i=0;i<300&&!g.stageWave;i++)tick(g,.1);
  assert.ok(g.effects.some(e=>e.kind==="wave"));
 });

@@ -1,5 +1,5 @@
 import {UNITS,UNIT_BY_ID,ENEMIES,ENEMY_BY_ID,WORLDS,TYPES,TOOLS,FACTS,UNLOCK_REWARDS,MINI_LEVELS,STORY,getLevel,levelId,unlockedUnits,levelUnlocked} from "./data.js";
-import {makeGame,tick,place,collectToken,collectAll,currentProgress,scoreStars,selectAdvice,useGuard,availablePlacement,explainFiring} from "./engine.js";
+import {makeGame,tick,place,collectToken,collectAll,currentProgress,scoreStars,selectAdvice,useGuard,availablePlacement,explainFiring,waveStatus} from "./engine.js";
 import {getThreat,getEncounterThreats,getCounterAdvice} from "./tactics.js";
 import {Soundtrack} from "./music.js";
 const root=document.getElementById("app");
@@ -96,10 +96,15 @@ function chooseSuggested(){
   ["registrar","cnap","notary","notification","senior","mine","commission","archive"],
   ["executor","cnap","limitation","trustee","private_executor","station","notary","registrar"],
   ["whistleblower","cnap","integrity","order","expert","intern","legal_aid","registrar"],
-  ["twofactor","cnap","shield","notification","expert","apostille","digital_office","registrar"]
+  ["twofactor","cnap","shield","notification","expert","apostille","digital_office","registrar","notary","mine"]
  ][world];
  const owned=new Set(unlocked.map(x=>x.id));
  deck=recommend.filter(x=>owned.has(x)).slice(0,max);
+ // A blackout halves unpowered defenders: suggest the charging station there.
+ if(level.special.blackout&&owned.has("station")&&!deck.includes("station")){
+  if(deck.length>=max)deck.pop();
+  deck.push("station");
+ }
  if(!deck.length)deck=["registrar"];
  selected=deck[0];focus={lane:level.activeLanes[Math.floor(level.activeLanes.length/2)],col:2};
 }
@@ -197,7 +202,7 @@ function renderPlay(){
  }).join("");
  return wrapper(`<main class="main" style="padding:12px"><section class="game-shell">
  <div class="game-top"><div class="seal-pill">✦ ${Math.floor(game.seal)}</div>
- <div class="game-meta"><strong>${E(level.id)} · ${E(level.name)} ${status} · Хвиля ${game.stageWave}/${game.maxWave}</strong>
+ <div class="game-meta"><strong>${E(level.id)} · ${E(level.name)} ${status} · ${E(waveStatus(game))}</strong>
  <div class="progress-track"><div class="progress-fill" data-game-progress style="width:${progress}%"></div></div></div>
  <div class="game-controls">${btn("speed",speed===1?"▶ ×1":speed===2?"▶▶ ×2":"▶ ½","btn btn-quiet")}${btn("music-toggle",save.settings.music?"♫":"♪̸","btn btn-quiet",'aria-label="Фонова музика" aria-pressed="'+save.settings.music+'"')}${btn("pause","⏸","btn btn-quiet","aria-label=\"Пауза\"")}</div></div>
  <div class="cardbar" aria-label="Колода захисників">${cards}</div>
@@ -220,7 +225,7 @@ function syncGameFrame(){
  const sealEl=$(".seal-pill"),waveEl=$(".game-meta strong"),bar=$("[data-game-progress]");
  if(!sealEl||!bar)return;
  sealEl.textContent="✦ "+Math.floor(game.seal);
- waveEl.textContent=level.id+" · "+level.name+" · Хвиля "+game.stageWave+"/"+game.maxWave;
+ waveEl.textContent=level.id+" · "+level.name+" · "+waveStatus(game);
  bar.style.width=currentProgress(game)+"%";
  const first=$(".game-bottom > span");
  if(first)first.textContent="🛡️ Захищено рядків: "+(5-game.usedGuards.filter(Boolean).length)+"/5 · Схемників: "+game.enemies.length+" · Пострілів: "+game.projectiles.length+" · Залишилось: "+(game.plan.length-game.spawned);

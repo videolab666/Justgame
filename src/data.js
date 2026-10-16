@@ -14,21 +14,21 @@ U("commission","Комісія зі скарг","⚖️",100,35,1,"restore","reg
 U("archive","Архів БТІ","🗄️",50,35,300,"healer",null,200,20,"1-7","Відновлює сусідніх захисників."),
 U("senior","Старший реєстратор","👩‍💼",200,20,300,"shooter","registry",40,1.4,"1-8","Подвійна перевірка документів."),
 U("executor","Державний виконавець","📜",150,20,300,"lobber","enforcement",40,3,"2-1","Постанови перелітають через щити."),
-U("limitation","Обмеження боржника","⛓️",175,20,300,"slow","enforcement",15,2,"2-2","Сповільнює та зупиняє боржників."),
-U("trustee","Арбітражний керуючий","🧮",175,20,300,"air","enforcement",30,1.5,"2-3","Помічає фіктивних банкрутів."),
-U("station","Зарядна станція","🔋",75,20,400,"power",null,0,0,"2-4","Підтримує захист під час блекауту."),
-U("private_executor","Приватний виконавець","💼",300,35,300,"splash","enforcement",80,3,"2-6","Постанова впливає на сусідні клітинки."),
-U("notary_office","Нотаріальна контора","🏢",125,50,8000,"wall","notary",0,0,"2-8","Її не можна перестрибнути."),
+U("limitation","Обмеження боржника","⛓️",175,20,300,"slow","enforcement",15,2,"2-1","Сповільнює та зупиняє боржників."),
+U("trustee","Арбітражний керуючий","🧮",175,20,300,"air","enforcement",30,1.5,"2-2","Помічає фіктивних банкрутів."),
+U("station","Зарядна станція","🔋",75,20,400,"power",null,0,0,"2-3","Підтримує захист під час блекауту."),
+U("private_executor","Приватний виконавець","💼",300,35,300,"splash","enforcement",80,3,"2-5","Постанова впливає на сусідні клітинки."),
+U("notary_office","Нотаріальна контора","🏢",125,50,8000,"wall","notary",0,0,"2-7","Її не можна перестрибнути."),
 U("whistleblower","Викривач","📣",150,50,1,"blast","integrity",1500,0,"3-1","Викриває корупцію навколо."),
-U("integrity","Спецперевірка","🔦",125,20,300,"integrity","integrity",0,0,"3-2","Захищає від підкупу."),
-U("order","Зареєстрований наказ","📋",75,20,200,"boost","registry",0,0,"3-3","Посилює оборону свого ряду."),
-U("expert","Судовий експерт","🔬",225,35,300,"sniper","expert",60,2.5,"3-4","Виявляє приховані підробки."),
-U("intern","Стажер","🎒",0,35,150,"intern","registry",10,2,"3-6","Через хвилину підвищує кваліфікацію."),
-U("legal_aid","Безоплатна правнича допомога","📘",125,50,1,"sweep",null,1800,0,"3-8","Поширює правовий захист на весь ряд."),
+U("integrity","Спецперевірка","🔦",125,20,300,"integrity","integrity",0,0,"3-1","Захищає від підкупу."),
+U("order","Зареєстрований наказ","📋",75,20,200,"boost","registry",0,0,"3-2","Посилює оборону свого ряду."),
+U("expert","Судовий експерт","🔬",225,35,300,"sniper","expert",60,2.5,"3-3","Виявляє приховані підробки."),
+U("intern","Стажер","🎒",0,35,150,"intern","registry",10,2,"3-5","Через хвилину підвищує кваліфікацію."),
+U("legal_aid","Безоплатна правнича допомога","📘",125,50,1,"sweep",null,1800,0,"3-7","Поширює правовий захист на весь ряд."),
 U("twofactor","Двофакторна автентифікація","🔐",100,20,300,"trap","digital",20,1,"4-1","Захист від кіберзагроз у клітинці."),
-U("shield","КЕП-щит","🛡️",125,35,3000,"shield","digital",0,0,"4-2","Захищає іншого юніта від перехоплення."),
-U("apostille","Апостиль","🕊️",150,35,300,"global","expert",50,8,"4-3","Працює по всьому полю."),
-U("digital_office","Цифровий офіс","🏙️",150,20,300,"upgrade",null,50,24,"4-6","Покращує виробництво ЦНАП.")
+U("shield","КЕП-щит","🛡️",125,35,3000,"shield","digital",0,0,"4-1","Захищає іншого юніта від перехоплення."),
+U("apostille","Апостиль","🕊️",150,35,300,"global","expert",50,8,"4-2","Працює по всьому полю."),
+U("digital_office","Цифровий офіс","🏙️",150,20,300,"upgrade",null,50,24,"4-5","Покращує виробництво ЦНАП.")
 ];
 export const UNIT_BY_ID=Object.fromEntries(UNITS.map(x=>[x.id,x]));
 const E=(id,name,icon,scheme,hp,speed,trait,shield=0,threat=1,tip="Обирайте відповідний правовий інструмент.")=>({id,name,icon,scheme,hp,speed,trait,shield,threat,tip});
@@ -66,6 +66,7 @@ export const WORLDS=[
 {id:"kropyvnytskyi",name:"Кропивницький",subtitle:"Чесна служба",emoji:"🏛️",summary:"Запобігання корупції, експертиза",enemyIds:["schemer","briber","conflict","lustrated","unregistered","golem"],titles:["Чесний вибір","Без конвертів","Новий наказ","Експертиза","Липовий експерт","Стажування","Конфлікт інтересів","Нормативний чи індивідуальний?","Прозора служба","Спрут Конверт"]},
 {id:"digital",name:"Цифровий фронт",subtitle:"Реєстри під захистом",emoji:"💠",summary:"Фішинг, КЕП, кібергігієна",enemyIds:["schemer","phisher","hacker","caller","usb","queue","unregistered"],titles:["Другий фактор","Збережи ключ","Небезпечний лист","Нічні реєстри","Справжнє чи фейк?","Цифровий офіс","Фішингова атака","Серверна зміна","Зламати схему","Гідра Фішингу"]}
 ];
+// Must match UNITS[].unlock: the result screen announces exactly these cards.
 export const UNLOCK_REWARDS={
 "1-1":"cnap","1-2":"notary","1-3":"notification","1-4":"mine","1-6":"commission","1-7":"archive","1-8":"senior",
 "2-1":"limitation","2-2":"trustee","2-3":"station","2-5":"private_executor","2-7":"notary_office",
@@ -94,7 +95,7 @@ export function levelId(world,stage){return `${world+1}-${stage}`;}
 export function getLevel(world,stage){
   const w=WORLDS[world],id=levelId(world,stage),mini=MINI_LEVELS[id]||null,boss=stage===10;
   const special={blackout:((world===1&&[4,7].includes(stage))||(world===3&&stage===4)),fog:((world===0&&stage===6)||(world===3&&stage===8)),deadline:world===0&&stage===8,restricted:world===2&&stage===7};
-  const count=stage===1?2:stage<5?3:4;
+  const count=stage<5?3:4;
   return {id,world,stage,name:w.titles[stage-1],mini,boss,bossData:boss?BOSSES[world]:null,
   activeLanes:world===0&&stage===1?[2]:world===0&&stage===2?[1,2,3]:special.restricted?[1,2,3]:[0,1,2,3,4],
   enemies:w.enemyIds.slice(0,Math.max(1,Math.min(w.enemyIds.length,Math.ceil(stage/2)+1))),
