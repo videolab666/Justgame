@@ -92,7 +92,7 @@ function chooseSuggested(){
  selected=deck[0];focus={lane:level.activeLanes[Math.floor(level.activeLanes.length/2)],col:2};
 }
 function unitCard(u,{selected=false,disabled=false,cooldown=0}={}){
- return `<button type="button" class="unit-card ${selected?"selected":""}" data-act="unit" data-unit="${u.id}" ${disabled?"disabled":""} aria-pressed="${selected}">
+ return `<button type="button" class="unit-card ${selected?"selected":""}" data-act="unit" data-unit="${u.id}" data-tool="${E(u.tool||"support")}" data-kind="${E(u.kind)}" ${disabled?"disabled":""} aria-pressed="${selected}">
  <span class="cost">🟡${u.cost}</span><span class="glyph" aria-hidden="true">${art(u.id,"card-illustration")}</span><strong>${E(u.name)}</strong>
  <small>⏱ ${u.cooldown} с</small>${cooldown>.2?`<span class="cooldown">${Math.ceil(cooldown)}</span>`:""}</button>`;
 }
@@ -103,7 +103,7 @@ function renderThreatChip(id){
  const t=getThreat(id,level),info=getCounterAdvice(id,{level,deck,owned:availableUnits()});
  if(!t||!info)return "";
  const equipped=info.recommended.find(u=>u.state==="deck"),count=game?.enemies.filter(e=>e.id===id).length||0;
- return '<button type="button" class="threat-chip" data-act="threat-tip" data-enemy="'+E(id)+'" aria-label="Порада проти '+E(t.name)+'">'+
+ return '<button type="button" class="threat-chip" data-scheme="'+E(t.scheme)+'" data-act="threat-tip" data-enemy="'+E(id)+'" aria-label="Порада проти '+E(t.name)+'">'+
  '<span class="threat-portrait">'+art(threatArtwork(id),"threat-illustration")+'</span>'+
  '<span class="threat-copy"><strong>'+E(t.name)+'</strong><small>'+E(TYPES[t.scheme]?.name||"Загроза")+'</small><em>'+E(equipped?"У колоді: "+equipped.name:"Потрібна тактика")+'</em></span>'+
  '<span class="threat-active" data-threat-count="'+E(id)+'">'+(count?"×"+count:"i")+'</span></button>';
@@ -162,14 +162,14 @@ function renderPlay(){
  const remaining=game.plan.length-game.spawned,progress=currentProgress(game),status=game.phase!=="playing"?" · Завершено":"";
  const activeAttackers=game.projectiles?.length||0;
  const cards=deck.map((id,i)=>{const u=UNIT_BY_ID[id],cd=game.cooldowns[id]||0,afford=game.seal>=u.cost;
- return `<button type="button" data-act="unit" data-unit="${id}" class="unit-card ${selected===id?"selected":""}" ${cd>0?"disabled":""} title="${E(u.name)} — клавіша ${i+1}" aria-label="${E(u.name)}, ціна ${u.cost}"><span class="cost">🟡${u.cost}</span><span class="glyph">${art(u.id,"card-illustration")}</span><strong>${E(u.name)}</strong>${cd>.2?`<span class="cooldown">${Math.ceil(cd)}</span>`:""}<small>${afford?"Готово":"Бракує 🟡"}</small></button>`;}).join("");
+ return `<button type="button" data-act="unit" data-unit="${id}" data-tool="${E(u.tool||"support")}" data-kind="${E(u.kind)}" class="unit-card ${selected===id?"selected":""}" ${cd>0?"disabled":""} title="${E(u.name)} — клавіша ${i+1}" aria-label="${E(u.name)}, ціна ${u.cost}"><span class="cost">🟡${u.cost}</span><span class="glyph">${art(u.id,"card-illustration")}</span><strong>${E(u.name)}</strong>${cd>.2?`<span class="cooldown">${Math.ceil(cd)}</span>`:""}<small>${afford?"Готово":"Бракує 🟡"}</small></button>`;}).join("");
  let cells="";
  for(let lane=0;lane<5;lane++)for(let col=0;col<9;col++){
   const active=level.activeLanes.includes(lane);
   cells+=`<button type="button" role="gridcell" data-act="cell" data-lane="${lane}" data-col="${col}" class="cell ${active?"":"out"} ${focus.lane===lane&&focus.col===col?"cursor":""}" ${active?"":"disabled"} aria-label="Ряд ${lane+1}, колонка ${col+1}">${cellContent(lane,col)}</button>`;
  }
  const tokens=game.tokens.map(t=>`<button class="token" type="button" aria-label="Зібрати 25 печаток" data-act="collect" data-id="${t.uid}" style="left:${(t.col+.3)*100/9}%;top:${(t.lane+.15)*100/5}%">✦</button>`).join("");
- const foes=game.enemies.map(e=>`<div data-enemy="${e.uid}" title="${E(e.name)}" data-trait="${E(e.trait)}" class="enemy ${e.trait==="flying"?"flying":""} ${game.time-(e.attackUntil??-10)<0?"attacking":""} ${game.time-(e.lastHitAt??-10)<.18?"taking-hit":""} ${e.trait==="disguised_jump"&&!e.reveal?"disguised":""} ${game.time<e.frozenUntil?"frozen":""} ${e.id==="boss"?"boss":""}" style="left:${e.x*100/9}%;top:${e.lane*20+.35}%">
+ const foes=game.enemies.map(e=>`<div data-enemy="${e.uid}" title="${E(e.name)}" data-trait="${E(e.trait)}" data-scheme="${E(e.scheme)}" class="enemy ${e.trait==="flying"?"flying":""} ${game.time-(e.attackUntil??-10)<0?"attacking":""} ${game.time-(e.lastHitAt??-10)<.18?"taking-hit":""} ${e.trait==="disguised_jump"&&!e.reveal?"disguised":""} ${game.time<e.frozenUntil?"frozen":""} ${e.id==="boss"?"boss":""}" style="left:${e.x*100/9}%;top:${e.lane*20+.35}%">
  <div class="enemy-inner"><span class="kind">${TYPES[e.scheme].icon}</span><span class="eicon">${art(bossPartArt(e.id==="boss"?level.bossData.id:e.id),"enemy-illustration")}</span><span class="hp-track"><b style="width:${Math.max(0,e.hp/e.maxHp)*100}%"></b></span></div></div>`).join("");
  const shots=game.projectiles.map(p=>`<span class="projectile shot-${p.kind}" data-projectile="${p.uid}" aria-hidden="true"></span>`).join("");
  const fx=game.effects.map(e=>`<span data-fx="${e.id}" style="position:absolute;left:${e.x*100/9}%;top:${e.lane*20+1}%;font-size:12px;font-weight:900;color:#fdfbf3;text-shadow:1px 2px #174563,0 0 5px #173752;white-space:nowrap">${E(e.text)}</span>`).join("");
@@ -275,7 +275,7 @@ function syncGameFrame(){
   let el=layer.querySelector('[data-enemy="'+id+'"]');
   if(!el){
    el=document.createElement("div");el.className="enemy";
-   el.dataset.enemy=id;el.dataset.trait=e.trait;el.title=e.name;el.innerHTML='<div class="enemy-inner"><span class="kind"></span><span class="eicon"></span><span class="hp-track"><b></b></span></div>';
+   el.dataset.enemy=id;el.dataset.trait=e.trait;el.dataset.scheme=e.scheme;el.title=e.name;el.innerHTML='<div class="enemy-inner"><span class="kind"></span><span class="eicon"></span><span class="hp-track"><b></b></span></div>';
    const im=document.createElement("img");im.className="game-art enemy-illustration";
    im.alt="";im.draggable=false;im.decoding="async";im.src="./assets/sprites/"+encodeURIComponent(bossPartArt(e.id==="boss"?level.bossData.id:e.id))+".svg";
    el.querySelector(".eicon").append(im);layer.append(el);
@@ -287,6 +287,7 @@ function syncGameFrame(){
   el.classList.toggle("frozen",game.time<e.frozenUntil);
   el.classList.toggle("disguised",!e.reveal);
   el.classList.toggle("boss",e.id==="boss");
+  el.classList.toggle("shielded",e.shield>0);
   const kind=el.querySelector(".kind");if(kind.textContent!==TYPES[e.scheme].icon)kind.textContent=TYPES[e.scheme].icon;
   el.querySelector(".hp-track b").style.width=Math.max(0,e.hp/e.maxHp)*100+"%";
  }
@@ -383,7 +384,10 @@ function syncGameFrame(){
  for(const el of Array.from(fxLayer.children))if(!fxs.has(el.dataset.fx))el.remove();
  for(const guard of root.querySelectorAll(".house-strip .guard")){
   const lane=+guard.dataset.lane,manual=level.boss&&level.world===0&&game.bossGuardReady&&game.enemies.some(e=>e.id==="boss"&&e.lane===lane&&e.phase===3);
-  guard.disabled=game.usedGuards[lane]||!manual;guard.classList.toggle("used",game.usedGuards[lane]);
+  guard.disabled=game.usedGuards[lane]||!manual;
+  guard.classList.toggle("used",game.usedGuards[lane]);
+  const approaching=game.enemies.some(e=>e.lane===lane&&e.hp>0&&e.x<4.5&&e.trait!=="neutral");
+  guard.classList.toggle("lane-danger",approaching&&!game.usedGuards[lane]);
   guard.title=manual?"Активувати заборону проти Барона":"Заборона спрацьовує автоматично під час прориву";
  }
  updatePlacementPreview();

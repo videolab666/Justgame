@@ -142,6 +142,20 @@ try{
  await waitFor('document.querySelectorAll(".projectile").length>0',11000);
  await screenshot("03-shots-and-enemies");
 
+ // Original character identity: confirm redesigned files load, differ, and render
+ // visibly at small thumbnail sizes. This is a review screenshot, not marketing art.
+ const artworkIds=["registrar","senior","notary","executor","private_executor","expert","intern","trustee","whistleblower","integrity","limitation","schemer","raider","broker","heir","phisher","hacker","caller","briber","conflict","lustrated","alimony","burrower","nonpayer","poa","unregistered","mini_boss"];
+ const artCheck=await js('(async()=>{const ids='+JSON.stringify(artworkIds)+';const images=await Promise.all(ids.map(async id=>{const r=await fetch("./assets/sprites/"+id+".svg");return {id,ok:r.ok,body:await r.text()}}));return {count:images.length,unique:new Set(images.map(x=>x.body)).size,missing:images.filter(x=>!x.ok).map(x=>x.id),named:images.every(x=>x.body.includes("<title"))}})()');
+ if(artCheck.missing.length||artCheck.unique!==artworkIds.length||!artCheck.named)
+  throw Error("Redesigned SVG identity failure "+JSON.stringify(artCheck));
+ await js('(()=>{const ids='+JSON.stringify(artworkIds)+';const layer=document.createElement("section");layer.id="art-review";layer.style.cssText="position:fixed;z-index:9999;inset:8px;background:#f7f0e2;display:grid;grid-template-columns:repeat(9,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr));gap:4px;padding:12px;border:4px solid #194d68;overflow:hidden";for(const id of ids){const tile=document.createElement("div");tile.style.cssText="border:1px solid #93b2b9;border-radius:9px;background:#fff;display:flex;align-items:center;justify-content:center;flex-direction:column;overflow:hidden";const img=document.createElement("img");img.src="./assets/sprites/"+id+".svg";img.style.cssText="height:72%;max-width:96%;object-fit:contain";const title=document.createElement("small");title.textContent=id;title.style.cssText="font:700 10px sans-serif;color:#22506b;max-width:100%;overflow:hidden";tile.append(img,title);layer.append(tile)}document.body.append(layer)})()');
+ await waitFor('document.querySelectorAll("#art-review img").length===27');
+ await delay(450);
+ await screenshot("07-character-identity-gallery");
+ await js('document.querySelector("#art-review").remove()');
+ console.log("All original character sprites loaded and unique",JSON.stringify(artCheck));
+
+
  const measure='(()=>{const r=document.querySelector(".board").getBoundingClientRect();return {w:r.width,h:r.height,top:r.top,ratio:r.width/r.height}})()';
  const baseline=await js(measure);
  const stable=(before,after,stage)=>{

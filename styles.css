@@ -511,3 +511,34 @@ body.reduced-motion .outro-scene *,body.reduced-motion .outro-scene:before{anima
  .projectile:not(.shot-beam):after{display:none}
 }
 body.reduced-motion .projectile:not(.shot-beam):after{display:none}
+
+/* Unit cards share recognizable professional color coding without changing
+   the character artwork itself. */
+.unit-card[data-tool="registry"]{--unit-accent:#3c95b5;--unit-glow:#a7e0ec}
+.unit-card[data-tool="notary"]{--unit-accent:#96678f;--unit-glow:#e5c8e8}
+.unit-card[data-tool="enforcement"]{--unit-accent:#c19255;--unit-glow:#ffddb2}
+.unit-card[data-tool="digital"]{--unit-accent:#358eaa;--unit-glow:#a0eeef}
+.unit-card[data-tool="integrity"]{--unit-accent:#b6755c;--unit-glow:#f5ccb2}
+.unit-card[data-tool="expert"]{--unit-accent:#4d9c8c;--unit-glow:#b9e7db}
+.unit-card[data-tool="support"]{--unit-accent:#90a078;--unit-glow:#deefc9}
+.unit-card:not(.selected){border-bottom-color:var(--unit-accent,#8bb5b4);box-shadow:inset 0 -3px 0 var(--unit-glow,#d5e4de)}
+.unit-card.selected{border-color:var(--unit-accent,#dda331);box-shadow:0 0 0 2px var(--unit-glow,#ffe1a7),inset 0 -3px 0 #fff9d7}
+.unit-card .glyph .game-art{filter:drop-shadow(0 2px 2px #284b6452)}
+.threat-chip[data-scheme="forgery"]{border-bottom-color:#b36a83}
+.threat-chip[data-scheme="cyber"]{border-bottom-color:#4e9bcc}
+.threat-chip[data-scheme="debt"]{border-bottom-color:#aa915a}
+.threat-chip[data-scheme="corruption"]{border-bottom-color:#d18760}
+.threat-chip[data-scheme="bureaucracy"]{border-bottom-color:#9a90b4}
+.enemy[data-scheme="forgery"] .enemy-inner{--enemy-accent:#ad7196}
+.enemy[data-scheme="cyber"] .enemy-inner{--enemy-accent:#4d99b9}
+.enemy[data-scheme="debt"] .enemy-inner{--enemy-accent:#bc9968}
+.enemy[data-scheme="corruption"] .enemy-inner{--enemy-accent:#ca8d6f}
+.enemy[data-scheme="bureaucracy"] .enemy-inner{--enemy-accent:#928cba}
+.enemy .enemy-inner{border-bottom-color:var(--enemy-accent,#7e557f)}
+.enemy.shielded .enemy-inner{box-shadow:0 0 0 2px #c6f2ffb3,0 0 16px #a5eaff,0 4px 0 #66546673}
+.enemy.shielded .enemy-inner:before{content:"";position:absolute;inset:-6px;border-radius:18px;border:1px solid #b7f2ff88;pointer-events:none;box-shadow:inset 0 0 8px #acf3ff53}
+.house-strip .guard:disabled:not(.used){opacity:.85;filter:saturate(.75)}
+.house-strip .guard.lane-danger:not(.used){border-color:#f8ad68;background:#ffdcab;color:#a35a4e;box-shadow:0 0 11px #fa9969,0 0 0 3px #edb38d7b}
+.house-strip .guard.lane-danger:not(.used):after{content:"!";position:absolute;right:-4px;top:-8px;color:#fff;background:#b64d4c;border:1px solid #ffe0ac;box-shadow:0 1px 5px #794249;border-radius:50%;font-size:11px;min-width:17px;line-height:16px}
+.house-strip .guard{position:relative}
+@media(prefers-reduced-motion:reduce){.house-strip .guard{transition:none}}
