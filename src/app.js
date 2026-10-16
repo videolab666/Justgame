@@ -19,19 +19,31 @@ function sound(freq=640,duration=.085){
   osc.start();osc.stop(audioContext.currentTime+duration);
  }catch{/* audio optional */}
 }
-const defaults={completed:{},settings:{sound:false,music:true,musicVolume:40,autoCollect:false,reducedMotion:window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches||false,highContrast:false,largeText:false},mode:"normal"};
-function readStore(){try{const saved=JSON.parse(localStorage.getItem(KEY));return { ...defaults,...saved,completed:saved?.completed||{},settings:{...defaults.settings,...saved?.settings}};}catch{return structuredClone(defaults);}}
+const defaults={completed:{},seen:{units:{},enemies:{}},settings:{sound:false,music:true,musicVolume:40,autoCollect:false,tutorials:true,reducedMotion:window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches||false,highContrast:false,largeText:false},mode:"normal"};
+function readStore(){try{const saved=JSON.parse(localStorage.getItem(KEY));return { ...defaults,...saved,completed:saved?.completed||{},seen:{units:{...saved?.seen?.units},enemies:{...saved?.seen?.enemies}},settings:{...defaults.settings,...saved?.settings}};}catch{return structuredClone(defaults);}}
 let save=readStore();
 const soundtrack=new Soundtrack();
 soundtrack.configure(save.settings.music,save.settings.musicVolume);
 let view="home",world=0,stage=1,level=getLevel(0,1),deck=[],selected="registrar",game=null;
 let challenge=null,outroElapsed=0;
+// First-encounter coach marks: pause, spotlight the new card/enemy, explain it.
+let introQueue=[],intro=null;
 let latestShotSound=0,lastShotSfxAt=-10;
 let selectedThreat="schemer";
 let modal="",modalReturn="",almanacTab="units",almanacQuery="",detail=null,mini=null,focus={lane:2,col:2},speed=1,toast="",lastRender=0,prevTs=0,shownEnd=false;
 const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
 const E=escapeHtml;
+const SCHEMES_UI=Object.keys(TYPES);
 const bossPartArt=(id)=>id;
+const DISGUISE_TRAITS=["disguised_jump","disguised_split"];
+const isDisguised=e=>!e.reveal&&DISGUISE_TRAITS.includes(e.trait);
+/** Masked broker/heir use a separate costume until "Сповіщення" or the
+ * expert tears the mask off, so the player can see what changed. */
+function enemySprite(e){
+ if(e.id==="boss")return level.bossData?.id||"baron";
+ return isDisguised(e)?e.id+"_disguised":e.id;
+}
+const enemyKindIcon=e=>isDisguised(e)?"🎭":TYPES[e.scheme].icon;
 const art=(id,cls="")=>`<img class="game-art ${cls}" src="./assets/sprites/${encodeURIComponent(id)}.svg" alt="" draggable="false" loading="eager" decoding="async">`;
 const landscape=(w,cls="")=>`<img class="world-art ${cls}" src="./assets/worlds/world-${w+1}.svg" alt="" loading="lazy">`;
 const btn=(action,label,classes="btn",props="")=>`<button type="button" class="${classes}" data-act="${action}" ${props}>${label}</button>`;
@@ -175,8 +187,8 @@ function renderPlay(){
   cells+=`<button type="button" role="gridcell" data-act="cell" data-lane="${lane}" data-col="${col}" class="cell ${active?"":"out"} ${focus.lane===lane&&focus.col===col?"cursor":""}" ${active?"":"disabled"} aria-label="Ряд ${lane+1}, колонка ${col+1}">${cellContent(lane,col)}</button>`;
  }
  const tokens=game.tokens.map(t=>`<button class="token" type="button" aria-label="Зібрати 25 печаток" data-act="collect" data-id="${t.uid}" style="left:${(t.col+.3)*100/9}%;top:${(t.lane+.15)*100/5}%">✦</button>`).join("");
- const foes=game.enemies.map(e=>`<div data-enemy="${e.uid}" title="${E(e.name)}" data-trait="${E(e.trait)}" data-scheme="${E(e.scheme)}" class="enemy ${e.trait==="flying"?"flying":""} ${game.time-(e.attackUntil??-10)<0?"attacking":""} ${game.time-(e.lastHitAt??-10)<.18?"taking-hit":""} ${e.trait==="disguised_jump"&&!e.reveal?"disguised":""} ${game.time<e.frozenUntil?"frozen":""} ${e.id==="boss"?"boss":""}" style="left:${e.x*100/9}%;top:${e.lane*20+.35}%">
- <div class="enemy-inner"><span class="kind">${TYPES[e.scheme].icon}</span><span class="eicon">${art(bossPartArt(e.id==="boss"?level.bossData.id:e.id),"enemy-illustration")}</span><span class="hp-track"><b style="width:${Math.max(0,e.hp/e.maxHp)*100}%"></b></span></div></div>`).join("");
+ const foes=game.enemies.map(e=>`<div data-enemy="${e.uid}" title="${E(e.name)}" data-trait="${E(e.trait)}" data-scheme="${E(e.scheme)}" class="enemy ${e.trait==="flying"?"flying":""} ${game.time-(e.attackUntil??-10)<0?"attacking":""} ${game.time-(e.lastHitAt??-10)<.18?"taking-hit":""} ${isDisguised(e)?"disguised":""} ${game.time<e.frozenUntil?"frozen":""} ${e.id==="boss"?"boss":""}" style="left:${e.x*100/9}%;top:${e.lane*20+.35}%">
+ <div class="enemy-inner"><span class="kind">${enemyKindIcon(e)}</span><span class="mask-tag" aria-hidden="true">🎭 Маскування</span><span class="eicon">${art(enemySprite(e),"enemy-illustration")}</span><span class="hp-track"><b style="width:${Math.max(0,e.hp/e.maxHp)*100}%"></b></span></div></div>`).join("");
  const shots=game.projectiles.map(p=>`<span class="projectile shot-${p.kind}" data-projectile="${p.uid}" aria-hidden="true"></span>`).join("");
  const fx=game.effects.map(e=>`<span data-fx="${e.id}" style="position:absolute;left:${e.x*100/9}%;top:${e.lane*20+1}%;font-size:12px;font-weight:900;color:#fdfbf3;text-shadow:1px 2px #174563,0 0 5px #173752;white-space:nowrap">${E(e.text)}</span>`).join("");
  const guards=Array.from({length:5},(_,l)=>{
@@ -281,10 +293,17 @@ function syncGameFrame(){
   let el=layer.querySelector('[data-enemy="'+id+'"]');
   if(!el){
    el=document.createElement("div");el.className="enemy";
-   el.dataset.enemy=id;el.dataset.trait=e.trait;el.dataset.scheme=e.scheme;el.title=e.name;el.innerHTML='<div class="enemy-inner"><span class="kind"></span><span class="eicon"></span><span class="hp-track"><b></b></span></div>';
+   el.dataset.enemy=id;el.dataset.trait=e.trait;el.dataset.scheme=e.scheme;el.title=e.name;el.innerHTML='<div class="enemy-inner"><span class="kind"></span><span class="mask-tag" aria-hidden="true">🎭 Маскування</span><span class="eicon"></span><span class="hp-track"><b></b></span></div>';
    const im=document.createElement("img");im.className="game-art enemy-illustration";
-   im.alt="";im.draggable=false;im.decoding="async";im.src="./assets/sprites/"+encodeURIComponent(bossPartArt(e.id==="boss"?level.bossData.id:e.id))+".svg";
+   im.alt="";im.draggable=false;im.decoding="async";
    el.querySelector(".eicon").append(im);layer.append(el);
+  }
+  // Costume swap when the disguise is removed (masked -> real sprite).
+  const sprite=enemySprite(e),im=el.querySelector(".enemy-illustration");
+  if(im&&im.dataset.sprite!==sprite){
+   const wasMasked=im.dataset.sprite?.endsWith("_disguised");
+   im.dataset.sprite=sprite;im.src="./assets/sprites/"+encodeURIComponent(sprite)+".svg";
+   if(wasMasked){el.classList.remove("unmasking");void el.offsetWidth;el.classList.add("unmasking");}
   }
   el.style.left=(e.x*100/9)+"%";el.style.top=(e.lane*20+.35)+"%";
   // Arc of a jump over a defender (engine sets lift 0..1 while airborne).
@@ -295,10 +314,10 @@ function syncGameFrame(){
   el.classList.toggle("taking-hit",game.time-(e.lastHitAt??-10)<.18);
   el.classList.toggle("attacking",game.time<(e.attackUntil??-10));
   el.classList.toggle("frozen",game.time<e.frozenUntil);
-  el.classList.toggle("disguised",!e.reveal);
+  el.classList.toggle("disguised",isDisguised(e));
   el.classList.toggle("boss",e.id==="boss");
   el.classList.toggle("shielded",e.shield>0);
-  const kind=el.querySelector(".kind");if(kind.textContent!==TYPES[e.scheme].icon)kind.textContent=TYPES[e.scheme].icon;
+  const kind=el.querySelector(".kind"),kindIcon=enemyKindIcon(e);if(kind.textContent!==kindIcon)kind.textContent=kindIcon;
   el.querySelector(".hp-track b").style.width=Math.max(0,e.hp/e.maxHp)*100+"%";
  }
  for(const el of Array.from(layer.children))if(!alive.has(el.dataset.enemy))el.remove();
@@ -466,11 +485,11 @@ function renderAlmanac(){
 }
 function renderSettings(){
  return wrapper(`<main class="main" style="max-width:830px;margin:0 auto"><h1 class="section-title">Налаштування</h1>
- <div class="panel">${[["sound","Звукові ефекти"],["music","Фонова музика"],["autoCollect","Автоматично збирати печатки"],["reducedMotion","Менше руху та ефектів"],["highContrast","Висококонтрастний режим"],["largeText","Збільшити текст"]].map(([id,label])=>`<label class="setting-row"><strong>${label}</strong><input type="checkbox" data-setting="${id}" ${save.settings[id]?"checked":""}></label>`).join("")}
+ <div class="panel">${[["sound","Звукові ефекти"],["music","Фонова музика"],["autoCollect","Автоматично збирати печатки"],["tutorials","Навчальні картки (пауза при новому ворогові чи картці)"],["reducedMotion","Менше руху та ефектів"],["highContrast","Висококонтрастний режим"],["largeText","Збільшити текст"]].map(([id,label])=>`<label class="setting-row"><strong>${label}</strong><input type="checkbox" data-setting="${id}" ${save.settings[id]?"checked":""}></label>`).join("")}
  <label class="setting-row"><strong>Гучність музики: <output data-volume-label>${save.settings.musicVolume}%</output></strong><input type="range" min="0" max="100" step="5" data-volume value="${save.settings.musicVolume}" aria-label="Гучність музики"></label>
  <p class="notice">Чотири оригінальні музичні теми світів; звук запускається після дії гравця. Можна окремо вимкнути музику і ефекти.</p>
  <p class="notice">Налаштування та прогрес зберігаються тільки у вашому браузері. Дані на сервер не передаються.</p>
- <div class="dialog-actions">${btn("back","← Назад","btn btn-dark")}${btn("reset","🗑️ Скинути прогрес","btn btn-danger")}</div></div></main>`);
+ <div class="dialog-actions">${btn("back","← Назад","btn btn-dark")}${btn("tutorials-reset","↺ Показати навчальні картки знову","btn btn-quiet")}${btn("reset","🗑️ Скинути прогрес","btn btn-danger")}</div></div></main>`);
 }
 function renderMini(){
  const type=level.mini;if(!mini)startMini();
@@ -525,8 +544,87 @@ function miniAction(i){
   mini.index++;if(mini.index===5){if(mini.correct>=3)completeMini();else{const prev=mini.correct;startMini();mini.feedback=`Правильно ${prev}/5. Для перемоги потрібно 3.`;}}
  }
 }
+const introKey=item=>item.kind==="unit"?item.id:item.id==="boss"?"boss:"+(level.bossData?.id||"boss"):item.id;
+function introSeen(item){return !!save.seen[item.kind==="unit"?"units":"enemies"][introKey(item)];}
+function queueIntro(item){
+ if(save.settings.tutorials===false||introSeen(item))return;
+ if(introQueue.some(x=>x.kind===item.kind&&introKey(x)===introKey(item))||(intro&&intro.kind===item.kind&&introKey(intro)===introKey(item)))return;
+ introQueue.push(item);
+}
+/** Called every frame: an unseen enemy type that has walked onto the board
+ * (or a stationary boss part) gets its own coach card. */
+function queueEnemyIntros(){
+ if(!game||save.settings.tutorials===false)return;
+ for(const e of game.enemies)
+  if(e.hp>0&&(e.x<=8.6||e.speed===0)&&getThreat(e.id,level))queueIntro({kind:"enemy",id:e.id,uid:e.uid});
+}
+function showNextIntro(){
+ if(modal||!introQueue.length||view!=="play")return false;
+ intro=introQueue.shift();
+ save.seen[intro.kind==="unit"?"units":"enemies"][introKey(intro)]=true;persist();
+ if(intro.kind==="unit")selected=intro.id;
+ modal="intro";render();positionIntro();
+ return true;
+}
+function closeIntro(){
+ modal="";intro=null;
+ if(!showNextIntro())render();
+}
+function introTarget(){
+ if(!intro)return null;
+ if(intro.kind==="unit")return root.querySelector('.cardbar [data-unit="'+intro.id+'"]');
+ return root.querySelector('.enemy-layer [data-enemy="'+intro.uid+'"]')||
+  root.querySelector('.enemy-layer [data-enemy]');
+}
+/** Spotlight = a fixed ring with a huge shadow, so the target stays visible
+ * through the dimmed overlay; the card goes above or below it. */
+function positionIntro(){
+ const spot=root.querySelector?.(".coach-spot"),card=root.querySelector?.(".coach-card");
+ if(!spot||!card)return;
+ const target=introTarget();
+ target?.scrollIntoView?.({block:"nearest",inline:"center"});
+ const r=target?.getBoundingClientRect();
+ if(!r||!r.width){spot.hidden=true;card.style.top="50%";card.style.transform="translate(-50%,-50%)";return;}
+ const pad=10;spot.hidden=false;
+ Object.assign(spot.style,{left:r.left-pad+"px",top:r.top-pad+"px",width:r.width+pad*2+"px",height:r.height+pad*2+"px"});
+ const h=card.offsetHeight,vh=window.innerHeight,below=r.bottom+pad+16;
+ const top=below+h<=vh?below:Math.max(8,r.top-pad-16-h);
+ card.style.top=top+"px";card.style.transform="translateX(-50%)";
+}
+function renderIntroCard(){
+ const next=btn("intro-next",introQueue.length?"Далі ▶":"Зрозуміло, до бою! ▶","btn btn-primary");
+ if(intro.kind==="unit"){
+  const u=UNIT_BY_ID[intro.id],tool=TOOLS[u.tool];
+  const strong=tool?SCHEMES_UI.filter((s,i)=>tool.multipliers[i]>=1.5).map(s=>TYPES[s].icon+" "+TYPES[s].name):[];
+  const weak=tool?SCHEMES_UI.filter((s,i)=>tool.multipliers[i]<1).map(s=>TYPES[s].icon+" "+TYPES[s].name):[];
+  const fact=FACTS[{registry:"registry",notary:"notary",digital:"cyber",enforcement:"debt",integrity:"corruption",expert:"expert"}[u.tool]||"general"];
+  return '<div class="coach-art">'+art(u.id,"coach-illustration")+'</div><div class="eyebrow">🆕 Нова картка у вашій колоді</div><h2>'+E(u.name)+'</h2>'+
+   '<p class="coach-stats"><span>🟡 '+u.cost+'</span><span>⏱ '+u.cooldown+' с</span><span>'+(tool?tool.icon+" "+E(tool.name):"Підтримка")+'</span></p>'+
+   '<p class="hint"><strong>Як грає:</strong> '+E(u.desc)+'</p>'+
+   (strong.length?'<p><strong>✔ Найкраще проти:</strong> '+E(strong.join(", "))+'</p>':"")+
+   (weak.length?'<p><strong>✖ Слабкий проти:</strong> '+E(weak.join(", "))+'</p>':"")+
+   '<p class="coach-fact"><strong>📘 Як це в житті:</strong> '+E(fact)+'</p>'+
+   '<p class="muted">Натисніть картку, а потім клітинку на полі.</p><div class="dialog-actions">'+next+'</div>';
+ }
+ const t=getThreat(intro.id,level),info=getCounterAdvice(intro.id,{level,deck,owned:availableUnits()});
+ const sprite=intro.id==="boss"?level.bossData?.id:intro.id;
+ const masked=DISGUISE_TRAITS.includes(t.trait);
+ const pics=masked?
+  '<div class="coach-art coach-pair"><figure>'+art(sprite+"_disguised","coach-illustration")+'<figcaption>🎭 У масці: стрільці його не бачать</figcaption></figure><span class="coach-arrow">→</span><figure>'+art(sprite,"coach-illustration")+'<figcaption>Після «Сповіщення»: справжнє обличчя</figcaption></figure></div>':
+  '<div class="coach-art">'+art(sprite,"coach-illustration")+'</div>';
+ const states={deck:"✓ у колоді",owned:"доступний",locked:"🔒 ще не відкрито"};
+ const counters=(info?.recommended||[]).slice(0,3).map(u=>'<li><strong>'+E(u.name)+'</strong> — '+states[u.state]+'</li>').join("");
+ const extra=(info?.support||[]).filter(id=>UNIT_BY_ID[id]).map(id=>E(UNIT_BY_ID[id].name)).join(", ");
+ return pics+'<div class="eyebrow">🆕 '+(intro.id==="boss"?"Бос наступає!":"Новий противник")+' · '+E(TYPES[t.scheme]?.icon+" "+TYPES[t.scheme]?.name)+'</div><h2>'+E(t.name)+'</h2>'+
+  (info?'<p class="hint"><strong>🦉 Як діє:</strong> '+E(info.note)+'</p>':"")+
+  (counters?'<p><strong>🎯 Чим зупинити:</strong></p><ul class="coach-list">'+counters+'</ul>':"")+
+  (extra?'<p><strong>Допоможе також:</strong> '+extra+'</p>':"")+
+  (t.tip?'<p class="coach-fact"><strong>📘 Як це в житті:</strong> '+E(t.tip)+'</p>':"")+
+  '<div class="dialog-actions">'+next+'</div>';
+}
 function renderDialog(){
  if(!modal)return "";
+ if(modal==="intro"&&intro)return '<div class="coach-overlay" role="presentation"><div class="coach-spot" aria-hidden="true"></div><div class="coach-card dialog" role="dialog" aria-modal="true" aria-label="Навчальна картка">'+renderIntroCard()+'</div></div>';
  const commonActions=`<div class="dialog-actions">${btn("close-modal","Закрити","btn btn-dark")}</div>`;
  let content="";
  if(modal==="pause")content=`<div class="large-emoji">⏸️</div><h2>Пауза</h2><p>Ваша справа чекає. Продовжуйте у зручному темпі.</p>
@@ -592,7 +690,10 @@ function startGame(){
  if(!deck.length)return;
  game=makeGame(level,deck,save.mode,{...save.settings,careerBonus:totalStars()>=35?25:0},challenge);selected=deck[0];shownEnd=false;outroElapsed=0;latestShotSound=0;lastShotSfxAt=-10;
  game.lastHint=level.tutorial||`Світ ${world+1}. Захистіть будівлю, використовуючи відповідні інструменти.`;
+ introQueue=[];intro=null;
+ for(const id of deck)queueIntro({kind:"unit",id});
  setView("play");
+ showNextIntro();
 }
 function finish(){
  if(!game||shownEnd)return;
@@ -674,6 +775,8 @@ function action(name,el){
  if(name==="tab-units"){almanacTab="units";render();return;}
  if(name==="tab-enemies"){almanacTab="enemies";render();return;}
  if(name==="detail"){detail={id:el.dataset.id,kind:el.dataset.kind};modal="detail";render();return;}
+ if(name==="intro-next"){closeIntro();return;}
+ if(name==="tutorials-reset"){save.seen={units:{},enemies:{}};persist();toast="";render();return;}
  if(name==="close-modal"){modal="";render();return;}
  if(name==="reset"){modal="reset";render();return;}
  if(name==="reset-confirm"){save=structuredClone(defaults);persist();modal="";setView("home");return;}
@@ -719,6 +822,7 @@ root.addEventListener("input",e=>{
  if(e.target.id==="almanac-search"){almanacQuery=e.target.value;const pos=e.target.selectionStart;render();const n=document.getElementById("almanac-search");n?.focus();n?.setSelectionRange(pos,pos);}});
 document.addEventListener("keydown",e=>{
  if(e.target instanceof HTMLInputElement)return;
+ if(modal==="intro"&&["Escape","Enter"," "].includes(e.key)){closeIntro();e.preventDefault();return;}
  if(e.key==="Escape"&&modal){modal="";render();return;}
  if(view==="outro"&&["Enter","Escape"," "].includes(e.key)){setView("result");e.preventDefault();return;}
  if(view!=="play"||!game||modal)return;
@@ -737,6 +841,7 @@ document.addEventListener("keydown",e=>{
  }
 });
 document.addEventListener("visibilitychange",()=>{prevTs=0;});
+window.addEventListener?.("resize",()=>{if(modal==="intro")positionIntro();});
 function loop(ts){
  if(!prevTs)prevTs=ts;
  const delta=Math.min((ts-prevTs)/1000,.1);prevTs=ts;
@@ -747,7 +852,11 @@ function loop(ts){
   let rest=delta*speed;
   while(rest>1e-6&&game.phase==="playing"){const step=Math.min(rest,1/30);tick(game,step);rest-=step;}
   if(game.phase!=="playing"){finish();}
-  else if(ts-lastRender>34){lastRender=ts;syncGameFrame();}
+  else{
+   queueEnemyIntros();
+   if(introQueue.length){syncGameFrame();showNextIntro();}
+   else if(ts-lastRender>34){lastRender=ts;syncGameFrame();}
+  }
  }
  if(view==="outro"&&!document.hidden){
   outroElapsed+=delta;

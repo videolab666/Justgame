@@ -580,3 +580,28 @@ body.reduced-motion .projectile:not(.shot-beam):after{display:none}
  .game-shell>.cardbar .unit-card{height:82px;min-height:82px;max-height:82px}
  .game-shell>.selected-help{height:46px;min-height:46px}
 }
+
+/* First-encounter coach marks (pause + spotlight + teaching card) */
+.coach-overlay{position:fixed;inset:0;z-index:120}
+.coach-spot{position:fixed;border-radius:18px;box-shadow:0 0 0 9999px #061d35b8,0 0 0 4px #ffd45e,0 0 26px 8px #ffd45ecc;pointer-events:none;animation:coach-pulse 1.3s ease-in-out infinite;transition:left .2s,top .2s,width .2s,height .2s}
+@keyframes coach-pulse{50%{box-shadow:0 0 0 9999px #061d35b8,0 0 0 7px #ffe594,0 0 38px 14px #ffd45eee}}
+.coach-card.dialog{position:fixed;left:50%;width:min(440px,94vw);max-height:min(74vh,620px);overflow-y:auto;border:4px solid #ffd45e;border-radius:24px;padding:18px 20px;box-shadow:0 18px 60px #0008;animation:coach-in .28s ease-out both}
+@keyframes coach-in{from{opacity:0;margin-top:14px}}
+.coach-card h2{margin:.15em 0 .35em;font-size:1.45rem}
+.coach-card p{margin:.45em 0}
+.coach-art{display:flex;justify-content:center;align-items:center;gap:10px;margin-bottom:4px}
+.coach-art .coach-illustration{height:96px;width:auto;max-width:120px;object-fit:contain;filter:drop-shadow(0 4px 4px #16395044)}
+.coach-pair figure{margin:0;display:flex;flex-direction:column;align-items:center;max-width:44%}
+.coach-pair figcaption{font-size:11px;font-weight:800;color:#3c5a6a;text-align:center;line-height:1.2}
+.coach-arrow{font-size:28px;font-weight:900;color:#c4473f}
+.coach-stats{display:flex;gap:8px;flex-wrap:wrap}.coach-stats span{background:#eef6f2;border-radius:10px;padding:2px 8px;font-weight:800}
+.coach-list{margin:.2em 0 .5em;padding-left:1.2em}.coach-list li{margin:.15em 0}
+.coach-fact{background:#f3f8ff;border-left:4px solid #5a9bd4;border-radius:8px;padding:6px 10px;font-size:.93em}
+/* Disguise: masked costume + label; mask-off flash when revealed */
+.enemy .mask-tag{display:none;position:absolute;top:-17px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:9px;font-weight:900;color:#4b3a12;background:#ffe9a8;border:1px solid #b88d2e;border-radius:8px;padding:0 4px;z-index:2}
+.enemy.disguised .mask-tag{display:block}
+.enemy.disguised .enemy-illustration{filter:drop-shadow(0 0 4px #ffe08a) saturate(.9)}
+.enemy.unmasking .enemy-inner{animation:unmask-flash .7s ease-out}
+@keyframes unmask-flash{0%{transform:scale(1.35) rotate(-8deg);filter:brightness(2.2)}60%{transform:scale(.95) rotate(3deg)}100%{transform:none;filter:none}}
+body.reduced-motion .coach-spot,body.reduced-motion .coach-card.dialog,body.reduced-motion .enemy.unmasking .enemy-inner{animation:none}
+@media print{.coach-overlay{display:none}}

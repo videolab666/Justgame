@@ -132,3 +132,20 @@ test("jumpers leap over one unit smoothly instead of teleporting through it",()=
   assert.ok(e.x<4.5-.6&&e.x>2.5-CONTACT,`${id} x=${e.x}`);
  }
 });
+test("notification tears the mask off a broker with a visible effect",()=>{
+ const g=field(0,4,["notification"]);
+ place(g,"notification",2,4);
+ const e=spawn(g,"broker",2,6.4);e.speed=0;
+ assert.equal(e.reveal,false);
+ tick(g,DT);
+ assert.equal(e.reveal,true);
+ assert.ok(g.effects.some(x=>x.kind==="unmask"));
+});
+test("an expert's beam unmasks a fake heir, who calls in two witnesses",()=>{
+ const g=field(2,4,["expert"]);
+ place(g,"expert",2,4);
+ const e=spawn(g,"heir",2,6.5);e.speed=0;e.hp=e.maxHp=1e6;
+ run(g,1);
+ assert.equal(e.reveal,true);
+ assert.equal(g.enemies.filter(x=>x.id==="schemer").length,2);
+});

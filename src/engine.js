@@ -261,6 +261,19 @@ function removeEnemy(g,e,silent=false){
   g.lastHint="Перезавантаження реєстрів: протримайтесь іще 30 секунд!";
  }
 }
+/** Remove a disguise (Сповіщення in range or an expert's beam). The renderer
+ * swaps the masked sprite for the real one; a fake heir calls in "witnesses". */
+export function unmask(g,e){
+ if(e.reveal||!["disguised_jump","disguised_split"].includes(e.trait))return false;
+ e.reveal=true;e.unmaskedAt=g.time;
+ effect(g,"unmask",e.lane,e.x,"МАСКУ ЗІРВАНО!",1.1);
+ emitBurst(g,"paper",e.lane,e.x,10);
+ if(e.trait==="disguised_split"&&!e.spawnedMinions){
+  e.spawnedMinions=true;
+  for(let k=0;k<2;k++)spawn(g,"schemer",e.lane,e.x+.15*k);
+ }
+ return true;
+}
 export function damageEnemy(g,e,raw,tool=null,extra=1){
  if(!g.enemies.includes(e))return 0;
  let mult=typeMultiplier(tool,e.scheme,g.mode);
@@ -417,6 +430,9 @@ export function fireProjectile(g,d,target,raw,bonus=1){
  if(shot.cosmetic){
   // A laser scan affects the enemy instantly; the visible beam is brief.
   shot.duration=.2;
+  // The beam never reaches hitProjectile(), so unmask here (the expert's
+  // "removes disguise on hit" never actually fired before).
+  if(d.kind==="sniper")unmask(g,target);
   damageEnemy(g,target,raw,d.tool,bonus);
   effect(g,"scan",target.lane,target.x,"ЕКСПЕРТИЗА");
  }
@@ -434,7 +450,7 @@ function hitProjectile(g,p,e){
   e.frozenUntil=Math.max(e.frozenUntil,g.time+(e.scheme==="debt"?3:6));
   e.stunUntil=Math.max(e.stunUntil,e.scheme==="debt"?g.time+3:e.stunUntil);
  }
- if(p.sourceKind==="sniper"&&!e.reveal)e.reveal=true;
+ if(p.sourceKind==="sniper")unmask(g,e);
  if(p.sourceKind==="splash"){
   for(const other of [...g.enemies])
    if(Math.abs(other.lane-e.lane)<=1&&Math.abs(other.x-e.x)<=1.25)
@@ -510,7 +526,7 @@ function attack(g,d,delta){
  }
  if(d.kind==="reveal"){
   for(const e of g.enemies)if(!e.reveal&&Math.abs(e.lane-d.lane)<=2&&Math.abs(e.x-(d.col+.5))<=2.5){
-   e.reveal=true;if(e.trait==="disguised_split"&&!e.spawnedMinions){e.spawnedMinions=true;for(let k=0;k<2;k++)spawn(g,"schemer",e.lane,e.x+.15*k);}
+   unmask(g,e);
   }
   return;
  }

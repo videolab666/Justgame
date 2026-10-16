@@ -121,6 +121,15 @@ try{
  await waitFor('!!document.querySelector(".deck-grid")');
  await js('document.querySelector("[data-act=start]").click()');
  await waitFor('!!document.querySelector(".board > .cell")');
+ // First battle opens with a paused coach card that spotlights the new card.
+ await waitFor('!!document.querySelector(".coach-card [data-act=intro-next]")');
+ const spot=await js('(()=>{const r=document.querySelector(".coach-spot").getBoundingClientRect();return {w:r.width,h:r.height,hidden:document.querySelector(".coach-spot").hidden}})()');
+ if(spot.hidden||spot.w<20||spot.h<20)throw Error("Coach spotlight missing "+JSON.stringify(spot));
+ await delay(500);
+ await screenshot("08-coach-card");
+ // Later coach cards (new enemies) are dismissed automatically by the smoke test.
+ await js('window.__coach=setInterval(()=>document.querySelector(".coach-card [data-act=intro-next]")?.click(),150)');
+ await waitFor('!document.querySelector(".coach-card")');
  const boardSize=await js('({w:document.querySelector(".board").clientWidth,h:document.querySelector(".board").clientHeight})');
  if(boardSize.w<400||boardSize.h<250)throw Error("Desktop board collapsed: "+JSON.stringify(boardSize));
  await js('document.querySelector(".board > .cell[data-lane=\\"2\\"][data-col=\\"2\\"]").click()');

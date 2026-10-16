@@ -106,3 +106,14 @@ test("lost level shows distinct defeat animation BEFORE score screen",()=>{
  assert.equal(ui.mode(),"result");
  assert.match(ui.html(),/Схема прорвалася/);
 });
+test('a new card pauses the first battle with a spotlight coach card',()=>{
+ const game=createUI(source);
+ game.goLevel(0,1);game.startGame();
+ assert.match(game.html(),/coach-card/);
+ assert.match(game.html(),/Нова картка/);
+ assert.match(game.html(),/coach-spot/);
+ game.action('intro-next');
+ assert.doesNotMatch(game.html(),/coach-card/);
+ game.startGame();
+ assert.doesNotMatch(game.html(),/coach-card/,'a seen card is not explained twice');
+});
