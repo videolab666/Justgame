@@ -754,7 +754,6 @@ function renderDialog(){
   <p class="hint"><strong>${isUnit?"Як грає:":"🦉 Як діє і як зупинити:"}</strong> ${E(isUnit?unitHow(d):threatNote(d.id))}</p>
   <div class="life-box"><strong>📘 Як це в житті</strong><p>${E(isUnit?FACTS[{registry:"registry",notary:"notary",digital:"cyber",enforcement:"debt",integrity:"corruption",expert:"expert"}[d.tool]||"general"]:d.tip)}</p>${lifeBlock(isUnit?"unit":"enemy",d.id)}</div>
   ${!isUnit?btn("threat-tip","💡 Чим атакувати?","btn btn-primary",'data-enemy="'+E(d.id)+'"'):""}
-  <p class="notice">Статус: 🟨 Не затверджено юристом · Актуальність: чернетка GDD від 15.10.2026</p>
   <a href="https://just-dnipro.gov.ua/" target="_blank" rel="noopener noreferrer">Детальніше на офіційному сайті ↗</a>${commonActions}`;
  }else if(modal==="reset")content=`<h2>Скинути прогрес?</h2><p>Усі зірки, відкриті картки й результати на цьому пристрої буде стерто.</p><div class="dialog-actions">${btn("reset-confirm","Так, скинути","btn btn-danger")}${btn("close-modal","Скасувати","btn btn-dark")}</div>`;
  else if(modal==="certificate")content=`<h2>🎓 Сертифікат правової грамотності</h2><p>Вітаємо із завершенням чотирьох світів!</p><p>Отримано зірок: <strong>${totalStars()}</strong> · ${rank()}</p>
