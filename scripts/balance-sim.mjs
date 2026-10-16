@@ -103,7 +103,10 @@ function botStep(g, st) {
     if (hp > 1500 && tryPlace(g, "legal_aid", lane, [0,1,2,3,4,5,6,7,8])) return;
   }
   // Whistleblower on corruption cluster.
-  for (const e of live) if (e.scheme === "corruption" && e.x < 8.5) {
+  // Bosses first: a whistleblower next to the boss beats one on a briber.
+  const corrupt = live.filter(e => e.scheme === "corruption" && e.x < 8.5)
+    .sort((a, b) => (b.id === "boss") - (a.id === "boss") || a.x - b.x);
+  for (const e of corrupt) {
     const near = live.filter(o => o.scheme === "corruption" && Math.abs(o.lane - e.lane) <= 2 && Math.abs(o.x - e.x) <= 2.5);
     if (near.length >= 2 || e.trait === "tentacle" || e.id === "boss")
       if (tryPlace(g, "whistleblower", e.lane, [Math.max(0, Math.min(8, Math.floor(e.x)))])) return;
@@ -122,7 +125,9 @@ function botStep(g, st) {
       const myDps = attackers.reduce((a, d) => a + (canHurt(UNIT_BY_ID[d.id], e) ? dps(UNIT_BY_ID[d.id], e) : 0), 0);
       if (myDps === 0) uncovered = uncovered || e;
       const v = Math.max(.03, e.speed / 4.5);
-      const timeLeft = e.id === "boss" ? 45 : Math.max(2, (e.x - 1) / v);
+      // Bosses and their stationary parts are urgent even though they do not walk.
+      const part = ["hydra_head", "tentacle", "offshore_safe"].includes(e.trait);
+      const timeLeft = e.id === "boss" || part ? 45 : Math.max(2, (e.x - 1) / v);
       need += (e.hp + e.shield) / timeLeft;
       have = Math.max(have, myDps);
     }
@@ -148,7 +153,11 @@ function botStep(g, st) {
       if (tryPlace(g, "notary", L.lane, [wallCol, wallCol - 1].filter(c => c >= 0))) return;
       if (tryPlace(g, "mine", L.lane, [wallCol])) return;
     }
-    if (L.closest < 6) return; // save money for this lane
+    // Save money for this lane, unless the lane has no free cell left.
+    const freeCols = [0,1,2,3,4,5,6,7].filter(c => !g.defenders.some(d => d.lane === L.lane && d.col === c && d.hp > 0));
+    // ...and only when money is the problem, not a card cooldown.
+    const broke = bestFor(target).every(id => g.seal < UNIT_BY_ID[id].cost);
+    if (L.closest < 6 && freeCols.length && broke) return;
   }
   // 2) Support units for specific threats in already armed lanes.
   for (const L of laneInfo) if (L.attackers.length) for (const e of L.enemies) {

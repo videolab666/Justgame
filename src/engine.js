@@ -12,8 +12,8 @@ export function typeMultiplier(tool,scheme,mode="normal"){
 export const WAVE_SHARES={2:[.35,.65],3:[.18,.32,.5],4:[.12,.2,.28,.4]};
 // Threat budget of a whole level by stage (1..10); index 9 is the boss level,
 // whose boss supplies most of the pressure.
-export const STAGE_BUDGET=[6,8,13,16,20,23,26,27,27,24];
-export const WORLD_BUDGET=[1,.8,1.1,.9];
+export const STAGE_BUDGET=[6,8,13,16,20,23,26,27,27,20];
+export const WORLD_BUDGET=[1,.8,1.1,.85];
 // Seconds before the first spawn, so the player can place 2-3 cards first.
 export const FIRST_SPAWN={tutorial:8,normal:18};
 // After the field is cleared the next wave is pulled forward to this lull.
@@ -193,9 +193,9 @@ export const CONTACT=.65;
 // Boss reinforcements; 13 s buried the boss lane under escorts faster than
 // the lane's shooters could reach the boss itself.
 const BOSS_SUMMON_EVERY=16,BOSS_ESCORT_CAP=3,SAFE_AUTO_REVEAL=20;
-// Hydra (body 8000, heads 2000, 25-seal drain every 12 s) took a novice ~4 min
-// per head and ate ~40 % of their income; the malware head now drops 2 USBs.
-const HYDRA_HEAD_HP=1000,HYDRA_BODY_HP=6000,HYDRA_PHISH_STEAL=15;
+// Hydra (body 8000, heads 2000, 25-seal wallet drain every 12 s) took a novice
+// ~4 min per head and ate ~40 % of their income; malware head drops 2 USBs.
+const HYDRA_HEAD_HP=1000,HYDRA_BODY_HP=6000;
 const SEIZE_TIME=2.5,GIANT_WINDUP=1.2,GIANT_SMASH_EVERY=1.8,JUMP_TIME=.7;
 // Bosses and their stationary parts are never removed by a lane guard.
 const GUARD_IMMUNE=new Set(["offshore_safe","tentacle","hydra_head"]);
@@ -740,7 +740,13 @@ function enemyTurn(g,e,delta){
    const target=g.defenders.filter(d=>d.lane===e.lane&&!isProtected(g,d)).sort((a,b)=>b.col-a.col)[0];
    if(target){target.disabledUntil=g.time+3;effect(g,"bribe",e.lane,e.x,"КОНВЕРТ");}
   }else if(e.trait==="hydra_head"){
-   if(e.id==="hydra_phish"){g.seal=Math.max(0,g.seal-HYDRA_PHISH_STEAL);effect(g,"phish",e.lane,e.x,"-"+HYDRA_PHISH_STEAL);}
+   // GDD: the phishing head steals seals lying on the field, not from the
+   // wallet. Draining the wallet spiralled a struggling player to zero.
+   if(e.id==="hydra_phish"&&g.tokens.length){
+    const token=g.tokens.reduce((a,b)=>a.ttl<b.ttl?a:b);
+    g.tokens.splice(g.tokens.indexOf(token),1);
+    effect(g,"phish",token.lane,token.col+.5,"ПЕЧАТКУ ВКРАДЕНО");
+   }
    if(e.id==="hydra_call"){
     const target=g.defenders.find(d=>d.lane===e.lane&&d.kind!=="trap"&&!d.shieldHp);
     if(target)target.disabledUntil=g.time+4;
@@ -772,22 +778,24 @@ function enemyTurn(g,e,delta){
  // Escorts are capped: the fight stays about the boss, not an endless
  // stream that soaks up every shot in the boss lane.
  const escorts=g.enemies.filter(x=>x.summonedBy===e.uid&&x.hp>0).length;
- // A boss is dormant while its protectors stand (Count's safes, Hydra's
- // heads): the player is busy finding/finishing them, and extra summons
+ // A boss is dormant while its protectors stand (Count's safes, Octopus's
+ // tentacles, Hydra's heads): the player is busy with them, and extra summons
  // (burrowers only an executor can hit, phishers in all five lanes) buried
  // new players for minutes.
- const dormant=bossImmune(g,e);
+ const dormant=bossImmune(g,e)||g.level.world===2&&bossAnchored(g,e);
  if(e.id==="boss"&&g.time>e.specialUntil&&escorts<BOSS_ESCORT_CAP&&!dormant){
   const w=g.level.world,call=(id,lane,x)=>{const m=spawn(g,id,lane,x);if(m)m.summonedBy=e.uid;};
   if(w===0&&e.phase===1)call("poa",e.lane,Math.min(9,e.x+.5));
   // "Свій реєстратор": a raider, answered by world-1 cards (notary,
   // commission). A hacker needed 2FA/KEP, which unlock only in world 4.
   if(w===0&&e.phase===2)call("raider",e.lane,Math.min(9,e.x+.7));
-  if(w===1&&e.phase===1)call("burrower",e.lane,Math.min(9,e.x+.7));
+  // GDD phase 1 of the Count ("Схованки") hides assets, it summons nobody.
   // Bankrupts enter from the edge like any summons: spawning them next to a
   // boss deep in the field left no time for a trustee to react.
   if(w===1&&e.phase===2)call("bankrupt",e.lane,9.2);
-  if(w===2)for(let lane=0;lane<5;lane++)if(g.level.activeLanes.includes(lane)&&lane%2===0)call("briber",lane,9.2);
+  // Flanks only: bribers in the Octopus's own lane soaked every shot aimed
+  // at the head and bribed the guns that were supposed to finish it.
+  if(w===2)for(const lane of [0,4])if(g.level.activeLanes.includes(lane)&&lane!==e.lane)call("briber",lane,9.2);
   // Stealing seals is the phishing head's job (GDD); the body draining too
   // starved the economy below what CNAP income can recover.
   if(w===3){
