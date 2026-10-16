@@ -542,3 +542,41 @@ body.reduced-motion .projectile:not(.shot-beam):after{display:none}
 .house-strip .guard.lane-danger:not(.used):after{content:"!";position:absolute;right:-4px;top:-8px;color:#fff;background:#b64d4c;border:1px solid #ffe0ac;box-shadow:0 1px 5px #794249;border-radius:50%;font-size:11px;min-width:17px;line-height:16px}
 .house-strip .guard{position:relative}
 @media(prefers-reduced-motion:reduce){.house-strip .guard{transition:none}}
+
+/* Compact battle cockpit. The selected defender's explanation sits alongside
+   cards instead of occupying a whole empty row above the playfield. */
+.game-shell{
+ display:grid;grid-template-columns:minmax(0,1fr) minmax(215px,28%);
+ grid-template-areas:"top top" "cards help" "field field" "bottom bottom";
+ gap:0 12px;align-items:stretch;
+}
+.game-shell>.game-top{grid-area:top}
+.game-shell>.cardbar{grid-area:cards;height:112px;min-height:112px;margin:0;padding:5px 4px 8px;overflow-x:auto;overflow-y:hidden}
+.game-shell>.cardbar .unit-card{height:96px;min-height:96px;max-height:96px}
+.game-shell>.selected-help{
+ grid-area:help;margin:5px 4px 9px 0;height:96px;min-height:96px;
+ padding:10px 13px;border-radius:12px;background:#123c58;
+ border:1px solid #4b7e8f;display:flex;flex-direction:column;align-items:flex-start;
+ justify-content:center;gap:6px;flex-wrap:nowrap;overflow:hidden;
+}
+.game-shell>.selected-help span:first-child{white-space:normal;line-height:1.25;font-size:12px}
+.game-shell>.selected-help span:last-child{font-size:12px;line-height:1.35;
+ display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;
+ min-width:0;max-width:100%;flex:0 1 auto;}
+.game-shell>.field-wrap{grid-area:field}
+.game-shell>.game-bottom{grid-area:bottom}
+@media(max-width:850px){
+ .game-shell{grid-template-columns:minmax(0,1fr);grid-template-areas:"top" "cards" "help" "field" "bottom";gap:0}
+ .game-shell>.cardbar{height:100px;min-height:100px;padding-bottom:3px}
+ .game-shell>.cardbar .unit-card{height:88px;min-height:88px;max-height:88px}
+ .game-shell>.selected-help{margin:0 3px 5px;height:47px;min-height:47px;
+   padding:5px 10px;display:flex;flex-direction:row;flex-wrap:nowrap;
+   align-items:center;gap:12px;justify-content:flex-start}
+ .game-shell>.selected-help span:first-child{flex:0 0 auto;font-size:10px}
+ .game-shell>.selected-help span:last-child{font-size:10px;-webkit-line-clamp:2}
+}
+@media(max-width:620px){
+ .game-shell>.cardbar{height:95px;min-height:95px}
+ .game-shell>.cardbar .unit-card{height:82px;min-height:82px;max-height:82px}
+ .game-shell>.selected-help{height:46px;min-height:46px}
+}
