@@ -149,3 +149,26 @@ test("an expert's beam unmasks a fake heir, who calls in two witnesses",()=>{
  assert.equal(e.reveal,true);
  assert.equal(g.enemies.filter(x=>x.id==="schemer").length,2);
 });
+test("lane guard is a roller: it annuls the lane as it reaches each enemy",async()=>{
+ const {ROLLER_SPEED}=await import("../src/engine.js");
+ const g=field(0,5,["registrar"]);
+ const near=spawn(g,"schemer",2,.02),far=spawn(g,"schemer",2,6),other=spawn(g,"schemer",1,.5);
+ tick(g,.05);
+ assert.equal(g.usedGuards[2],true);
+ assert.equal(g.enemies.includes(near),false,"the breaching enemy goes at once");
+ assert.equal(g.enemies.includes(far),true,"far enemies wait for the roller");
+ assert.equal(g.rollers.length,1);
+ for(let i=0;i<Math.ceil(6/ROLLER_SPEED/.05)+2;i++)tick(g,.05);
+ assert.equal(g.enemies.includes(far),false,"rolled over");
+ assert.equal(g.enemies.includes(other),true,"other lanes untouched");
+ for(let i=0;i<120;i++)tick(g,.05);
+ assert.equal(g.rollers.length,0,"roller and its imprint are cleaned up");
+});
+test("the roller does not flatten a boss",()=>{
+ const g=field(1,10,["registrar"]);
+ const boss=spawn(g,"boss",2,3);
+ g.enemies=g.enemies.filter(e=>e===boss);
+ spawn(g,"schemer",2,.02);
+ for(let i=0;i<60;i++)tick(g,.05);
+ assert.equal(g.enemies.includes(boss),true);
+});

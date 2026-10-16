@@ -38,7 +38,7 @@ test('Hydra heads are only exhausted by ordinary tools and finished by 2FA',()=>
  const g=makeGame(getLevel(3,10),['twofactor']);
  g.plan=[];
  const boss=spawn(g,'boss',2,8);
- assert.equal(boss.maxHp,8000);
+ assert.equal(boss.maxHp,6000);
  assert.equal(g.enemies.filter(x=>x.trait==='hydra_head').length,3);
  const head=g.enemies.find(x=>x.id==='hydra_phish');
  const old=boss.hp;
@@ -61,7 +61,7 @@ test('2FA placed on a head cell finishes an exhausted head',()=>{
  const head=g.enemies.find(x=>x.id==='hydra_call');
  damageEnemy(g,head,1e6,'registry');
  assert.equal(place(g,'twofactor',head.lane,Math.floor(head.x)).ok,true);
- // The call head jams the trap for 4 s first; it still finishes the head.
+ // The call head cannot jam 2FA (same rule as phishers and callers).
  for(let i=0;i<300&&g.enemies.includes(head);i++)tick(g,1/30);
  assert.equal(g.enemies.includes(head),false);
 });
@@ -113,4 +113,16 @@ test('Octopus waits behind its tentacles, then takes full damage',()=>{
  assert.equal(hp-boss.hp,100,'no permanent x0.5 for non-integrity tools');
  for(let i=0;i<20;i++)tick(g,.1);
  assert.ok(boss.x<8.5,'walks once free');
+});
+test('2FA anywhere in the row finishes an exhausted head (its cell may be taken)',()=>{
+ const g=makeGame(getLevel(3,10),['twofactor','registrar']);
+ g.plan=[];g.seal=1000;g.nextSky=1e9;
+ spawn(g,'boss',2,8);
+ const head=g.enemies.find(x=>x.id==='hydra_phish');
+ assert.equal(place(g,'registrar',head.lane,Math.floor(head.x)).ok,true);
+ damageEnemy(g,head,1e6,'registry');
+ assert.equal(head.exhausted,true);
+ assert.equal(place(g,'twofactor',head.lane,2).ok,true);
+ for(let i=0;i<120&&g.enemies.includes(head);i++)tick(g,1/30);
+ assert.equal(g.enemies.includes(head),false);
 });

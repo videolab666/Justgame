@@ -605,3 +605,34 @@ body.reduced-motion .projectile:not(.shot-beam):after{display:none}
 @keyframes unmask-flash{0%{transform:scale(1.35) rotate(-8deg);filter:brightness(2.2)}60%{transform:scale(.95) rotate(3deg)}100%{transform:none;filter:none}}
 body.reduced-motion .coach-spot,body.reduced-motion .coach-card.dialog,body.reduced-motion .enemy.unmasking .enemy-inner{animation:none}
 @media print{.coach-overlay{display:none}}
+/* Lane guard: "ЗАБОРОНЕНО" stamp roller (our lawnmower). It parks at the
+   start of its lane like an object on the field, not like a UI button. */
+.field-wrap .house-strip .guard{padding:0;overflow:visible;position:relative;background:transparent;border:0;box-shadow:none;width:100%;height:78%;align-self:center}
+.field-wrap .house-strip .guard:after{z-index:2}
+.guard .guard-roller{position:absolute;left:4%;bottom:-4%;width:150%;height:auto;aspect-ratio:1;filter:drop-shadow(0 3px 1px #26405877);transition:transform .2s ease;transform-origin:40% 90%}
+.house-strip .guard:not(.used):hover .guard-roller{transform:translateX(3px) rotate(-5deg)}
+.house-strip .guard.used{opacity:1;background:transparent}
+.house-strip .guard.used .guard-roller{opacity:.18;filter:grayscale(1)}
+.house-strip .guard.lane-danger:not(.used){background:radial-gradient(closest-side,#ffb27a99,transparent);border:0;box-shadow:none}
+.house-strip .guard.lane-danger:not(.used) .guard-roller{animation:roller-ready .5s ease-in-out infinite alternate}
+.house-strip .guard:not(:disabled){background:radial-gradient(closest-side,#ffe9927a,transparent);box-shadow:none}
+@keyframes roller-ready{from{transform:translateX(0) rotate(0)}to{transform:translateX(4px) rotate(-8deg)}}
+.roller-layer{position:absolute;inset:0;pointer-events:none;z-index:7;overflow:visible}
+.roller-run{position:absolute;left:0;right:0;height:20%;opacity:calc(1 - var(--fade,0))}
+.roller-trail{position:absolute;left:0;top:52%;height:44%;transform:translateY(-50%) rotate(-.6deg);overflow:hidden;border:3px double #c63c41;border-left:0;border-radius:0 6px 6px 0;background:repeating-linear-gradient(90deg,#ffe8d055 0 14px,#ffd9c255 14px 15px);mix-blend-mode:multiply;box-shadow:inset 0 0 8px #c63c4155}
+.roller-trail span{display:block;white-space:nowrap;font-weight:1000;letter-spacing:.14em;color:#c63c41;font-size:clamp(9px,1.25vw,15px);line-height:1;padding-top:.32em;padding-left:6px;opacity:.9;text-shadow:0 0 1px #c63c41}
+.roller-unit{position:absolute;top:-14%;width:clamp(46px,11.5%,96px);aspect-ratio:1;transform:translateX(-70%);filter:drop-shadow(0 6px 3px #1c2b3a66)}
+.roller-unit .roller-art{width:100%;height:100%}
+.roller-art .roller-drum{transform-box:fill-box;transform-origin:center}
+.roller-unit .roller-drum{animation:roller-spin .3s linear infinite}
+.roller-unit:after{content:"";position:absolute;left:-30%;bottom:8%;width:40%;height:14%;border-radius:50%;background:radial-gradient(closest-side,#fff3d6cc,transparent);animation:roller-dust .25s linear infinite}
+@keyframes roller-dust{from{transform:translateX(0) scale(.6);opacity:.9}to{transform:translateX(-120%) scale(1.3);opacity:0}}
+.roller-run.done .roller-unit{transition:opacity .35s,transform .35s;opacity:0;transform:translateX(-20%) scale(.8)}
+@keyframes roller-spin{to{transform:rotate(360deg)}}
+.squashed-enemy{position:absolute;width:10.5%;height:18.7%;transform:translate(-50%,-50%) scale(calc(1 + var(--t,0)*.3),calc(1 - var(--t,0)*.82));transform-origin:50% 100%;opacity:calc(1 - var(--t,0)*var(--t,0));filter:sepia(.6) hue-rotate(-30deg) saturate(2.2)}
+.squashed-enemy .game-art{width:100%;height:100%;object-fit:contain}
+.squashed-enemy b{position:absolute;left:50%;top:46%;transform:translate(-50%,-50%) rotate(-12deg) scale(calc(1.5 - var(--t,0)*.5));border:2px solid #c63c41;color:#c63c41;background:#fff8ee;padding:1px 4px;border-radius:4px;font-size:clamp(7px,.9vw,11px);letter-spacing:.06em;white-space:nowrap}
+.board-frame.guard-shake{animation:guard-shake .42s ease-out}
+@keyframes guard-shake{0%,100%{transform:none}20%{transform:translate(-3px,1px)}45%{transform:translate(3px,-1px)}70%{transform:translate(-1px,1px)}}
+.battle-fx.fx-guard{color:#ffe7c9;font-size:clamp(12px,1.8vw,22px);letter-spacing:.08em;text-shadow:0 2px 0 #8e1f27,0 0 10px #d4434a}
+body.reduced-motion .roller-unit .roller-drum,body.reduced-motion .roller-unit:after,body.reduced-motion .board-frame.guard-shake{animation:none}

@@ -1,5 +1,5 @@
 import {UNITS,UNIT_BY_ID,ENEMIES,ENEMY_BY_ID,WORLDS,TYPES,TOOLS,FACTS,UNLOCK_REWARDS,MINI_LEVELS,STORY,getLevel,levelId,unlockedUnits,levelUnlocked} from "./data.js";
-import {makeGame,tick,place,collectToken,collectAll,currentProgress,scoreStars,selectAdvice,useGuard,availablePlacement,explainFiring,waveStatus} from "./engine.js";
+import {makeGame,tick,place,collectToken,collectAll,currentProgress,scoreStars,selectAdvice,useGuard,availablePlacement,explainFiring,waveStatus,ROLLER_FADE} from "./engine.js";
 import {getThreat,getEncounterThreats,getCounterAdvice} from "./tactics.js";
 import {Soundtrack} from "./music.js";
 const root=document.getElementById("app");
@@ -45,6 +45,20 @@ function enemySprite(e){
 }
 const enemyKindIcon=e=>isDisguised(e)?"🎭":TYPES[e.scheme].icon;
 const art=(id,cls="")=>`<img class="game-art ${cls}" src="./assets/sprites/${encodeURIComponent(id)}.svg" alt="" draggable="false" loading="eager" decoding="async">`;
+/** "ЗАБОРОНЕНО" stamp roller: the lane guard (our lawnmower). Inline SVG so
+ * the drum can spin while it rolls; flat fills, no ids, safe to repeat. */
+const rollerArt=(cls="")=>`<svg class="roller-art ${cls}" viewBox="0 0 64 64" aria-hidden="true">
+<ellipse cx="35" cy="59" rx="20" ry="3.6" fill="#1b2a3a" opacity=".28"/>
+<path d="M12 7 31 35" stroke="#6d3f1d" stroke-width="5.5" stroke-linecap="round"/>
+<path d="M12 7 31 35" stroke="#b97a41" stroke-width="2.2" stroke-linecap="round"/>
+<rect x="5" y="1.5" width="14" height="8" rx="4" transform="rotate(34 12 5.5)" fill="#f5cf77" stroke="#6d3f1d" stroke-width="1.6"/>
+<path d="M23 33 33 27 47 35" fill="none" stroke="#1d4766" stroke-width="4.2" stroke-linejoin="round" stroke-linecap="round"/>
+<g class="roller-drum"><circle cx="35" cy="45" r="13.5" fill="#cf3a3f" stroke="#7a1620" stroke-width="2.6"/>
+<circle cx="35" cy="45" r="9.6" fill="none" stroke="#f7d27b" stroke-width="2.2" stroke-dasharray="4.2 2.6"/>
+<path d="M30 40 40 50M40 40 30 50" stroke="#fff6e4" stroke-width="3.2" stroke-linecap="round"/>
+<circle cx="35" cy="45" r="2.6" fill="#1d4766"/></g>
+<path d="M26 36a12 12 0 0 1 9-4" fill="none" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round" opacity=".55"/>
+</svg>`;
 const landscape=(w,cls="")=>`<img class="world-art ${cls}" src="./assets/worlds/world-${w+1}.svg" alt="" loading="lazy">`;
 const btn=(action,label,classes="btn",props="")=>`<button type="button" class="${classes}" data-act="${action}" ${props}>${label}</button>`;
 function persist(){try{localStorage.setItem(KEY,JSON.stringify(save));}catch{/* private browsing: play without persistence */}}
@@ -198,7 +212,7 @@ function renderPlay(){
  const fx=game.effects.map(e=>`<span data-fx="${e.id}" style="position:absolute;left:${e.x*100/9}%;top:${e.lane*20+1}%;font-size:12px;font-weight:900;color:#fdfbf3;text-shadow:1px 2px #174563,0 0 5px #173752;white-space:nowrap">${E(e.text)}</span>`).join("");
  const guards=Array.from({length:5},(_,l)=>{
   const manual=bossGuardAvailable(l);
-  return `<button type="button" class="guard ${game.usedGuards[l]&&!manual?"used":""}" data-act="guard" data-lane="${l}" ${!manual?"disabled":""} title="${manual?"Активувати заборону проти Барона":"Заборона спрацьовує автоматично під час прориву"}">🛑</button>`;
+  return `<button type="button" class="guard ${game.usedGuards[l]&&!manual?"used":""}" data-act="guard" data-lane="${l}" ${!manual?"disabled":""} title="${manual?"Активувати заборону проти Барона":"Заборона спрацьовує автоматично під час прориву"}" aria-label="Заборона, ряд ${l+1}">${rollerArt("guard-roller")}</button>`;
  }).join("");
  return wrapper(`<main class="main" style="padding:12px"><section class="game-shell">
  <div class="game-top"><div class="seal-pill">✦ ${Math.floor(game.seal)}</div>
@@ -210,7 +224,7 @@ function renderPlay(){
  <div class="field-wrap ${level.special.blackout?"blackout":""} ${level.special.fog?"fog":""}" data-world="${level.world+1}">
  <div class="skyline" aria-hidden="true">${landscape(level.world,"scenery")}</div>
  <div class="board-frame"><div class="house-strip">${guards}</div><div class="board" role="grid" aria-label="Поле оборони, 5 рядків і 9 колонок">
- ${cells}<div class="placement-preview" aria-hidden="true">${art(selected,"preview-art")}</div><div class="projectile-layer" aria-hidden="true">${shots}</div><div class="particle-layer" aria-hidden="true"></div><div class="enemy-layer" aria-hidden="true">${foes}</div><div class="fallen-layer" aria-hidden="true"></div><div class="tokens-layer">${tokens}</div><div class="vfx-layer" aria-hidden="true">${fx}</div></div></div></div>
+ ${cells}<div class="placement-preview" aria-hidden="true">${art(selected,"preview-art")}</div><div class="projectile-layer" aria-hidden="true">${shots}</div><div class="particle-layer" aria-hidden="true"></div><div class="enemy-layer" aria-hidden="true">${foes}</div><div class="fallen-layer" aria-hidden="true"></div><div class="roller-layer" aria-hidden="true"></div><div class="tokens-layer">${tokens}</div><div class="vfx-layer" aria-hidden="true">${fx}</div></div></div></div>
  <div class="game-bottom"><span>🛡️ Захищено рядків: ${5-game.usedGuards.filter(Boolean).length}/5 · Схемників: ${game.enemies.length} · Пострілів: ${activeAttackers} · Залишилось: ${remaining}</span>
  <span>⌨️ 1–8: картка · Стрілки: клітинка · Enter: поставити · Пробіл: зібрати · P: пауза</span></div>
  </section>${renderThreatLegend()}<div class="owl-message" aria-live="polite"><div class="face" aria-hidden="true">🦉</div><div><strong>Сова Юся</strong>${E(toast||game.lastHint)}</div></div></main>`);
@@ -219,6 +233,45 @@ function renderPlay(){
 /** Update live sprites in place; do not rebuild the whole document every frame.
  * Preserves focused cells, touch gestures, the card strip position and CSS animations.
  */
+/** Lane guard runs: the rolling stamp, its red "ЗАБОРОНЕНО" imprint, and the
+ * enemies it flattens. Purely visual; the engine owns positions and kills. */
+function syncRollers(){
+ const layer=root.querySelector(".roller-layer");if(!layer)return;
+ const seen=new Set();
+ for(const r of game.rollers||[]){
+  const id="r"+r.uid;seen.add(id);
+  let el=layer.querySelector('[data-roller="'+id+'"]');
+  if(!el){
+   el=document.createElement("div");el.className="roller-run";el.dataset.roller=id;
+   el.innerHTML='<div class="roller-trail"><span>'+"ЗАБОРОНЕНО ✕ ".repeat(14)+'</span></div><div class="roller-unit">'+rollerArt()+'</div>';
+   layer.append(el);
+   if(lastRollerUid<r.uid){
+    lastRollerUid=r.uid;sound(150,.32);setTimeout(()=>sound(95,.28),110);
+    const frame=root.querySelector(".board-frame");
+    if(frame&&!save.settings.reducedMotion){frame.classList.remove("guard-shake");void frame.offsetWidth;frame.classList.add("guard-shake");}
+   }
+  }
+  el.style.top=r.lane*20+"%";
+  el.querySelector(".roller-trail").style.width=Math.min(9,r.x)*100/9+"%";
+  el.querySelector(".roller-unit").style.left=r.x*100/9+"%";
+  el.classList.toggle("done",r.done);
+  el.style.setProperty("--fade",r.done?String(Math.min(1,r.doneAge/ROLLER_FADE)):"0");
+ }
+ for(const q of game.squashed||[]){
+  const id="s"+q.uid;seen.add(id);
+  let el=layer.querySelector('[data-roller="'+id+'"]');
+  if(!el){
+   el=document.createElement("div");el.className="squashed-enemy";el.dataset.roller=id;
+   el.innerHTML=art(enemySprite(q.enemy),"enemy-illustration")+'<b>АНУЛЬОВАНО</b>';
+   layer.append(el);
+  }
+  const t=q.age/q.ttl;
+  el.style.left=q.x*100/9+"%";el.style.top=(q.lane*20+10)+"%";
+  el.style.setProperty("--t",String(t));
+ }
+ for(const el of Array.from(layer.children))if(!seen.has(el.dataset.roller))el.remove();
+}
+let lastRollerUid=0;
 function syncGameFrame(){
  if(view!=="play"||!game||modal)return;
  const $=(s)=>root.querySelector(s);
@@ -347,6 +400,7 @@ function syncGameFrame(){
    "deg) translateY("+(f.age/f.ttl*22)+"px) scale("+(1-f.age/f.ttl*.3)+")";
  }
  for(const el of Array.from(fallenLayer.children))if(!fading.has(el.dataset.fallen))el.remove();
+ syncRollers();
  const shotKinds={stamp:"✓",clip:"⌁",chain:"❄",writ:"§",dossier:"▣",dove:"✉",beam:""};
  const shotsAlive=new Set();
  const pxPerCol=board.clientWidth/9,pxPerRow=board.clientHeight/5;
@@ -693,7 +747,7 @@ function goLevel(w,s){
 }
 function startGame(){
  if(!deck.length)return;
- game=makeGame(level,deck,save.mode,{...save.settings,careerBonus:totalStars()>=35?25:0},challenge);selected=deck[0];shownEnd=false;outroElapsed=0;latestShotSound=0;lastShotSfxAt=-10;
+ game=makeGame(level,deck,save.mode,{...save.settings,careerBonus:totalStars()>=35?25:0},challenge);selected=deck[0];shownEnd=false;outroElapsed=0;latestShotSound=0;lastShotSfxAt=-10;lastRollerUid=0;
  game.lastHint=level.tutorial||`Світ ${world+1}. Захистіть будівлю, використовуючи відповідні інструменти.`;
  introQueue=[];intro=null;
  for(const id of deck)queueIntro({kind:"unit",id});

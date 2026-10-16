@@ -95,7 +95,7 @@ function botStep(g, st) {
   for (const l of g.locks) if (tryPlace(g, "commission", l.lane, [l.col])) return;
   // 2FA on hydra heads / cyber lanes.
   for (const e of live) if (e.trait === "hydra_head" && e.exhausted)
-    if (tryPlace(g, "twofactor", e.lane, [Math.floor(e.x)])) return;
+    if (tryPlace(g, "twofactor", e.lane, [Math.floor(e.x), 6, 5, 4, 3, 2, 1, 8])) return;
   // Legal aid sweep on a crowded lane.
   for (const lane of lanes) {
     const inLane = live.filter(e => e.lane === lane && e.x < 6);
@@ -192,7 +192,7 @@ function run(world, stage, seed) {
   const dt = 1 / 30;
   let nextThink = 0, idle = 0, longestIdle = 0, curIdle = 0, firstContact = null;
   let bankSum = 0, bankN = 0, minX = 99, peakEnemies = 0;
-  while (g.phase === "playing" && g.time < 600) {
+  while (g.phase === "playing" && g.time < 900) {
     const ne=g.spawned, nb=g.breaches; tick(g, dt); if(process.env.TRACE&&g.spawned>ne)for(let q=ne;q<g.spawned;q++)console.log(`t=${g.time.toFixed(1)} SPAWN ${g.plan[q].id} L${g.plan[q].lane}`); if(process.env.TRACE&&g.breaches>nb)console.log(`t=${g.time.toFixed(1)} BREACH ${g.lastThreat.id} L${g.lastThreat.lane}`);
     for (const t of [...g.tokens]) if (11 - t.ttl >= sk.collectDelay) { if ((t.uid * 2654435761 % 1000) / 1000 >= sk.miss) collectToken(g, t.uid); else t.skip = 1; }
     if (g.time >= nextThink) { botStep(g, {}); nextThink = g.time + sk.think; }
@@ -204,7 +204,7 @@ function run(world, stage, seed) {
     else curIdle = 0;
     if (firstContact == null && alive.length) firstContact = g.time;
     bankSum += g.seal; bankN++;
-    if (process.env.BOSSLOG && Math.floor(g.time / 15) !== Math.floor((g.time - dt) / 15)) { const b = g.enemies.find(e => e.id === "boss"); if (b) console.log(`t=${g.time.toFixed(0)} boss hp=${b.hp.toFixed(0)}/${b.maxHp} x=${b.x.toFixed(2)} ph=${b.phase} laneDefs=${g.defenders.filter(d => d.lane === b.lane).map(d => d.id + "@" + d.col + (g.time < d.confusedUntil ? "?" : "") + (g.time < d.disabledUntil ? "!" : "")).join(",")} enemiesInLane=${g.enemies.filter(e => e.lane === b.lane && e !== b).map(e=>e.id+"@"+e.x.toFixed(1)).join(",")}`); }
+    if (process.env.BOSSLOG && Math.floor(g.time / 15) !== Math.floor((g.time - dt) / 15)) { const b = g.enemies.find(e => e.id === "boss"); if (b) console.log(`t=${g.time.toFixed(0)} boss hp=${b.hp.toFixed(0)}/${b.maxHp} x=${b.x.toFixed(2)} ph=${b.phase} laneDefs=${g.defenders.filter(d => d.lane === b.lane).map(d => d.id + "@" + d.col + (g.time < d.confusedUntil ? "?" : "") + (g.time < d.disabledUntil ? "!" : "")).join(",")} heads=${g.enemies.filter(e=>e.trait==="hydra_head").map(e=>e.id.slice(6)+"L"+e.lane+":"+e.hp.toFixed(0)+(e.exhausted?"x":"")).join(",")} enemiesInLane=${g.enemies.filter(e => e.lane === b.lane && e !== b).map(e=>e.id+"@"+e.x.toFixed(1)).join(",")}`); }
   }
   Math.random = origRandom;
   return {id: level.id, phase: g.phase, time: g.time, breaches: g.breaches, losses: g.defenderLosses,

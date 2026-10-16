@@ -98,7 +98,7 @@ export function waveStatus(g){
 export function makeGame(level,deck,mode="normal",settings={},challenge=null){
  const game={
   level,deck:[...deck],mode,settings,challenge,phase:"playing",time:0,elapsed:0,seal:(mode==="young"?300:level.startingSeals)+(settings.careerBonus||0),
-  defenders:[],enemies:[],tokens:[],locks:[],effects:[],projectiles:[],particles:[],fallen:[],plan:makeWavePlan(level),
+  defenders:[],enemies:[],tokens:[],locks:[],effects:[],projectiles:[],particles:[],fallen:[],rollers:[],squashed:[],plan:makeWavePlan(level),
   spawned:0,serial:1,nextSky:7,cooldowns:Object.fromEntries(deck.map(id=>[id,0])),
   usedGuards:[false,false,false,false,false],breaches:0,defenderLosses:0,created:0,kills:0,
   stageWave:0,maxWave:level.waves,bossGuardReady:false,bossGuardUsed:false,
@@ -133,9 +133,9 @@ export function spawn(g,id,lane,x=9.3){
  const parts={
   offshore_safe:{name:"Сейф-офшор",icon:"🔒",scheme:"debt",hp:800,speed:0,trait:"offshore_safe",tip:"Сховані активи потребують виявлення."},
   tentacle:{name:"Щупальце підкупу",icon:"🐙",scheme:"corruption",hp:1500,speed:0,trait:"tentacle",tip:"Запобігання корупції потребує перевірки."},
-  hydra_phish:{name:"Голова фішингу",icon:"🎣",scheme:"cyber",hp:2000,speed:0,trait:"hydra_head",tip:"Перевіряйте посилання."},
-  hydra_call:{name:"Голова дзвінків",icon:"☎️",scheme:"cyber",hp:2000,speed:0,trait:"hydra_head",tip:"Не розголошуйте коди по телефону."},
-  hydra_malware:{name:"Голова шкідливого ПЗ",icon:"💾",scheme:"cyber",hp:2000,speed:0,trait:"hydra_head",tip:"Невідомі носії небезпечні."}
+  hydra_phish:{name:"Голова фішингу",icon:"🎣",scheme:"cyber",hp:HYDRA_HEAD_HP,speed:0,trait:"hydra_head",tip:"Перевіряйте посилання."},
+  hydra_call:{name:"Голова дзвінків",icon:"☎️",scheme:"cyber",hp:HYDRA_HEAD_HP,speed:0,trait:"hydra_head",tip:"Не розголошуйте коди по телефону."},
+  hydra_malware:{name:"Голова шкідливого ПЗ",icon:"💾",scheme:"cyber",hp:HYDRA_HEAD_HP,speed:0,trait:"hydra_head",tip:"Невідомі носії небезпечні."}
  };
  let data=parts[id]|| (id==="boss"?g.level.bossData:id==="mini_boss"?{name:"Липовий експерт",icon:"🥼",scheme:"bureaucracy",hp:2500,speed:.6,trait:"mini_boss",tip:"Перевіряйте кваліфікацію експертів у визначених законом реєстрах."}:ENEMY_BY_ID[id]); if(!data)return null;
  const hpMod=g.mode==="young"?.6:g.mode==="expert"?1.3:1;
@@ -145,7 +145,7 @@ export function spawn(g,id,lane,x=9.3){
  trait:data.trait||(id==="boss"?"boss":"basic"),reveal:!["disguised_jump","disguised_split"].includes(data.trait),
  frozenUntil:0,stunUntil:0,specialUntil:0,contactTime:0,jumped:false,revived:false,
  spawnedMinions:false,lastHitTool:null,phase:1,tip:data.tip,air:id==="bankrupt"||id==="boss"&&g.level.world===1&&false};
- if(id==="boss"&&g.level.world===3){enemy.hp=8000*hpMod;enemy.maxHp=8000*hpMod;}
+ if(id==="boss"&&g.level.world===3){enemy.hp=HYDRA_BODY_HP*hpMod;enemy.maxHp=HYDRA_BODY_HP*hpMod;}
  if(id==="offshore_safe")enemy.reveal=false;
  g.enemies.push(enemy);g.lastThreat=enemy;effect(g,"spawn",lane,x,"!");
  if(id==="boss"&&g.level.world===1){
@@ -179,6 +179,9 @@ export const CONTACT=.65;
 // Boss reinforcements; 13 s buried the boss lane under escorts faster than
 // the lane's shooters could reach the boss itself.
 const BOSS_SUMMON_EVERY=16,BOSS_ESCORT_CAP=3;
+// Hydra (body 8000, heads 2000, 25-seal drain every 12 s) took a novice ~4 min
+// per head and ate ~40 % of their income; the malware head now drops 2 USBs.
+const HYDRA_HEAD_HP=1000,HYDRA_BODY_HP=6000,HYDRA_PHISH_STEAL=15;
 const SEIZE_TIME=2.5,GIANT_WINDUP=1.2,GIANT_SMASH_EVERY=1.8,JUMP_TIME=.7;
 // Bosses and their stationary parts are never removed by a lane guard.
 const GUARD_IMMUNE=new Set(["offshore_safe","tentacle","hydra_head"]);
@@ -394,7 +397,7 @@ export function damageEnemy(g,e,raw,tool=null,extra=1){
   n=Math.min(n,Math.max(0,e.hp-1));
   if(e.hp-n<=1&&!e.exhausted){
    e.exhausted=true;
-   g.lastHint="Голову Гідри виснажено! Добийте її 2FA: поставте її на клітинку з головою.";
+   g.lastHint="Голову Гідри виснажено! Добийте її 2FA: поставте її будь-де в ряду голови.";
    effect(g,"exhausted",e.lane,e.x,"ДОБИЙТЕ 2FA",1.2);
   }
  }
@@ -442,9 +445,33 @@ export function useGuard(g,lane,automatic=false){
   g.bossGuardUsed=true;damageEnemy(g,boss,boss.maxHp,"registry",3);
  }else if(g.usedGuards[lane])return false;
  g.usedGuards[lane]=true;
- for(const e of [...g.enemies])if(e.lane===lane&&!isGuardImmune(e))removeEnemy(g,e);
- effect(g,"guard",lane,3.5,"ЗАБОРОНА");emitBurst(g,"guard",lane,3.5,11);
+ // Whoever is at the door goes at once (otherwise it breaches again next
+ // tick); the rest of the lane is annulled as the roller reaches them.
+ for(const e of [...g.enemies])if(e.lane===lane&&!isGuardImmune(e)&&e.x<=ROLLER_REACH)squash(g,e);
+ (g.rollers??=[]).push({uid:uid(g),lane,x:0,age:0,done:false,doneAge:0});
+ effect(g,"guard",lane,.7,"ЗАБОРОНА!",1.2);emitBurst(g,"guard",lane,.4,11);
  return true;
+}
+// Lane guard = PvZ lawnmower: a "ЗАБОРОНЕНО" stamp roller runs the lane once
+// and annuls every non-boss threat it rolls over, leaving a red imprint.
+export const ROLLER_SPEED=4.2,ROLLER_REACH=.4,ROLLER_FADE=1.8;
+function squash(g,e){
+ if(!g.settings?.reducedMotion){
+  (g.squashed??=[]).push({uid:uid(g),enemy:{id:e.id,trait:e.trait,reveal:e.reveal,scheme:e.scheme},lane:e.lane,x:e.x,age:0,ttl:.7});
+  if(g.squashed.length>30)g.squashed.shift();
+ }
+ removeEnemy(g,e);
+}
+export function advanceRollers(g,delta){
+ if(!g.rollers?.length&&!g.squashed?.length)return;
+ for(let i=g.rollers.length-1;i>=0;i--){
+  const r=g.rollers[i];r.age+=delta;
+  if(r.done){r.doneAge+=delta;if(r.doneAge>=ROLLER_FADE)g.rollers.splice(i,1);continue;}
+  r.x=Math.min(9.6,r.x+ROLLER_SPEED*delta);
+  for(const e of [...g.enemies])if(e.lane===r.lane&&!isGuardImmune(e)&&e.x<=r.x+ROLLER_REACH)squash(g,e);
+  if(r.x>=9.6)r.done=true;
+ }
+ for(let i=g.squashed.length-1;i>=0;i--){g.squashed[i].age+=delta;if(g.squashed[i].age>=g.squashed[i].ttl)g.squashed.splice(i,1);}
 }
 
 
@@ -618,7 +645,10 @@ function attack(g,d,delta){
   if(d.timer>0)return;
   // One pulse hits every cyber enemy on the cell. Hitting only the first one
   // let the immune Hydra body absorb every pulse aimed at a head.
-  const inCell=g.enemies.filter(e=>e.scheme==="cyber"&&e.hp>0&&e.lane===d.lane&&Math.abs(e.x-(d.col+.5))<.6);
+  // An exhausted Hydra head is finished by 2FA anywhere in its row: its own
+  // cell may already hold a defender, and defenders cannot be removed.
+  const inCell=g.enemies.filter(e=>e.scheme==="cyber"&&e.hp>0&&e.lane===d.lane&&
+   (Math.abs(e.x-(d.col+.5))<.6||e.trait==="hydra_head"&&e.exhausted));
   for(const e of inCell){damageEnemy(g,e,spec.damage,"digital");e.stunUntil=Math.max(e.stunUntil,g.time+.35);}
   if(inCell.length)d.timer=1;
   return;
@@ -689,12 +719,12 @@ function enemyTurn(g,e,delta){
    const target=g.defenders.filter(d=>d.lane===e.lane&&!isProtected(g,d)).sort((a,b)=>b.col-a.col)[0];
    if(target){target.disabledUntil=g.time+3;effect(g,"bribe",e.lane,e.x,"КОНВЕРТ");}
   }else if(e.trait==="hydra_head"){
-   if(e.id==="hydra_phish"){g.seal=Math.max(0,g.seal-25);effect(g,"phish",e.lane,e.x,"-25");}
+   if(e.id==="hydra_phish"){g.seal=Math.max(0,g.seal-HYDRA_PHISH_STEAL);effect(g,"phish",e.lane,e.x,"-"+HYDRA_PHISH_STEAL);}
    if(e.id==="hydra_call"){
-    const target=g.defenders.find(d=>d.lane===e.lane&&!d.shieldHp);
+    const target=g.defenders.find(d=>d.lane===e.lane&&d.kind!=="trap"&&!d.shieldHp);
     if(target)target.disabledUntil=g.time+4;
    }
-   if(e.id==="hydra_malware")for(let i=0;i<3;i++)spawn(g,"usb",e.lane,9.0+i*.24);
+   if(e.id==="hydra_malware")for(let i=0;i<2;i++)spawn(g,"usb",e.lane,9.0+i*.24);
   }
   e.specialUntil=g.time+12;return;
  }
@@ -721,7 +751,10 @@ function enemyTurn(g,e,delta){
  // Escorts are capped: the fight stays about the boss, not an endless
  // stream that soaks up every shot in the boss lane.
  const escorts=g.enemies.filter(x=>x.summonedBy===e.uid&&x.hp>0).length;
- if(e.id==="boss"&&g.time>e.specialUntil&&escorts<BOSS_ESCORT_CAP){
+ // The Hydra body is dormant while its heads live (GDD): the heads already
+ // attack, and extra phishers in all five lanes buried new players.
+ const dormant=g.level.world===3&&bossImmune(g,e);
+ if(e.id==="boss"&&g.time>e.specialUntil&&escorts<BOSS_ESCORT_CAP&&!dormant){
   const w=g.level.world,call=(id,lane,x)=>{const m=spawn(g,id,lane,x);if(m)m.summonedBy=e.uid;};
   if(w===0&&e.phase===1)call("poa",e.lane,Math.min(9,e.x+.5));
   // "Свій реєстратор": a raider, answered by world-1 cards (notary,
@@ -843,13 +876,14 @@ export function tick(g,delta){
  advanceProjectiles(g,delta);
  advanceParticles(g,delta);
  advanceFallen(g,delta);
+ advanceRollers(g,delta);
  if(g.finalSurvivalUntil&&g.time<g.finalSurvivalUntil&&g.time>=g.nextSurvivalSpawn){
   const ids=["schemer","phisher","briber","alimony","caller","usb"];
   const ix=Math.floor((g.finalSurvivalUntil-g.time)*2)%ids.length;
   spawn(g,ids[Math.abs(ix)],Math.floor(Math.random()*5),9.3);
   g.nextSurvivalSpawn=g.time+2.6;
  }
- if(g.phase==="playing"&&g.plan.length>0&&g.spawned===g.plan.length&&g.enemies.length===0&&g.projectiles.length===0&&g.time>=g.plan[g.plan.length-1].time+2){
+ if(g.phase==="playing"&&g.plan.length>0&&g.spawned===g.plan.length&&g.enemies.length===0&&g.projectiles.length===0&&!g.rollers?.some(r=>!r.done)&&g.time>=g.plan[g.plan.length-1].time+2){
   if(g.challenge?.kind==="endless"){
    queueEndlessWave(g,g.maxWave+1);
    g.lastHint="🦉 Хвилю "+g.stageWave+" відбито. Готуйтесь до наступної!";
