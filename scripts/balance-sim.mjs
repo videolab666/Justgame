@@ -141,7 +141,9 @@ function botStep(g, st) {
     const target = L.uncovered || L.enemies[0];
     const cols = L.enemies.some(e => e.id === "boss") ? [...shooterCols, 7] : shooterCols;
     for (const id of bestFor(target)) if (tryPlace(g, id, L.lane, id === "twofactor" ? [5,4,6,3] : cols)) return;
-    if (L.closest < 4) {
+    // Walls and mines cannot stop a flyer: do not waste the last seals.
+    const flyer = L.enemies.find(e => e.x === L.closest && (e.trait === "flying" || e.air));
+    if (L.closest < 4 && !flyer) {
       const wallCol = Math.max(0, Math.floor(L.closest) - 1);
       if (tryPlace(g, "notary", L.lane, [wallCol, wallCol - 1].filter(c => c >= 0))) return;
       if (tryPlace(g, "mine", L.lane, [wallCol])) return;

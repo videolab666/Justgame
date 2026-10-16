@@ -13,11 +13,12 @@ export const WAVE_SHARES={2:[.35,.65],3:[.18,.32,.5],4:[.12,.2,.28,.4]};
 // Threat budget of a whole level by stage (1..10); index 9 is the boss level,
 // whose boss supplies most of the pressure.
 export const STAGE_BUDGET=[6,10,13,16,20,23,26,29,33,24];
-export const WORLD_BUDGET=[1,1,1.1,.9];
+export const WORLD_BUDGET=[1,.8,1.1,.9];
 // Seconds before the first spawn, so the player can place 2-3 cards first.
 export const FIRST_SPAWN={tutorial:8,normal:18};
 // After the field is cleared the next wave is pulled forward to this lull.
 export const WAVE_LULL={tutorial:3,normal:7};
+export const BOSS_MIN_TIME=125;
 export function levelBudget(level){
  // Blackout already halves unpowered income and fire rate: fewer attackers.
  const blackout=level.special?.blackout?.8:1;
@@ -75,7 +76,9 @@ export function makeWavePlan(level,seed=0){
   if(final){
    // Bosses walk the centre lane: the Count's safes (0,1,3,4) and the Hydra's
    // heads (1-3) are laid out around it, and the player can prepare it.
-   if(level.boss)list.push({time:last+10,id:"boss",lane:level.activeLanes.includes(2)?2:level.activeLanes[Math.floor(rand()*level.activeLanes.length)],wave:waves});
+   // A boss never arrives before BOSS_MIN_TIME: a lighter escort must not
+   // also mean less time to build the economy for the fight itself.
+   if(level.boss)list.push({time:Math.max(last+10,BOSS_MIN_TIME),id:"boss",lane:level.activeLanes.includes(2)?2:level.activeLanes[Math.floor(rand()*level.activeLanes.length)],wave:waves});
    if(level.id==="3-5")list.push({time:last+6,id:"mini_boss",lane:2,wave:waves});
   }
   // Scheduled gap; tick() pulls it in once the field is clear.
@@ -146,7 +149,7 @@ export function spawn(g,id,lane,x=9.3){
  frozenUntil:0,stunUntil:0,specialUntil:0,contactTime:0,jumped:false,revived:false,
  spawnedMinions:false,lastHitTool:null,phase:1,tip:data.tip,air:id==="bankrupt"||id==="boss"&&g.level.world===1&&false};
  if(id==="boss"&&g.level.world===3){enemy.hp=HYDRA_BODY_HP*hpMod;enemy.maxHp=HYDRA_BODY_HP*hpMod;}
- if(id==="offshore_safe")enemy.reveal=false;
+ if(id==="offshore_safe"){enemy.reveal=false;enemy.revealAt=g.time+SAFE_AUTO_REVEAL;}
  g.enemies.push(enemy);g.lastThreat=enemy;effect(g,"spawn",lane,x,"!");
  if(id==="boss"&&g.level.world===1){
   for(const l of [0,1,3,4])spawn(g,"offshore_safe",l,7.0);
@@ -178,7 +181,7 @@ const same=(a,b)=>a.lane===b.lane&&a.col===b.col;
 export const CONTACT=.65;
 // Boss reinforcements; 13 s buried the boss lane under escorts faster than
 // the lane's shooters could reach the boss itself.
-const BOSS_SUMMON_EVERY=16,BOSS_ESCORT_CAP=3;
+const BOSS_SUMMON_EVERY=16,BOSS_ESCORT_CAP=3,SAFE_AUTO_REVEAL=20;
 // Hydra (body 8000, heads 2000, 25-seal drain every 12 s) took a novice ~4 min
 // per head and ate ~40 % of their income; the malware head now drops 2 USBs.
 const HYDRA_HEAD_HP=1000,HYDRA_BODY_HP=6000,HYDRA_PHISH_STEAL=15;
@@ -714,6 +717,13 @@ function defeat(g,e){
 function enemyTurn(g,e,delta){
  if(e.hp<=0)return;
  if(["offshore_safe","tentacle","hydra_head"].includes(e.trait)){
+  // The Count is dormant while his safes stand, so hidden safes must not
+  // stall the fight forever when no executor is on the field.
+  if(e.trait==="offshore_safe"&&!e.reveal&&g.time>=e.revealAt){
+   for(const safe of g.enemies)if(safe.trait==="offshore_safe")safe.reveal=true;
+   g.lastHint="Активи знайдено! Знищіть сейфи-офшори — тоді Граф стане вразливим.";
+   effect(g,"reveal",e.lane,e.x,"ЗНАЙДЕНО АКТИВИ");
+  }
   if(g.time<e.specialUntil)return;
   if(e.trait==="tentacle"){
    const target=g.defenders.filter(d=>d.lane===e.lane&&!isProtected(g,d)).sort((a,b)=>b.col-a.col)[0];
@@ -751,9 +761,11 @@ function enemyTurn(g,e,delta){
  // Escorts are capped: the fight stays about the boss, not an endless
  // stream that soaks up every shot in the boss lane.
  const escorts=g.enemies.filter(x=>x.summonedBy===e.uid&&x.hp>0).length;
- // The Hydra body is dormant while its heads live (GDD): the heads already
- // attack, and extra phishers in all five lanes buried new players.
- const dormant=g.level.world===3&&bossImmune(g,e);
+ // A boss is dormant while its protectors stand (Count's safes, Hydra's
+ // heads): the player is busy finding/finishing them, and extra summons
+ // (burrowers only an executor can hit, phishers in all five lanes) buried
+ // new players for minutes.
+ const dormant=bossImmune(g,e);
  if(e.id==="boss"&&g.time>e.specialUntil&&escorts<BOSS_ESCORT_CAP&&!dormant){
   const w=g.level.world,call=(id,lane,x)=>{const m=spawn(g,id,lane,x);if(m)m.summonedBy=e.uid;};
   if(w===0&&e.phase===1)call("poa",e.lane,Math.min(9,e.x+.5));

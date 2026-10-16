@@ -126,3 +126,12 @@ test('2FA anywhere in the row finishes an exhausted head (its cell may be taken)
  for(let i=0;i<120&&g.enemies.includes(head);i++)tick(g,1/30);
  assert.equal(g.enemies.includes(head),false);
 });
+test('hidden safes reveal themselves after a while, so the Count cannot stall forever',()=>{
+ const g=makeGame(getLevel(1,10),['registrar']);
+ g.plan=[];g.nextSky=1e9;
+ spawn(g,'boss',2,9);
+ const safes=g.enemies.filter(e=>e.trait==='offshore_safe');
+ assert.ok(safes.every(s=>!s.reveal));
+ for(let i=0;i<220;i++)tick(g,.1);
+ assert.ok(safes.every(s=>s.reveal));
+});
