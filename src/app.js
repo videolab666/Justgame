@@ -585,7 +585,7 @@ function renderResult(){
  ${success?`<div class="stars">${"★".repeat(stars)}${"☆".repeat(3-stars)}</div><p>${reward?"Нова картка: "+reward.icon+" "+E(reward.name):"Відкрито наступну справу та сторінку Альманаху."}</p>`:""}
  ${!success&&e?.id&&threatNote(e.id,level)?`<div class="hint" style="text-align:left;margin-top:20px"><strong>🦉 Як зупинити наступного разу:</strong><p>${E(threatNote(e.id,level))}</p></div>`:""}
  <div class="hint" style="text-align:left;margin-top:20px"><strong>📘 Як це в житті:</strong><p>${E(e?.tip||FACTS.general)}</p>${e?.id?lifeBlock("enemy",e.id):""}
- <small>Юридична інформація має бути перевірена перед офіційним релізом.</small></div>
+</div>
  <div class="dialog-actions" style="justify-content:center">${btn("retry","↻ Спробувати ще","btn btn-quiet")}${btn("levels","🗺️ До рівнів","btn btn-dark")}${success&&!challenge?btn("next-level","Наступна справа →","btn btn-primary"):""}
  ${success&&!challenge&&level.id==="4-10"?btn("certificate","🎓 Сертифікат","btn btn-primary"):""}</div>
  </div></main>`);
