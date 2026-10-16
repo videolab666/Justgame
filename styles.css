@@ -442,3 +442,72 @@ body.reduced-motion .fallen-layer{display:none}
 }
 body.reduced-motion .outro-scene *,body.reduced-motion .outro-scene:before{animation:none!important}
 .setting-row input[type=range]{width:clamp(120px,36%,280px);accent-color:#247b93;cursor:pointer}
+
+
+/* Battlefield polish: depth, safe zone, threat telegraphing and impact language.
+ * Entirely composited over the fixed 2:1 board: never changes cell dimensions. */
+.field-wrap{--terrain-edge:#d9f7b5;box-shadow:inset 0 0 0 2px #fff6cd9c,0 6px 0 #224860,0 12px 25px #09243d66}
+.field-wrap[data-world="2"]{--terrain-edge:#d5e3cc}
+.field-wrap[data-world="3"]{--terrain-edge:#e6ddb1}
+.field-wrap[data-world="4"]{--terrain-edge:#70e7e4}
+.field-wrap .skyline:after{content:"";position:absolute;pointer-events:none;left:0;right:0;bottom:0;height:9px;background:linear-gradient(0deg,#254d6299,transparent)}
+.field-wrap .house-strip:before{content:"";position:absolute;z-index:0;inset:0 0 0 auto;width:6px;background:linear-gradient(90deg,#fff3b766,var(--terrain-edge));box-shadow:2px 0 10px var(--terrain-edge)}
+.field-wrap .board:before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
+ background:linear-gradient(90deg,#effed96b 0%,transparent 13%,transparent 80%,#31466224 100%),
+ repeating-linear-gradient(90deg,transparent 0,transparent calc(11.111% - 2px),#fff8cd18 calc(11.111% - 1px),#fff8cd18 11.111%)}
+.field-wrap .board:after{pointer-events:none}
+.field-wrap .board>.cell{z-index:1;border-color:#f4ffee38;transition:background-color .12s}
+.field-wrap .board>.cell:before{background:linear-gradient(125deg,#ffffee0f,transparent 45%,#42634f0d)}
+.field-wrap .board>.cell:not(.out):nth-child(9n + 1){box-shadow:inset 3px 0 0 #f6efba40}
+.field-wrap .board>.cell.lane-under-attack:not(.out){background-color:#ff867519;box-shadow:inset 0 -3px 0 #f6956140}
+.field-wrap .board>.cell.lane-under-attack:not(.out):hover{background-color:#f7cb7544}
+.field-wrap .board>.cell.cursor:not(.out){box-shadow:inset 0 0 0 3px #f7c75a,0 0 12px #ffde7c5c;z-index:2}
+.field-wrap[data-world="4"] .board>.cell.lane-under-attack{background-color:#f4698d29}
+.field-wrap[data-world="4"] .board>.cell.cursor{box-shadow:inset 0 0 0 3px #73f9e2,0 0 12px #4fe9e990}
+.field-wrap .defender{background-image:linear-gradient(160deg,#ffffffeb,#e0f5f0d0);box-shadow:0 4px 0 #2e646c91,0 6px 10px #1b3e4833}
+.field-wrap .defender:before{content:"";position:absolute;bottom:3px;left:18%;right:18%;height:13%;border-radius:50%;background:#163f5559;filter:blur(5px);z-index:0}
+.field-wrap .defender .sprite{z-index:1}
+.field-wrap .enemy-inner{box-shadow:0 4px 0 #66546673,0 8px 8px #392f516b}
+.field-wrap .enemy.taking-hit .enemy-inner:after{content:"";position:absolute;z-index:5;inset:-7px;border:3px solid #fff4b1;border-radius:19px;pointer-events:none;animation:enemy-hit-ring .27s ease-out both;box-shadow:0 0 12px #ffe8a5}
+.enemy[data-trait="seize"] .enemy-inner{border-color:#c17b7d}
+.enemy[data-trait="flying"] .enemy-inner{filter:drop-shadow(0 12px 5px #0b344c61)}
+.enemy[data-trait="giant"] .enemy-inner{box-shadow:0 6px 0 #6a5273,0 13px 10px #342c4257}
+.enemy.frozen .enemy-illustration{filter:drop-shadow(0 0 6px #8be3ff) saturate(.7)}
+.unit-status{position:absolute;z-index:8;right:-7px;top:-7px;opacity:0;pointer-events:none;min-width:22px;min-height:22px;border-radius:50%;
+ display:grid;place-items:center;background:#fff2c5;border:2px solid #c78848;box-shadow:0 3px 5px #243d5688;font-size:12px;transform:scale(.75);transition:opacity .15s,transform .15s}
+.unit-status.visible{opacity:1;transform:scale(1)}
+.projectile:not(.shot-beam){isolation:isolate}
+.projectile:not(.shot-beam):after{content:"";position:absolute;z-index:-2;pointer-events:none;right:72%;top:50%;width:24px;height:6px;border-radius:80%;
+ background:linear-gradient(270deg,#f6ffe8bf,transparent);filter:blur(3px);transform:translateY(-50%) rotate(var(--shot-angle,0deg));opacity:.7}
+.projectile.shot-chain:after{background:linear-gradient(270deg,#a4edff,transparent);box-shadow:0 0 6px #8fdef6}
+.projectile.shot-writ:after,.projectile.shot-dossier:after{background:linear-gradient(270deg,#f7dfa8,transparent);width:35px;filter:blur(5px)}
+.projectile.shot-dove:after{background:linear-gradient(270deg,#cbffff,transparent);width:45px}
+.battle-fx.fx-plant{width:13px;height:13px;font-size:0;border-radius:50%;background:#e8ffdd;box-shadow:0 0 0 4px #89eecb6d,0 0 17px #fff4d4;animation:plant-arrival .42s ease-out both}
+.battle-fx.fx-plant:after{content:"";display:block;position:absolute;inset:-17px;border:3px solid #b4ffe9;opacity:1;border-radius:50%;animation:impact-ring .43s ease-out both}
+.battle-fx.fx-shield-impact{color:#bdedff;filter:drop-shadow(0 0 5px #66d8ed);font-size:clamp(18px,2.5vw,26px);animation:shield-block .42s ease-out both}
+.battle-fx.fx-shield-impact:after{content:"";opacity:1;inset:-11px;border-color:#8eebff;animation:impact-ring .42s ease-out both}
+.battle-fx.fx-immune{color:#fff5aa;font-size:clamp(11px,1.7vw,17px);padding:3px 7px;border:2px solid #f5c96c;border-radius:10px;background:#7d4a6299}
+.battle-fx.fx-immune:after{content:"";opacity:1;inset:-10px;border-color:#fcdb93;animation:impact-ring .45s both}
+.battle-fx.fx-impact-stamp{color:#bdf1ff}
+.battle-fx.fx-impact-stamp:before{content:"✓";display:grid;place-items:center;position:absolute;inset:-14px;background:#f7fff7;border:3px solid #4f9dae;color:#317e94;border-radius:7px;opacity:.87;animation:stamp-impact .32s ease-out both}
+.battle-fx.fx-impact-chain:before{content:"✧";color:#b9f5ff;font-size:24px;text-shadow:0 0 9px #5bc9f0;animation:impact-ring .32s}
+.battle-fx.fx-impact-dossier:before{content:"§";color:#ffe09f;font-size:27px;text-shadow:0 0 9px #ffd174}
+.battle-fx.fx-impact-writ:before{content:"▰";color:#ffeaca;font-size:24px}
+.battle-fx.fx-impact-clip:before{content:"⌁";font-size:25px;color:#b7f7e4}
+.battle-fx.fx-impact-dove:before{content:"✧";font-size:22px;color:#d7ffff}
+.battle-fx.fx-down,.battle-fx.fx-seize{filter:drop-shadow(0 0 5px #ff8c9a)}
+.combat-particle.particle-ink{border-radius:2px;transform-origin:center}
+.combat-particle.particle-paper{border-radius:1px;box-shadow:0 1px 4px #dcb878}
+.combat-particle.particle-ice{clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}
+.combat-particle.particle-spark{clip-path:polygon(50% 0%,70% 38%,100% 50%,70% 66%,50% 100%,32% 65%,0 50%,32% 37%)}
+@keyframes enemy-hit-ring{from{transform:scale(.6);opacity:1}to{transform:scale(1.25);opacity:0}}
+@keyframes shield-block{0%{transform:scale(.4) rotate(-14deg);opacity:0}30%{transform:scale(1.25) rotate(5deg);opacity:1}100%{transform:scale(1) rotate(0);opacity:0}}
+@keyframes stamp-impact{0%{transform:scale(1.9) rotate(-24deg);opacity:0}25%{opacity:1}100%{transform:scale(.75) rotate(7deg);opacity:0}}
+@keyframes plant-arrival{0%{transform:scale(0);opacity:0}50%{opacity:1}100%{transform:scale(1.6);opacity:0}}
+@media(prefers-reduced-motion:reduce){
+ .field-wrap .board>.cell,.unit-status{transition:none!important}
+ .battle-fx.fx-impact-stamp:before,.battle-fx.fx-shield-impact:after,
+ .field-wrap .enemy.taking-hit .enemy-inner:after{animation:none!important}
+ .projectile:not(.shot-beam):after{display:none}
+}
+body.reduced-motion .projectile:not(.shot-beam):after{display:none}
