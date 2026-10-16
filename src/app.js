@@ -1,6 +1,6 @@
-import {UNITS,UNIT_BY_ID,ENEMIES,ENEMY_BY_ID,WORLDS,TYPES,TOOLS,FACTS,UNLOCK_REWARDS,MINI_LEVELS,STORY,getLevel,levelId,unlockedUnits,levelUnlocked} from "./data.js";
+import {UNITS,UNIT_BY_ID,UNIT_HOW,ENEMIES,ENEMY_BY_ID,WORLDS,TYPES,TOOLS,FACTS,UNLOCK_REWARDS,MINI_LEVELS,STORY,getLevel,levelId,unlockedUnits,levelUnlocked} from "./data.js";
 import {makeGame,tick,place,collectToken,collectAll,currentProgress,scoreStars,selectAdvice,useGuard,availablePlacement,explainFiring,waveStatus,ROLLER_FADE} from "./engine.js";
-import {getThreat,getEncounterThreats,getCounterAdvice} from "./tactics.js";
+import {getThreat,getEncounterThreats,getCounterAdvice,threatNote} from "./tactics.js";
 import {Soundtrack} from "./music.js";
 const root=document.getElementById("app");
 const KEY="just-oborona-progress-v1";
@@ -59,6 +59,18 @@ const rollerArt=(cls="")=>`<svg class="roller-art ${cls}" viewBox="0 0 64 64" ar
 <circle cx="35" cy="45" r="2.6" fill="#1d4766"/></g>
 <path d="M26 36a12 12 0 0 1 9-4" fill="none" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round" opacity=".55"/>
 </svg>`;
+/** Full gameplay text of a defender (falls back to the short tagline). */
+const unitHow=u=>UNIT_HOW[u?.id]||u?.desc||"";
+const firstSentence=t=>(t.match(/^.*?[.!?](\s|$)/)?.[0]||t).trim();
+function speedLabel(v){return v<=.5?"дуже повільний":v<.9?"повільний":v<=1.1?"звичайна швидкість":v<=1.4?"швидкий":"дуже швидкий";}
+function unitStats(u){
+ const parts=["🟡 "+u.cost+" печаток","⏱ "+u.cooldown+" с перезарядки"];
+ if(["wall","shield"].includes(u.kind)||u.hp>300)parts.push("❤ "+u.hp);
+ return parts.join(" · ");
+}
+function enemyStats(e){
+ return "❤ "+e.hp+(e.shield?" + щит "+e.shield:"")+" · 🏃 "+speedLabel(e.speed)+" · "+TYPES[e.scheme].icon+" "+TYPES[e.scheme].name;
+}
 const landscape=(w,cls="")=>`<img class="world-art ${cls}" src="./assets/worlds/world-${w+1}.svg" alt="" loading="lazy">`;
 const btn=(action,label,classes="btn",props="")=>`<button type="button" class="${classes}" data-act="${action}" ${props}>${label}</button>`;
 function persist(){try{localStorage.setItem(KEY,JSON.stringify(save));}catch{/* private browsing: play without persistence */}}
@@ -123,7 +135,7 @@ function chooseSuggested(){
  selected=deck[0];focus={lane:level.activeLanes[Math.floor(level.activeLanes.length/2)],col:2};
 }
 function unitCard(u,{selected=false,disabled=false,cooldown=0}={}){
- return `<button type="button" class="unit-card ${selected?"selected":""}" data-act="unit" data-unit="${u.id}" data-tool="${E(u.tool||"support")}" data-kind="${E(u.kind)}" ${disabled?"disabled":""} aria-pressed="${selected}">
+ return `<button type="button" class="unit-card ${selected?"selected":""}" title="${E(u.name+": "+unitHow(u))}" data-act="unit" data-unit="${u.id}" data-tool="${E(u.tool||"support")}" data-kind="${E(u.kind)}" ${disabled?"disabled":""} aria-pressed="${selected}">
  <span class="cost">🟡${u.cost}</span><span class="glyph" aria-hidden="true">${art(u.id,"card-illustration")}</span><strong>${E(u.name)}</strong>
  <small>⏱ ${u.cooldown} с</small>${cooldown>.2?`<span class="cooldown">${Math.ceil(cooldown)}</span>`:""}</button>`;
 }
@@ -171,12 +183,12 @@ function renderDeck(){
  const types=[...new Set(level.enemies.map(id=>ENEMY_BY_ID[id]?.scheme).filter(Boolean))];
  const warns=types.filter(s=>!deck.some(id=>UNIT_BY_ID[id]?.tool&& (TOOLS[UNIT_BY_ID[id].tool]?.multipliers[Object.keys(TYPES).indexOf(s)]||0)>=1.5));
  return wrapper(`<main class="main"><div class="eyebrow">${challenge?"Особливий режим":"Справа "+level.id+" · "+WORLDS[world].name}</div><h1 class="section-title">${E(level.name)}</h1>
- <div class="split"><section><div class="panel"><h3>📂 Оберіть захисників</h3><p class="muted">Візьміть від 1 до 8 карток. Для встановлення потрібно заробляти печатки.</p>
+ <div class="split"><section><div class="panel"><h3>📂 Оберіть захисників</h3><p class="muted">Візьміть від 1 до ${slotLimit()} карток. Наведіть на картку, щоб прочитати, як вона грає. Для встановлення потрібно заробляти печатки.</p>
  <div class="deck-grid">${avail.map(u=>unitCard(u,{selected:deck.includes(u.id)})).join("")}</div></div>
  <div class="deck-summary"><span><strong>${deck.length}/${slotLimit()}</strong> карток у справі</span>${btn("start","▶ Розпочати оборону","btn btn-primary",deck.length?'':'disabled')}</div></section>
  <aside class="panel"><div class="deck-threat-box">${renderThreatLegend(true)}</div>
  <p class="hint" style="margin-top:16px">${warns.length?"🦉 Порада: у колоді бракує ефективних інструментів для деяких типів схем.":"🦉 Гарний вибір! Комбінуйте економіку, стіни та атакувальні картки."}</p>
- <p class="muted">${level.special.blackout?"🌙 Блекаут: потрібна зарядна станція.":""} ${level.special.fog?"🌫️ Туман приховує частину поля.":""}</p>
+ <p class="muted">${level.special.blackout?"🌙 Блекаут: печатки з неба падають рідше, а захисники без Зарядної станції поруч працюють удвічі повільніше (2FA — ні).":""} ${level.special.fog?"🌫️ Туман: праву половину поля не видно. Стрільці побачать ворога, коли той підійде, або завдяки «Сповіщенню» поруч чи Судовому експерту.":""}</p>
  <div class="eyebrow">Режим гри</div><div style="display:grid;gap:8px;margin:10px 0">
  <label><input type="radio" name="mode" value="young" ${save.mode==="young"?"checked":""}> Юний юрист</label>
  <label><input type="radio" name="mode" value="normal" ${save.mode==="normal"?"checked":""}> Звичайний</label>
@@ -212,7 +224,7 @@ function renderPlay(){
  const fx=game.effects.map(e=>`<span data-fx="${e.id}" style="position:absolute;left:${e.x*100/9}%;top:${e.lane*20+1}%;font-size:12px;font-weight:900;color:#fdfbf3;text-shadow:1px 2px #174563,0 0 5px #173752;white-space:nowrap">${E(e.text)}</span>`).join("");
  const guards=Array.from({length:5},(_,l)=>{
   const manual=bossGuardAvailable(l);
-  return `<button type="button" class="guard ${game.usedGuards[l]&&!manual?"used":""} ${level.activeLanes.includes(l)?"":"lane-closed"}" data-act="guard" data-lane="${l}" ${!manual?"disabled":""} title="${manual?"Активувати заборону проти Барона":"Заборона спрацьовує автоматично під час прориву"}" aria-label="Заборона, ряд ${l+1}">${rollerArt("guard-roller")}</button>`;
+  return `<button type="button" class="guard ${game.usedGuards[l]&&!manual?"used":""} ${level.activeLanes.includes(l)?"":"lane-closed"}" data-act="guard" data-lane="${l}" ${!manual?"disabled":""} title="${manual?"Натисніть: фінальна Заборона проти Барона":"Каток «ЗАБОРОНЕНО»: сам прокотиться цим рядом при першому прориві (один раз) і знищить ворогів, крім босів"}" aria-label="Заборона, ряд ${l+1}">${rollerArt("guard-roller")}</button>`;
  }).join("");
  return wrapper(`<main class="main" style="padding:12px"><section class="game-shell">
  <div class="game-top"><div class="seal-pill">✦ ${Math.floor(game.seal)}</div>
@@ -220,7 +232,7 @@ function renderPlay(){
  <div class="progress-track"><div class="progress-fill" data-game-progress style="width:${progress}%"></div></div></div>
  <div class="game-controls">${btn("speed",speed===1?"▶ ×1":speed===2?"▶▶ ×2":"▶ ½","btn btn-quiet")}${btn("music-toggle",save.settings.music?"♫":"♪̸","btn btn-quiet",'aria-label="Фонова музика" aria-pressed="'+save.settings.music+'"')}${btn("pause","⏸","btn btn-quiet","aria-label=\"Пауза\"")}</div></div>
  <div class="cardbar" aria-label="Колода захисників">${cards}</div>
- <div class="selected-help" aria-live="off"><span>↘ <strong data-selected-name>${E(UNIT_BY_ID[selected]?.name||"Захисник")}</strong></span><span data-selected-desc>${E(UNIT_BY_ID[selected]?.desc||"Оберіть клітинку для захисту.")}</span></div>
+ <div class="selected-help" aria-live="off"><span>↘ <strong data-selected-name>${E(UNIT_BY_ID[selected]?.name||"Захисник")}</strong></span><span data-selected-desc>${E(unitHow(UNIT_BY_ID[selected])||"Оберіть клітинку для захисту.")}</span></div>
  <div class="field-wrap ${level.special.blackout?"blackout":""} ${level.special.fog?"fog":""}" data-world="${level.world+1}">
  <div class="skyline" aria-hidden="true">${landscape(level.world,"scenery")}</div>
  <div class="board-frame"><div class="house-strip">${guards}</div><div class="board" role="grid" aria-label="Поле оборони, 5 рядків і 9 колонок">
@@ -284,7 +296,7 @@ function syncGameFrame(){
  if(first)first.textContent="🛡️ Захищено рядків: "+(5-game.usedGuards.filter(Boolean).length)+"/5 · Схемників: "+game.enemies.length+" · Пострілів: "+game.projectiles.length+" · Залишилось: "+(game.plan.length-game.spawned);
  const unitName=$("[data-selected-name]"),unitDesc=$("[data-selected-desc]");
  if(unitName)unitName.textContent=UNIT_BY_ID[selected]?.name||"Захисник";
- if(unitDesc)unitDesc.textContent=UNIT_BY_ID[selected]?.desc||"Оберіть клітинку для захисту.";
+ if(unitDesc)unitDesc.textContent=unitHow(UNIT_BY_ID[selected])||"Оберіть клітинку для захисту.";
  const hint=$(".owl-message > div:last-child");
  if(hint){
   const msg=toast||game.lastHint;
@@ -478,7 +490,7 @@ function syncGameFrame(){
   guard.classList.toggle("used",game.usedGuards[lane]&&!manual);
   const approaching=game.enemies.some(e=>e.lane===lane&&e.hp>0&&e.x<4.5&&e.trait!=="neutral");
   guard.classList.toggle("lane-danger",approaching&&!game.usedGuards[lane]);
-  guard.title=manual?"Активувати заборону проти Барона":"Заборона спрацьовує автоматично під час прориву";
+  guard.title=manual?"Натисніть: фінальна Заборона проти Барона":"Каток «ЗАБОРОНЕНО»: сам прокотиться цим рядом при першому прориві (один раз) і знищить ворогів, крім босів";
  }
  updatePlacementPreview();
  // Expand the legend in place if a boss summons new enemy types.
@@ -529,6 +541,7 @@ function renderResult(){
  <div class="large-emoji">${success?"🏆":"📰"}</div><div class="eyebrow">${challenge?"Особливий режим":success?"Справу розглянуто":"Юстиційний вісник"}</div>
  <h1 class="section-title">${game?.challenge?.kind==="endless"?"Кінець облоги":success?"Права захищено!":"Схема прорвалася!"}</h1><p>${E(text)}</p>
  ${success?`<div class="stars">${"★".repeat(stars)}${"☆".repeat(3-stars)}</div><p>${reward?"Нова картка: "+reward.icon+" "+E(reward.name):"Відкрито наступну справу та сторінку Альманаху."}</p>`:""}
+ ${!success&&e?.id&&threatNote(e.id,level)?`<div class="hint" style="text-align:left;margin-top:20px"><strong>🦉 Як зупинити наступного разу:</strong><p>${E(threatNote(e.id,level))}</p></div>`:""}
  <div class="hint" style="text-align:left;margin-top:20px"><strong>📘 Як це в житті:</strong><p>${E(e?.tip||FACTS.general)}</p>
  <small>Юридична інформація має бути перевірена перед офіційним релізом.</small></div>
  <div class="dialog-actions" style="justify-content:center">${btn("retry","↻ Спробувати ще","btn btn-quiet")}${btn("levels","🗺️ До рівнів","btn btn-dark")}${success&&!challenge?btn("next-level","Наступна справа →","btn btn-primary"):""}
@@ -542,7 +555,7 @@ function renderAlmanac(){
  <label>Пошук <input id="almanac-search" type="search" placeholder="Назва персонажа..." value="${E(almanacQuery)}" style="padding:10px 13px;border-radius:12px;border:2px solid #a0bdc5;max-width:280px;width:100%"></label>
  <div class="almanac-list" style="margin-top:20px">${items.map(x=>`<button type="button" class="almanac-card" data-act="detail" data-id="${x.id}" data-kind="${units?"unit":"enemy"}">
  <span class="glyph">${art(x.id,"almanac-illustration")}</span><strong>${E(x.name)}</strong><span class="tag">${units?(x.tool?TOOLS[x.tool]?.icon+" "+TOOLS[x.tool]?.name:"Підтримка"):TYPES[x.scheme].icon+" "+TYPES[x.scheme].name}</span>
- <p>${E(units?x.desc:x.tip)}</p></button>`).join("")}</div></main>`);
+ <p>${E(units?x.desc:firstSentence(threatNote(x.id)))}</p></button>`).join("")}</div></main>`);
 }
 function renderSettings(){
  return wrapper(`<main class="main" style="max-width:830px;margin:0 auto"><h1 class="section-title">Налаштування</h1>
@@ -661,7 +674,7 @@ function renderIntroCard(){
   const fact=FACTS[{registry:"registry",notary:"notary",digital:"cyber",enforcement:"debt",integrity:"corruption",expert:"expert"}[u.tool]||"general"];
   return '<div class="coach-art">'+art(u.id,"coach-illustration")+'</div><div class="eyebrow">🆕 Нова картка у вашій колоді</div><h2>'+E(u.name)+'</h2>'+
    '<p class="coach-stats"><span>🟡 '+u.cost+'</span><span>⏱ '+u.cooldown+' с</span><span>'+(tool?tool.icon+" "+E(tool.name):"Підтримка")+'</span></p>'+
-   '<p class="hint"><strong>Як грає:</strong> '+E(u.desc)+'</p>'+
+   '<p class="hint"><strong>Як грає:</strong> '+E(unitHow(u))+'</p>'+
    (strong.length?'<p><strong>✔ Найкраще проти:</strong> '+E(strong.join(", "))+'</p>':"")+
    (weak.length?'<p><strong>✖ Слабкий проти:</strong> '+E(weak.join(", "))+'</p>':"")+
    '<p class="coach-fact"><strong>📘 Як це в житті:</strong> '+E(fact)+'</p>'+
@@ -677,7 +690,8 @@ function renderIntroCard(){
  const counters=(info?.recommended||[]).slice(0,3).map(u=>'<li><strong>'+E(u.name)+'</strong> — '+states[u.state]+'</li>').join("");
  const extra=(info?.support||[]).filter(id=>UNIT_BY_ID[id]).map(id=>E(UNIT_BY_ID[id].name)).join(", ");
  return pics+'<div class="eyebrow">🆕 '+(intro.id==="boss"?"Бос наступає!":"Новий противник")+' · '+E(TYPES[t.scheme]?.icon+" "+TYPES[t.scheme]?.name)+'</div><h2>'+E(t.name)+'</h2>'+
-  (info?'<p class="hint"><strong>🦉 Як діє:</strong> '+E(info.note)+'</p>':"")+
+  (ENEMY_BY_ID[intro.id]?'<p class="coach-stats"><span>'+E(enemyStats(ENEMY_BY_ID[intro.id]))+'</span></p>':"")+
+  (info?'<p class="hint"><strong>🦉 Як діє і як зупинити:</strong> '+E(info.note)+'</p>':"")+
   (counters?'<p><strong>🎯 Чим зупинити:</strong></p><ul class="coach-list">'+counters+'</ul>':"")+
   (extra?'<p><strong>Допоможе також:</strong> '+extra+'</p>':"")+
   (t.tip?'<p class="coach-fact"><strong>📘 Як це в житті:</strong> '+E(t.tip)+'</p>':"")+
@@ -694,8 +708,9 @@ function renderDialog(){
  else if(modal==="detail"&&detail){
   const d=detail.kind==="unit"?UNIT_BY_ID[detail.id]:ENEMY_BY_ID[detail.id],isUnit=detail.kind==="unit";
   content=`<div class="detail-illustration">${art(d.id,"detail-art")}</div><div class="eyebrow">Альманах · ${isUnit?"Захисник":"Схемник"}</div><h2>${E(d.name)}</h2>
-  <p class="hint"><strong>Як грає:</strong> ${E(isUnit?d.desc:d.tip)}</p>
-  <p><strong>📘 Як це в житті</strong><br>${E(FACTS[isUnit?({registry:"registry",notary:"notary",digital:"cyber",enforcement:"debt",integrity:"corruption",expert:"expert"}[d.tool]||"general"):({forgery:"registry",cyber:"cyber",debt:"debt",corruption:"corruption",bureaucracy:"general"}[d.scheme]||"general")])}</p>
+  <p class="coach-stats"><span>${E(isUnit?unitStats(d):enemyStats(d))}</span></p>
+  <p class="hint"><strong>${isUnit?"Як грає:":"🦉 Як діє і як зупинити:"}</strong> ${E(isUnit?unitHow(d):threatNote(d.id))}</p>
+  <p><strong>📘 Як це в житті</strong><br>${E(isUnit?FACTS[{registry:"registry",notary:"notary",digital:"cyber",enforcement:"debt",integrity:"corruption",expert:"expert"}[d.tool]||"general"]:d.tip)}</p>
   ${!isUnit?btn("threat-tip","💡 Чим атакувати?","btn btn-primary",'data-enemy="'+E(d.id)+'"'):""}
   <p class="notice">Статус: 🟨 Не затверджено юристом · Актуальність: чернетка GDD від 15.10.2026</p>
   <a href="https://just-dnipro.gov.ua/" target="_blank" rel="noopener noreferrer">Детальніше на офіційному сайті ↗</a>${commonActions}`;

@@ -164,7 +164,7 @@ export function spawn(g,id,lane,x=9.3){
  g.enemies.push(enemy);g.lastThreat=enemy;effect(g,"spawn",lane,x,"!");
  if(id==="boss"&&g.level.world===1){
   for(const l of [0,1,3,4])spawn(g,"offshore_safe",l,7.0);
-  g.lastHint="Граф сховав активи! Державний виконавець допоможе знайти сейфи.";
+  g.lastHint="Граф сховав активи! Державний виконавець знайде сейфи одразу, а за 20 с вони знайдуться й самі.";
  }
  if(id==="boss"&&g.level.world===2){
   for(let l=0;l<5;l++)spawn(g,"tentacle",l,8.0);
@@ -172,7 +172,7 @@ export function spawn(g,id,lane,x=9.3){
  }
  if(id==="boss"&&g.level.world===3){
   for(const [part,l] of [["hydra_phish",1],["hydra_call",2],["hydra_malware",3]])spawn(g,part,l,7.5);
-  g.lastHint="Три голови Гідри знищуються назавжди тільки цифровим інструментом.";
+  g.lastHint="Три голови Гідри: виснажте їх будь-якою зброєю, а добийте 2FA у їхніх рядах.";
  }
  return enemy;
 }
@@ -276,10 +276,10 @@ export function explainFiring(g,d){
  if(!nearby.length)return "Цілі поза зоною досяжності.";
  if(nearby.some(e=>canTarget(g,d,e)))return g.time-(d.lastShotAt??-20)<.38?
   "Постріл виконано: снаряд летить до цілі.":"Ціль є, захисник готовий до атаки.";
- if(nearby.every(e=>e.trait==="flying"||e.air&&e.id!=="boss"))return "Не вражає повітряні цілі: потрібні спеціальні захисники.";
- if(nearby.every(e=>e.trait==="burrow"))return "Ціль під землею: потрібен виконавець або арешт майна.";
- if(g.level.special.fog&&nearby.every(e=>e.x>5.5))return "Туман приховує противника: потрібне виявлення або зближення.";
- if(nearby.some(e=>!e.reveal))return "Замаскована ціль: спершу використайте Сповіщення.";
+ if(nearby.every(e=>e.trait==="flying"||e.air&&e.id!=="boss"))return "Не вражає повітряні цілі: їх збивають лише Арбітражний керуючий, Судовий експерт або Апостиль.";
+ if(nearby.every(e=>e.trait==="burrow"))return "Ціль під землею: її б'ють лише Державний виконавець або Арешт майна.";
+ if(g.level.special.fog&&nearby.every(e=>e.x>5.5))return "Туман приховує противника: допоможе «Сповіщення» поруч чи Судовий експерт, або дочекайтеся, поки він підійде.";
+ if(nearby.some(e=>!e.reveal))return "Замаскована ціль: зірвіть маску «Сповіщенням» поруч або Судовим експертом.";
  return "Цю ціль не можна атакувати вибраним інструментом.";
 }
 
@@ -439,7 +439,7 @@ export function damageEnemy(g,e,raw,tool=null,extra=1){
    if(g.level.world===1&&e.phase===2)g.lastHint="Граф злетів на «Активах»! Виконавчі інструменти б'ють на повну, решта — ледь-ледь. Фіктивних банкрутів збиває Арбітражний керуючий.";
    if(g.level.world===1&&e.phase===3)g.lastHint="Граф тікає! «Обмеження боржника» зупиняє його, «Арешт майна» — сильний удар.";
    effect(g,"phase",e.lane,e.x,"ФАЗА "+e.phase);
-   if(e.phase===3&&g.level.world===0){g.bossGuardReady=true;g.lastHint="Барон готує фінальний підпис! Натисніть 🛑 біля його доріжки."; }
+   if(e.phase===3&&g.level.world===0){g.bossGuardReady=true;g.lastHint="Барон готує фінальний підпис! Натисніть каток «ЗАБОРОНЕНО» на початку його доріжки."; }
   }
  }
  if(e.hp>0)return n;
@@ -727,7 +727,7 @@ function defeat(g,e){
   // A lane guard must not one-shot a boss: earlier only the Baron counted as
   // a defeat and every other boss was simply "mowed" for a free win.
   g.phase="lost";
-  g.lastHint=g.level.world===0?"Барон завершив переоформлення. Зупиніть його спеціальною Забороною у третій фазі.":
+  g.lastHint=g.level.world===0?"Барон завершив переоформлення. У третій фазі натисніть каток «ЗАБОРОНЕНО» на його доріжці.":
    `${e.name} прорвався до будівлі. Боса заборона не зупиняє — його треба перемогти.`;
   return;
  }
