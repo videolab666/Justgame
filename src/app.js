@@ -194,17 +194,33 @@ function renderLevels(){
  return wrapper(`<main class="main"><div class="eyebrow">${w.emoji} Світ ${world+1} з 4</div><h1 class="section-title">${E(w.name)}: ${E(w.subtitle)}</h1><p class="hint">🦉 ${E(STORY[world])}</p><div class="level-grid" style="margin-top:20px">${items}</div>
  <div class="dialog-actions">${btn("worlds","← До карти","btn btn-quiet")}</div></main>`);
 }
-function slotLimit(){return 8+(totalStars()>=15?1:0)+(totalStars()>=60?1:0);}
+/* ---- Deck slots on replays --------------------------------------------
+ * A level keeps the difficulty it was designed for: any opened card may be
+ * taken, but only as many slots as a first-time player had there (the
+ * starter card plus cards from earlier levels). The two tutorial levels
+ * offer exactly their own cards. Special modes use the full cap. */
+function nativeUnits(lv=level){
+ const before={};
+ for(let w=0;w<=lv.world;w++)for(let s=1;s<=10&&(w<lv.world||s<lv.stage);s++)before[levelId(w,s)]=0;
+ return unlockedUnits(before);
+}
+const tutorialDeck=()=>!challenge&&level.world===0&&level.stage<=2;
+function slotLimit(){
+ const cap=8+(totalStars()>=15?1:0)+(totalStars()>=60?1:0);
+ return challenge?cap:Math.max(1,Math.min(cap,nativeUnits().length));
+}
 function chooseSuggested(){
- const unlocked=challenge?UNITS:unlockedUnits(access()),max=slotLimit();
+ const unlocked=availableUnits(),max=slotLimit();
  const recommend=[
   ["registrar","cnap","notary","notification","senior","mine","commission","archive"],
   ["executor","cnap","limitation","trustee","private_executor","station","notary","registrar"],
   ["whistleblower","cnap","integrity","order","expert","intern","legal_aid","registrar","notary","mine"],
   ["twofactor","cnap","shield","notification","expert","apostille","digital_office","registrar","notary","mine"]
  ][world];
- const owned=new Set(unlocked.map(x=>x.id));
- deck=recommend.filter(x=>owned.has(x)).slice(0,max);
+ const owned=new Set(unlocked.map(x=>x.id)),native=new Set(nativeUnits().map(x=>x.id));
+ // On a replay suggest the cards the level was built around first.
+ const picks=recommend.filter(x=>owned.has(x));
+ deck=[...picks.filter(x=>native.has(x)),...picks.filter(x=>!native.has(x))].slice(0,max);
  // A blackout halves unpowered defenders: suggest the charging station there.
  if(level.special.blackout&&owned.has("station")&&!deck.includes("station")){
   if(deck.length>=max)deck.pop();
@@ -219,7 +235,13 @@ function unitCard(u,{selected=false,disabled=false,cooldown=0}={}){
  <small>⏱ ${secs(u.cooldown)}</small>${cooldown>.2?`<span class="cooldown">${Math.ceil(cooldown)}</span>`:""}</button>`;
 }
 
-function availableUnits(){return challenge?UNITS:unlockedUnits(access());}
+function availableUnits(){
+ if(challenge)return UNITS;
+ const owned=unlockedUnits(access());
+ if(!tutorialDeck())return owned;
+ const native=new Set(nativeUnits().map(u=>u.id));
+ return owned.filter(u=>native.has(u.id));
+}
 /** Lanes of every special threat. Before the battle the plan is rebuilt with
  * the same seed the battle will use, so the preview matches the fight. */
 function encounterPlan(){
@@ -290,11 +312,11 @@ function renderCounterModal(){
 }
 
 function renderDeck(){
- const avail=challenge?UNITS:unlockedUnits(access());const disabled=level.activeLanes.length===1&&level.stage===1;
+ const avail=availableUnits();const disabled=level.activeLanes.length===1&&level.stage===1;
  const types=[...new Set(level.enemies.map(id=>ENEMY_BY_ID[id]?.scheme).filter(Boolean))];
  const warns=types.filter(s=>!deck.some(id=>UNIT_BY_ID[id]?.tool&& (TOOLS[UNIT_BY_ID[id].tool]?.multipliers[Object.keys(TYPES).indexOf(s)]||0)>=1.5));
  return wrapper(`<main class="main"><div class="eyebrow">${challenge?"Особливий режим":"Справа "+level.id+" · "+WORLDS[world].name}</div><h1 class="section-title">${E(level.name)}</h1>
- <div class="split"><section><div class="panel"><h3>📂 Оберіть захисників</h3><p class="muted">Візьміть від 1 до ${slotLimit()} карток. Наведіть на картку, щоб прочитати, як вона грає. Для встановлення потрібно заробляти печатки.</p>
+ <div class="split"><section><div class="panel"><h3>📂 Оберіть захисників</h3>${avail.length>slotLimit()&&!challenge?`<p class="hint slots-note">🦉 У цій справі — ${slotLimit()} ${slotLimit()<5?"місця":"місць"} у колоді, як під час першого проходження. Беріть будь-які з відкритих карток — оберіть найкращі проти цих схемників!</p>`:""}<p class="muted">Візьміть від 1 до ${slotLimit()} карток. Наведіть на картку, щоб прочитати, як вона грає. Для встановлення потрібно заробляти печатки.</p>
  <div class="deck-grid">${avail.map(u=>unitCard(u,{selected:deck.includes(u.id)})).join("")}</div></div>
  <div class="deck-summary"><span><strong>${deck.length}/${slotLimit()}</strong> карток у справі</span>${btn("start","▶ Розпочати оборону","btn btn-primary",deck.length?'':'disabled')}</div></section>
  <aside class="panel"><div class="deck-threat-box">${renderThreatLegend(true)}${renderLaneMap()}</div>

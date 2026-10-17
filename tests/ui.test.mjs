@@ -23,7 +23,7 @@ function createUI(source){
  class Audio{constructor(){this.paused=true;this.volume=1;}play(){this.paused=false;return Promise.resolve();}pause(){this.paused=true;}getAttribute(){return this.src;}}
  const symbols={...data,...engine,...tactics,...life,Soundtrack,MusicPlayer,Audio,document,window,localStorage,requestAnimationFrame,fetch};
  const load=new Function(...Object.keys(symbols),
-  noImports+';return {action,goLevel,startGame,setView,finish,advanceCinematic,cine:()=>cine,mini:()=>mini,fakeFields:()=>mini.fakes.map(k=>FORGERY_FAKES[k][0]),quizAnswer:()=>QUIZ[level.mini].items[mini.questions[mini.index]][1],html:()=>root.innerHTML,game:()=>game,mode:()=>view};');
+  noImports+';return {action,goLevel,startGame,setView,finish,advanceCinematic,cine:()=>cine,mini:()=>mini,fakeFields:()=>mini.fakes.map(k=>FORGERY_FAKES[k][0]),quizAnswer:()=>QUIZ[level.mini].items[mini.questions[mini.index]][1],html:()=>root.innerHTML,game:()=>game,mode:()=>view,deck:()=>deck,slots:()=>slotLimit(),avail:()=>availableUnits().map(u=>u.id),save:()=>save};');
  return load(...Object.values(symbols));
 }
 const source=await readFile(new URL('../src/app.js',import.meta.url),'utf8');
@@ -181,4 +181,19 @@ test('quizzes explain each answer and wait for "Далі"',()=>{
   game.action('mini-finish');
   assert.equal(game.mode(),'result');
  }
+});
+test('replays keep any opened card but only the slots the level had',()=>{
+ const game=createUI(source);
+ game.save().settings.allLevels=true;
+ game.goLevel(0,3);
+ assert.equal(game.avail().length,24,'every opened card can be picked');
+ assert.equal(game.slots(),3,'1-3 was built around three cards');
+ assert.deepEqual([...game.deck()].sort(),['cnap','notary','registrar'],'the native cards are suggested');
+ assert.match(game.html(),/3 місця у колоді/);
+ game.goLevel(0,1);
+ assert.deepEqual(game.avail(),['registrar'],'the tutorial keeps its own card');
+ game.goLevel(3,9);
+ assert.equal(game.slots(),8,'late levels use the full cap');
+ game.action('daily',{});
+ assert.equal(game.slots(),8,'special modes are not limited');
 });
