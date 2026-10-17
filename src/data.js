@@ -129,15 +129,34 @@ aid:"Якщо потрібна правнича допомога, дізнайт
 general:"Це навчальна модель. За юридично значущими рішеннями звертайтеся до офіційних джерел та фахівців."
 };
 export function levelId(world,stage){return `${world+1}-${stage}`;}
+/** Enemies that only some defender kinds can touch at all. A level never
+ * sends one before the player owns a card of a matching kind (rewards come
+ * one card per level, so debuts must wait for their counter). */
+export const HARD_COUNTERS={disguised_jump:["reveal","sniper"],disguised_split:["reveal","sniper"],flying:["air","sniper","global"],burrow:["lobber","mine"]};
+/** Cards a first-time player owns when a level starts. */
+export function unitsBefore(world,stage){
+ const done={};
+ for(let w=0;w<=world;w++)for(let s=1;s<=10&&(w<world||s<stage);s++)done[levelId(w,s)]=0;
+ return unlockedUnits(done);
+}
+export function answerable(enemyId,units){
+ const need=HARD_COUNTERS[ENEMY_BY_ID[enemyId]?.trait];
+ return !need||units.some(u=>need.includes(u.kind));
+}
 export function getLevel(world,stage){
   const w=WORLDS[world],id=levelId(world,stage),mini=MINI_LEVELS[id]||null,boss=stage===10;
   const special={blackout:((world===1&&[4,7].includes(stage))||(world===3&&stage===4)),fog:((world===0&&stage===6)||(world===3&&stage===8)),deadline:world===0&&stage===8,restricted:world===2&&stage===7};
   const count=stage<5?3:4;
   return {id,world,stage,name:w.titles[stage-1],mini,boss,bossData:boss?BOSSES[world]:null,
   activeLanes:world===0&&stage===1?[2]:world===0&&stage===2?[1,2,3]:special.restricted?[1,2,3]:[0,1,2,3,4],
-  enemies:w.enemyIds.slice(0,Math.max(1,Math.min(w.enemyIds.length,Math.ceil(stage/2)+1))),
+  enemies:levelEnemies(w,world,stage),
   waves:count, special,startingSeals:stage===1?225:boss?350:175,
   tutorial:world===0&&stage<=4?["Обери картку захисника, а потім клітинку на полі.","Збирай золоті печатки, щоб ставити більше захисників.","Проти підробок особливо корисні реєстратори й нотаріуси.","Замаскованого маклера виявляє «Сповіщення»."][stage-1]:null};
+}
+function levelEnemies(w,world,stage){
+ const pool=w.enemyIds.slice(0,Math.max(1,Math.min(w.enemyIds.length,Math.ceil(stage/2)+1)));
+ const owned=unitsBefore(world,stage);
+ return pool.filter(id=>answerable(id,owned));
 }
 export function unlockedUnits(completed){
  return UNITS.filter(u=>u.unlock==="start"||completed[u.unlock]!==undefined);

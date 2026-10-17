@@ -1,4 +1,4 @@
-import {UNITS,UNIT_BY_ID,UNIT_HOW,ENEMIES,ENEMY_BY_ID,WORLDS,TYPES,TOOLS,FACTS,UNLOCK_REWARDS,MINI_LEVELS,STORY,getLevel,levelId,unlockedUnits,levelUnlocked,secs} from "./data.js";
+import {UNITS,UNIT_BY_ID,UNIT_HOW,ENEMIES,ENEMY_BY_ID,WORLDS,TYPES,TOOLS,FACTS,UNLOCK_REWARDS,MINI_LEVELS,STORY,getLevel,levelId,unlockedUnits,levelUnlocked,secs,unitsBefore} from "./data.js";
 import {makeGame,makeWavePlan,tick,place,collectToken,collectAll,currentProgress,scoreStars,selectAdvice,useGuard,availablePlacement,explainFiring,waveStatus,ROLLER_FADE,tutorialEvent,tutorialText,collectReward} from "./engine.js";
 import {getThreat,getEncounterThreats,getCounterAdvice,threatNote,threatLanes,lanesLabel} from "./tactics.js";
 import {Soundtrack} from "./music.js";
@@ -199,11 +199,7 @@ function renderLevels(){
  * taken, but only as many slots as a first-time player had there (the
  * starter card plus cards from earlier levels). The two tutorial levels
  * offer exactly their own cards. Special modes use the full cap. */
-function nativeUnits(lv=level){
- const before={};
- for(let w=0;w<=lv.world;w++)for(let s=1;s<=10&&(w<lv.world||s<lv.stage);s++)before[levelId(w,s)]=0;
- return unlockedUnits(before);
-}
+const nativeUnits=(lv=level)=>unitsBefore(lv.world,lv.stage);
 const tutorialDeck=()=>!challenge&&level.world===0&&level.stage<=2;
 function slotLimit(){
  const cap=8+(totalStars()>=15?1:0)+(totalStars()>=60?1:0);

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {getLevel,unlockedUnits,UNITS} from "../src/data.js";
+import {getLevel,unlockedUnits,UNITS,unitsBefore,answerable,ENEMY_BY_ID} from "../src/data.js";
 
 // Walk the campaign in order and record which cards are new before each level.
 function campaign(){
@@ -34,4 +34,18 @@ test("the disguised broker in 1-4 already has its counter",()=>{
  const before14=unlockedUnits({"1-1":3,"1-2":3,"1-3":3}).map(u=>u.id);
  assert.ok(before14.includes("notification"));
  assert.ok(!before14.includes("mine"),"the mine is the reward of 1-4");
+});
+test("no level sends an enemy the player cannot answer yet",()=>{
+ for(let w=0;w<4;w++)for(let s=1;s<=10;s++){
+  const level=getLevel(w,s);if(level.mini)continue;
+  const owned=unitsBefore(w,s);
+  for(const id of level.enemies)assert.ok(answerable(id,owned),level.id+": "+id+" ("+ENEMY_BY_ID[id].trait+") arrives before its counter");
+  if(level.special.fog)assert.ok(owned.some(u=>["reveal","sniper"].includes(u.kind)),level.id+": fog without a revealer");
+  if(level.special.blackout)assert.ok(owned.some(u=>u.kind==="power"),level.id+": blackout without a charging station");
+ }
+});
+test("the masked broker debuts on 1-4 together with the notification card",()=>{
+ assert.ok(!getLevel(0,3).enemies.includes("broker"));
+ assert.ok(getLevel(0,4).enemies.includes("broker"));
+ assert.ok(unitsBefore(0,4).some(u=>u.id==="notification"));
 });
