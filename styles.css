@@ -913,3 +913,9 @@ body.reduced-motion .projectile.shot-stamp{animation:none}
 @keyframes seal-gain{40%{transform:scale(1.15);filter:brightness(1.2)}}
 body.reduced-motion .token.rising,body.reduced-motion .token.pop{animation:none}
 @media(prefers-reduced-motion:reduce){.token.rising,.token.pop{animation:none}}
+
+/* Touch screens have no hover: the translucent "ghost" defender stuck on the
+   last tapped cell (and showed a red × after placing), so hide it there. */
+@media (hover:none){.placement-preview{display:none!important}}
+body.mb .placement-preview{display:none!important}
+.sound-toggle{min-width:44px}

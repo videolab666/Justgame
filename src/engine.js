@@ -1,4 +1,4 @@
-import {UNITS,UNIT_BY_ID,ENEMIES,ENEMY_BY_ID,TYPES,TOOLS,SCHEMES} from "./data.js";
+import {UNITS,UNIT_BY_ID,ENEMIES,ENEMY_BY_ID,TYPES,TOOLS,SCHEMES,secs} from "./data.js";
 const cap=(n,min,max)=>Math.max(min,Math.min(max,n));
 export function typeMultiplier(tool,scheme,mode="normal"){
  if(!tool||!TOOLS[tool])return 1;
@@ -108,7 +108,7 @@ export function waveStatus(g){
  const left=nextWaveIn(g);
  const base="Хвиля "+g.stageWave+"/"+g.maxWave;
  if(left==null||left<1)return base;
- return base+" · "+(g.stageWave?"наступна":"перша")+" через "+Math.ceil(left)+" с";
+ return base+" · "+(g.stageWave?"наступна":"перша")+" через "+secs(Math.ceil(left));
 }
 export function makeGame(level,deck,mode="normal",settings={},challenge=null){
  const game={
@@ -226,7 +226,7 @@ export function spawn(g,id,lane,x=9.3){
  g.enemies.push(enemy);g.lastThreat=enemy;effect(g,"spawn",lane,x,"!");
  if(id==="boss"&&g.level.world===1){
   for(const l of [0,1,3,4])spawn(g,"offshore_safe",l,7.0);
-  g.lastHint="Граф сховав активи! Державний виконавець знайде сейфи одразу, а за 20 с вони знайдуться й самі.";
+  g.lastHint="Граф сховав активи! Державний виконавець знайде сейфи одразу, а за 20 секунд вони знайдуться й самі.";
  }
  if(id==="boss"&&g.level.world===2){
   for(let l=0;l<5;l++)spawn(g,"tentacle",l,8.0);

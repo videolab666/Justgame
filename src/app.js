@@ -1,4 +1,4 @@
-import {UNITS,UNIT_BY_ID,UNIT_HOW,ENEMIES,ENEMY_BY_ID,WORLDS,TYPES,TOOLS,FACTS,UNLOCK_REWARDS,MINI_LEVELS,STORY,getLevel,levelId,unlockedUnits,levelUnlocked} from "./data.js";
+import {UNITS,UNIT_BY_ID,UNIT_HOW,ENEMIES,ENEMY_BY_ID,WORLDS,TYPES,TOOLS,FACTS,UNLOCK_REWARDS,MINI_LEVELS,STORY,getLevel,levelId,unlockedUnits,levelUnlocked,secs} from "./data.js";
 import {makeGame,makeWavePlan,tick,place,collectToken,collectAll,currentProgress,scoreStars,selectAdvice,useGuard,availablePlacement,explainFiring,waveStatus,ROLLER_FADE,tutorialEvent,tutorialText,collectReward} from "./engine.js";
 import {getThreat,getEncounterThreats,getCounterAdvice,threatNote,threatLanes,lanesLabel} from "./tactics.js";
 import {Soundtrack} from "./music.js";
@@ -68,12 +68,12 @@ const unitHow=u=>UNIT_HOW[u?.id]||u?.desc||"";
 const firstSentence=t=>(t.match(/^.*?[.!?](\s|$)/)?.[0]||t).trim();
 function speedLabel(v){return v<=.5?"дуже повільний":v<.9?"повільний":v<=1.1?"звичайна швидкість":v<=1.4?"швидкий":"дуже швидкий";}
 function unitStats(u){
- const parts=["🟡 "+u.cost+" печаток","⏱ "+u.cooldown+" с перезарядки"];
- if(["wall","shield"].includes(u.kind)||u.hp>300)parts.push("❤ "+u.hp);
+ const parts=["🟡 "+u.cost+" печаток","⏱ "+secs(u.cooldown)+" перезарядки"];
+ if(["wall","shield"].includes(u.kind)||u.hp>300)parts.push("❤️ "+u.hp);
  return parts.join(" · ");
 }
 function enemyStats(e){
- return "❤ "+e.hp+(e.shield?" + щит "+e.shield:"")+" · 🏃 "+speedLabel(e.speed)+" · "+TYPES[e.scheme].icon+" "+TYPES[e.scheme].name;
+ return "❤️ "+e.hp+(e.shield?" + щит "+e.shield:"")+" · 🏃 "+speedLabel(e.speed)+" · "+TYPES[e.scheme].icon+" "+TYPES[e.scheme].name;
 }
 /** "Як це в житті": practical tips plus one verified fact with its source.
  * `compact` keeps coach cards short (two tips). */
@@ -98,7 +98,7 @@ function wrapper(main,active=""){
  return `<div class="screen"><div class="shell">
  <header class="header"><div class="brand"><span class="brand-icon" aria-hidden="true">🦉</span><div><small>Правова пригодницька гра</small><strong>ЮСТ-ОБОРОНА</strong></div></div>
  <nav class="nav" aria-label="Навігація">
- ${btn("home","Головна","btn btn-quiet")}${btn("worlds","🗺️ Карта","btn btn-quiet")}${btn("almanac","📖 Альманах","btn btn-quiet")}${btn("settings","⚙️","btn btn-quiet","aria-label=\"Налаштування\"")}
+ ${btn("home","Головна","btn btn-quiet")}${btn("worlds","🗺️ Карта","btn btn-quiet")}${btn("almanac","📖 Альманах","btn btn-quiet")}${btn("settings","⚙️","btn btn-quiet","aria-label=\"Налаштування\"")}${soundButton()}
  </nav></header>
  ${main}
  <footer class="footline"><span>© Ігровий прототип · Без реклами та стеження · Прогрес лише на цьому пристрої</span><span>Навчальна гра не є юридичною консультацією. Факти потребують фахової перевірки. <a href="https://just-dnipro.gov.ua/" target="_blank" rel="noopener noreferrer">Офіційний сайт ↗</a></span></footer>
@@ -140,6 +140,30 @@ function flySealToCounter(el){
   fly.style.opacity=".2";
  }));
  setTimeout(()=>{fly.remove();pill.classList.remove("gain");void pill.offsetWidth;pill.classList.add("gain");},520);
+}
+/* ---- One mute button for effects and music (header and battle bar) ------
+ * Muting remembers which of the two were on; unmuting restores them. */
+/** The keyboard cursor frame is noise on touch screens (it stuck to the
+ * last tapped cell), so it is shown only where a mouse can hover. */
+const hoverDevice=window.matchMedia?.("(hover: hover)");
+function showCursor(){return hoverDevice?hoverDevice.matches!==false&&!document.body?.classList?.contains("mb"):true;}
+function soundOn(){return !!(save.settings.sound||save.settings.music);}
+function soundButton(){
+ const on=soundOn();
+ return btn("sound-toggle",on?"🔊":"🔇","btn btn-quiet sound-toggle",'aria-label="'+(on?"Вимкнути звук":"Увімкнути звук")+'" aria-pressed="'+!on+'" title="'+(on?"Вимкнути звук":"Увімкнути звук")+'"');
+}
+function toggleAllSound(){
+ const st=save.settings;
+ if(soundOn()){save.soundBeforeMute={sound:st.sound,music:st.music};st.sound=false;st.music=false;}
+ else{const prev=save.soundBeforeMute||{sound:true,music:true};st.sound=!!prev.sound;st.music=!!prev.music;if(!st.sound&&!st.music)st.sound=st.music=true;}
+ persist();
+ if(game)game.settings=st;
+ soundtrack.configure(st.music,st.musicVolume);music.configure(st.music,st.musicVolume);
+ if(st.music){soundtrack.unlock();music.unlock();}
+ for(const b of root.querySelectorAll?.('[data-act="sound-toggle"]')||[]){
+  const on=soundOn();b.textContent=on?"🔊":"🔇";b.setAttribute("aria-pressed",String(!on));
+  b.setAttribute("aria-label",on?"Вимкнути звук":"Увімкнути звук");b.title=on?"Вимкнути звук":"Увімкнути звук";
+ }
 }
 function renderHome(){
  return wrapper(installTip()+`<section class="hero"><div class="hero-copy">
@@ -192,7 +216,7 @@ function chooseSuggested(){
 function unitCard(u,{selected=false,disabled=false,cooldown=0}={}){
  return `<button type="button" class="unit-card ${selected?"selected":""}" title="${E(u.name+": "+unitHow(u))}" data-act="unit" data-unit="${u.id}" data-tool="${E(u.tool||"support")}" data-kind="${E(u.kind)}" ${disabled?"disabled":""} aria-pressed="${selected}">
  <span class="cost">🟡${u.cost}</span><span class="glyph" aria-hidden="true">${art(u.id,"card-illustration")}</span><strong>${E(u.name)}</strong>
- <small>⏱ ${u.cooldown} с</small>${cooldown>.2?`<span class="cooldown">${Math.ceil(cooldown)}</span>`:""}</button>`;
+ <small>⏱ ${secs(u.cooldown)}</small>${cooldown>.2?`<span class="cooldown">${Math.ceil(cooldown)}</span>`:""}</button>`;
 }
 
 function availableUnits(){return challenge?UNITS:unlockedUnits(access());}
@@ -302,7 +326,7 @@ function renderPlay(){
  let cells="";
  for(let lane=0;lane<5;lane++)for(let col=0;col<9;col++){
   const active=level.activeLanes.includes(lane);
-  cells+=`<button type="button" role="gridcell" data-act="cell" data-lane="${lane}" data-col="${col}" class="cell ${active?"":"out"} ${focus.lane===lane&&focus.col===col?"cursor":""}" ${active?"":"disabled"} aria-label="Ряд ${lane+1}, колонка ${col+1}">${cellContent(lane,col)}</button>`;
+  cells+=`<button type="button" role="gridcell" data-act="cell" data-lane="${lane}" data-col="${col}" class="cell ${active?"":"out"} ${showCursor()&&focus.lane===lane&&focus.col===col?"cursor":""}" ${active?"":"disabled"} aria-label="Ряд ${lane+1}, колонка ${col+1}">${cellContent(lane,col)}</button>`;
  }
  const tokens=game.tokens.map(t=>`<button class="${tokenClass(t)}" type="button" aria-label="Зібрати 25 печаток" data-act="collect" data-id="${t.uid}" style="left:${(t.col+.3)*100/9}%;top:${tokenTop(t)}%;${tokenMotion(t)}">✦</button>`).join("");
  const foes=game.enemies.map(e=>`<div data-enemy="${e.uid}" title="${E(e.name)}" data-trait="${E(e.trait)}" data-scheme="${E(e.scheme)}" class="enemy ${e.trait==="flying"?"flying":""} ${game.time-(e.attackUntil??-10)<0?"attacking":""} ${game.time-(e.lastHitAt??-10)<.18?"taking-hit":""} ${isDisguised(e)?"disguised":""} ${game.time<e.frozenUntil?"frozen":""} ${e.id==="boss"?"boss":""}" style="left:${e.x*100/9}%;top:${e.lane*20+.35}%">
@@ -317,7 +341,7 @@ function renderPlay(){
  <div class="game-top"><div class="seal-pill">✦ ${Math.floor(game.seal)}</div>
  <div class="game-meta"><strong>${E(level.id)} · ${E(level.name)} ${status} · ${E(waveStatus(game))}</strong>
  <div class="progress-track"><div class="progress-fill" data-game-progress style="width:${progress}%"></div></div></div>
- <div class="game-controls">${btn("speed",speed===1?"▶ ×1":speed===2?"▶▶ ×2":"▶ ½","btn btn-quiet")}${btn("music-toggle",save.settings.music?"♫":"♪̸","btn btn-quiet",'aria-label="Фонова музика" aria-pressed="'+save.settings.music+'"')}${btn("legend","🕵️","btn btn-quiet mobile-only","aria-label=\"Хто наступає\"")}${btn("pause","⏸","btn btn-quiet","aria-label=\"Пауза\"")}</div></div>
+ <div class="game-controls">${btn("speed",speed===1?"▶ ×1":speed===2?"▶▶ ×2":"▶ ½","btn btn-quiet")}${soundButton()}${btn("legend","🕵️","btn btn-quiet mobile-only","aria-label=\"Хто наступає\"")}${btn("pause","⏸","btn btn-quiet","aria-label=\"Пауза\"")}</div></div>
  <div class="cardbar" aria-label="Колода захисників">${cards}</div>
  <div class="selected-help" aria-live="off"><span>↘ <strong data-selected-name>${E(UNIT_BY_ID[selected]?.name||"Захисник")}</strong></span><span data-selected-desc>${E(unitHow(UNIT_BY_ID[selected])||"Оберіть клітинку для захисту.")}</span></div>
  <div class="field-wrap ${level.special.blackout?"blackout":""} ${level.special.fog?"fog":""}" data-world="${level.world+1}">
@@ -465,7 +489,7 @@ function rewardDialog(){
  if(!u)return "";
  return '<div class="reward-stage" aria-hidden="true"><div class="reward-rays"></div><div class="reward-flash"></div><div class="reward-card">'+art(u.id,"reward-art")+'<span>🟡 '+u.cost+'</span></div></div>'+
   '<div class="eyebrow">🎁 Нова картка!</div><h2>'+E(u.name)+'</h2>'+
-  '<p class="coach-stats"><span>🟡 '+u.cost+' печаток · ⏱ '+u.cooldown+' с перезарядки</span></p>'+
+  '<p class="coach-stats"><span>🟡 '+u.cost+' печаток · ⏱ '+secs(u.cooldown)+' перезарядки</span></p>'+
   '<p class="hint"><strong>Як грає:</strong> '+E(unitHow(u))+'</p>'+
   '<p class="muted">Картка з\'явиться у вашій колоді на наступних рівнях.</p>'+
   '<div class="dialog-actions">'+btn("reward-continue","Продовжити ▶","btn btn-primary")+'</div>';
@@ -1064,7 +1088,7 @@ function renderIntroCard(){
   const weak=tool?SCHEMES_UI.filter((s,i)=>tool.multipliers[i]<1).map(s=>TYPES[s].icon+" "+TYPES[s].name):[];
   const fact=FACTS[{registry:"registry",notary:"notary",digital:"cyber",enforcement:"debt",integrity:"corruption",expert:"expert"}[u.tool]||"general"];
   return '<div class="coach-art">'+art(u.id,"coach-illustration")+'</div><div class="eyebrow">🆕 Нова картка у вашій колоді</div><h2>'+E(u.name)+'</h2>'+
-   '<p class="coach-stats"><span>🟡 '+u.cost+'</span><span>⏱ '+u.cooldown+' с</span><span>'+(tool?tool.icon+" "+E(tool.name):"Підтримка")+'</span></p>'+
+   '<p class="coach-stats"><span>🟡 '+u.cost+'</span><span>⏱ '+secs(u.cooldown)+'</span><span>'+(tool?tool.icon+" "+E(tool.name):"Підтримка")+'</span></p>'+
    '<p class="hint"><strong>Як грає:</strong> '+E(unitHow(u))+'</p>'+
    (strong.length?'<p><strong>✔ Найкраще проти:</strong> '+E(strong.join(", "))+'</p>':"")+
    (weak.length?'<p><strong>✖ Слабкий проти:</strong> '+E(weak.join(", "))+'</p>':"")+
@@ -1247,14 +1271,7 @@ function action(name,el){
  if(name==="retry"){if(level.mini){startMini();setView("mini");}else startGame();return;}
  if(name==="next-level"){nextLevel();return;}
  if(name==="skip-outro"){setView("result");return;}
- if(name==="music-toggle"){
-  save.settings.music=!save.settings.music;persist();
-  soundtrack.configure(save.settings.music,save.settings.musicVolume);music.configure(save.settings.music,save.settings.musicVolume);
-  if(save.settings.music){soundtrack.unlock();music.unlock();}
-  const b=root.querySelector?.('[data-act="music-toggle"]');
-  if(b){b.textContent=save.settings.music?"♫":"♪̸";b.setAttribute("aria-pressed",String(save.settings.music));}
-  return;
- }
+ if(name==="sound-toggle"){toggleAllSound();return;}
  if(name==="almanac"){modalReturn=view;setView("almanac");return;}
  if(name==="settings"){modalReturn=view;setView("settings");return;}
  if(name==="back"){
@@ -1330,7 +1347,7 @@ document.addEventListener("keydown",e=>{
   const [dr,dc]=changes[key];focus.col=Math.max(0,Math.min(8,focus.col+dc));
   focus.lane=Math.max(0,Math.min(4,focus.lane+dr));
   for(const cell of root.querySelectorAll?.(".board > .cell")||[])
-   cell.classList.toggle("cursor",Number(cell.dataset.lane)===focus.lane&&Number(cell.dataset.col)===focus.col);
+   cell.classList.toggle("cursor",showCursor()&&Number(cell.dataset.lane)===focus.lane&&Number(cell.dataset.col)===focus.col);
   updatePlacementPreview();e.preventDefault();
  }
 });
