@@ -142,7 +142,7 @@ export const TUTORIAL_TEXT={
  pick:"Натисни на картку «Державний реєстратор», щоб узяти її.",
  place:"Тепер натисни на клітинку доріжки — і реєстратор стане на захист.",
  praise:"Чудово! Реєстратор уже на посту.",
- collect:"Натисни на печатку ✦, що падає, щоб зібрати її.",
+ collect:"Натисни на печатку ✦, що злітає вгору, щоб зібрати її.",
  afford:"Молодець! Печаток вистачає на ще одного реєстратора.",
  place2:"Візьми картку реєстратора й постав ще одного!",
  go:"Не дай Схемникам дійти до будинку!"
@@ -170,8 +170,8 @@ export function tutorialEvent(g,event,id=TUTORIAL_UNIT){
 }
 function tutorialSeal(g){
  const lane=g.level.activeLanes[Math.floor(g.level.activeLanes.length/2)];
- createToken(g,lane,2+Math.floor(Math.random()*5));
- g.tokens[g.tokens.length-1].ttl=30;g.tokens[g.tokens.length-1].falling=true;
+ createToken(g,lane,2+Math.floor(Math.random()*5),"sky");
+ g.tokens[g.tokens.length-1].ttl=30;
  g.tutorial.nextSeal=g.time+TUTORIAL_SKY;
 }
 function tutorialTick(g,delta){
@@ -239,8 +239,16 @@ export function spawn(g,id,lane,x=9.3){
  }
  return enemy;
 }
-function createToken(g,lane,col){
- g.tokens.push({uid:uid(g),lane:cap(lane,0,4),col:cap(col,0,8),ttl:11,value:25});
+// How a seal appears: "sky" seals drift up from the field's bottom edge to
+// their cell (PvZ suns fall, ours rise) and stay collectable on the way;
+// producers and dropped loot "pop" out with a short hop.
+const SEAL_RISE_BASE=1,SEAL_RISE_PER_LANE=.85;
+function createToken(g,lane,col,how="pop"){
+ lane=cap(lane,0,4);
+ const t={uid:uid(g),lane,col:cap(col,0,8),ttl:11,value:25,born:g.time,how};
+ // The fade-out timer starts once a rising seal has reached its cell.
+ if(how==="sky"){t.rise=SEAL_RISE_BASE+(5-lane)*SEAL_RISE_PER_LANE;t.ttl+=t.rise;}
+ g.tokens.push(t);
  if(g.settings.autoCollect)collectToken(g,g.tokens[g.tokens.length-1].uid);
 }
 export function collectToken(g,id){
@@ -954,7 +962,7 @@ export function tick(g,delta){
  for(const fx of [...g.effects]){fx.ttl-=delta;if(fx.ttl<=0)g.effects.splice(g.effects.indexOf(fx),1);}
  if(g.tutorial)tutorialTick(g,delta);
  if(g.time>=g.nextSky){
-  if(!g.level.special.conveyor)createToken(g,Math.floor(Math.random()*5),Math.floor(Math.random()*9));
+  if(!g.level.special.conveyor)createToken(g,Math.floor(Math.random()*5),Math.floor(Math.random()*9),"sky");
   g.nextSky+=g.level.special.blackout?14:10;
  }
  // Rubber-band pacing: a cleared field shortens the wait for the next wave

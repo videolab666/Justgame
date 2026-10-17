@@ -703,8 +703,6 @@ body.reduced-motion .token.expiring{animation:none;opacity:.6}
 @keyframes tutor-bob{from{transform:translate(-50%,0)}to{transform:translate(-50%,-8px)}}
 .board .cell.tutor-lane{box-shadow:inset 0 0 0 3px #ffd34d;background-color:#fff3b066;animation:tutor-lane 1s ease-in-out infinite alternate}
 @keyframes tutor-lane{from{background-color:#fff3b033}to{background-color:#fff3b088}}
-.token.falling{animation:token-fall 1.3s cubic-bezier(.3,.8,.4,1) both,token-hover 2s ease-in-out 1.3s infinite}
-@keyframes token-fall{from{transform:translateY(-260%) rotate(-30deg);opacity:0}25%{opacity:1}to{transform:none}}
 .seal-pill.short{animation:seal-short .5s ease}
 @keyframes seal-short{0%,100%{transform:none}25%{transform:translateX(-5px);background:#ffd6c9}75%{transform:translateX(5px)}}
 /* Final wave banner. */
@@ -896,3 +894,22 @@ body.mend .outro-character .game-art{height:30dvh;width:100%;object-fit:contain}
 /* "Open all levels" offer under the world map. */
 .open-all{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:10px}
 .open-all p{margin:0;color:#496477}
+
+/* Stamp shot: a real round seal imprint that spins in flight. */
+.projectile.shot-stamp{width:30px;height:30px;border:0;border-radius:50%;background:url(./assets/fx/stamp-shot.svg) center/contain no-repeat;color:transparent;box-shadow:none;animation:stamp-spin .5s linear infinite}
+.projectile.shot-stamp:before{background:#9fdcff;opacity:.45}
+@keyframes stamp-spin{to{rotate:360deg}}
+@media(max-width:760px){.projectile.shot-stamp{width:22px;height:22px}}
+body.mb .projectile.shot-stamp{width:24px;height:24px}
+body.reduced-motion .projectile.shot-stamp{animation:none}
+/* Seals: sky seals rise from the bottom edge with a sway (collectable on the
+   way), producer seals hop out; a collected seal flies into the counter. */
+.token.rising{animation:token-rise var(--rise,3s) cubic-bezier(.3,.55,.4,1) both,token-hover 2s ease-in-out infinite}
+@keyframes token-rise{0%{top:102%;translate:0 0;opacity:0}8%{opacity:1}30%{translate:-7px 0}55%{translate:7px 0}80%{translate:-3px 0}100%{translate:0 0;opacity:1}}
+.token.pop{animation:token-pop .6s cubic-bezier(.3,1.4,.5,1) both,token-hover 2s ease-in-out infinite}
+@keyframes token-pop{0%{translate:0 45%;scale:.3;opacity:0}40%{translate:0 -85%;scale:1.12;opacity:1}100%{translate:0 0;scale:1;opacity:1}}
+.token-fly{position:fixed;z-index:200;pointer-events:none;display:grid;place-items:center;border-radius:50%;border:3px solid #bb8f25;background:radial-gradient(circle at 28% 27%,#fff1a6,#e6ac37);color:#7f5415;font-size:22px;box-shadow:0 0 14px #fff29b;transition:transform .5s cubic-bezier(.5,0,.75,.4),opacity .5s ease-in}
+.seal-pill.gain{animation:seal-gain .35s ease-out}
+@keyframes seal-gain{40%{transform:scale(1.15);filter:brightness(1.2)}}
+body.reduced-motion .token.rising,body.reduced-motion .token.pop{animation:none}
+@media(prefers-reduced-motion:reduce){.token.rising,.token.pop{animation:none}}

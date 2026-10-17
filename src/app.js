@@ -116,6 +116,30 @@ function installTip(){
   "Встанови гру на телефон — вона відкриватиметься на весь екран, без панелей браузера.";
  return '<div class="install-tip"><span>📲</span><p>'+text+'</p>'+(installPrompt?btn("install","Встановити гру","btn btn-primary"):"")+btn("install-close","✕","btn btn-quiet",'aria-label="Закрити підказку"')+'</div>';
 }
+/* ---- Seal motion: rise from the bottom edge (sky) or hop out (pop) -------
+ * A re-render recreates the button, so the animation resumes from the
+ * seal's age instead of restarting. */
+function tokenClass(t){return "token "+(t.how==="sky"?"rising":"pop");}
+function tokenMotion(t){
+ const age=Math.max(0,(game?.time??0)-(t.born??0));
+ if(t.how==="sky")return "--rise:"+t.rise+"s;animation-delay:"+(-age).toFixed(2)+"s,"+(t.rise-age).toFixed(2)+"s";
+ return "animation-delay:"+(-age).toFixed(2)+"s,"+(.6-age).toFixed(2)+"s";
+}
+/** A collected seal flies into the counter, like PvZ suns. */
+function flySealToCounter(el){
+ const pill=root.querySelector?.(".seal-pill");
+ if(!el?.getBoundingClientRect||!pill||save.settings.reducedMotion)return;
+ const from=el.getBoundingClientRect(),to=pill.getBoundingClientRect();
+ const fly=document.createElement("span");fly.className="token-fly";fly.textContent="✦";
+ fly.style.left=from.left+"px";fly.style.top=from.top+"px";fly.style.width=from.width+"px";fly.style.height=from.height+"px";
+ document.body.append(fly);
+ const raf=window.requestAnimationFrame||(f=>setTimeout(f,16));
+ raf(()=>raf(()=>{
+  fly.style.transform="translate("+(to.left+to.width*.25-from.left)+"px,"+(to.top+to.height/2-from.top-from.height/2)+"px) scale(.55)";
+  fly.style.opacity=".2";
+ }));
+ setTimeout(()=>{fly.remove();pill.classList.remove("gain");void pill.offsetWidth;pill.classList.add("gain");},520);
+}
 function renderHome(){
  return wrapper(installTip()+`<section class="hero"><div class="hero-copy">
  <div class="eyebrow">40 справ · 4 світи · захисти свої права</div>
@@ -250,7 +274,7 @@ function renderDeck(){
  <div class="deck-summary"><span><strong>${deck.length}/${slotLimit()}</strong> карток у справі</span>${btn("start","▶ Розпочати оборону","btn btn-primary",deck.length?'':'disabled')}</div></section>
  <aside class="panel"><div class="deck-threat-box">${renderThreatLegend(true)}${renderLaneMap()}</div>
  <p class="hint" style="margin-top:16px">${warns.length?"🦉 Порада: у колоді бракує ефективних інструментів для деяких типів схем.":"🦉 Гарний вибір! Комбінуйте економіку, стіни та атакувальні картки."}</p>
- <p class="muted">${level.special.blackout?"🌙 Блекаут: печатки з неба падають рідше, а захисники без Зарядної станції поруч працюють удвічі повільніше (2FA — ні).":""} ${level.special.fog?"🌫️ Туман: праву половину поля не видно. Стрільці побачать ворога, коли той підійде, або завдяки «Сповіщенню» поруч чи Судовому експерту.":""}</p>
+ <p class="muted">${level.special.blackout?"🌙 Блекаут: печатки з неба з'являються рідше, а захисники без Зарядної станції поруч працюють удвічі повільніше (2FA — ні).":""} ${level.special.fog?"🌫️ Туман: праву половину поля не видно. Стрільці побачать ворога, коли той підійде, або завдяки «Сповіщенню» поруч чи Судовому експерту.":""}</p>
  <div class="eyebrow">Режим гри</div><div style="display:grid;gap:8px;margin:10px 0">
  <label><input type="radio" name="mode" value="young" ${save.mode==="young"?"checked":""}> Юний юрист</label>
  <label><input type="radio" name="mode" value="normal" ${save.mode==="normal"?"checked":""}> Звичайний</label>
@@ -279,7 +303,7 @@ function renderPlay(){
   const active=level.activeLanes.includes(lane);
   cells+=`<button type="button" role="gridcell" data-act="cell" data-lane="${lane}" data-col="${col}" class="cell ${active?"":"out"} ${focus.lane===lane&&focus.col===col?"cursor":""}" ${active?"":"disabled"} aria-label="Ряд ${lane+1}, колонка ${col+1}">${cellContent(lane,col)}</button>`;
  }
- const tokens=game.tokens.map(t=>`<button class="token" type="button" aria-label="Зібрати 25 печаток" data-act="collect" data-id="${t.uid}" style="left:${(t.col+.3)*100/9}%;top:${(t.lane+.15)*100/5}%">✦</button>`).join("");
+ const tokens=game.tokens.map(t=>`<button class="${tokenClass(t)}" type="button" aria-label="Зібрати 25 печаток" data-act="collect" data-id="${t.uid}" style="left:${(t.col+.3)*100/9}%;top:${(t.lane+.15)*100/5}%;${tokenMotion(t)}">✦</button>`).join("");
  const foes=game.enemies.map(e=>`<div data-enemy="${e.uid}" title="${E(e.name)}" data-trait="${E(e.trait)}" data-scheme="${E(e.scheme)}" class="enemy ${e.trait==="flying"?"flying":""} ${game.time-(e.attackUntil??-10)<0?"attacking":""} ${game.time-(e.lastHitAt??-10)<.18?"taking-hit":""} ${isDisguised(e)?"disguised":""} ${game.time<e.frozenUntil?"frozen":""} ${e.id==="boss"?"boss":""}" style="left:${e.x*100/9}%;top:${e.lane*20+.35}%">
  <div class="enemy-inner"><span class="kind">${enemyKindIcon(e)}</span><span class="mask-tag" aria-hidden="true">🎭 Маскування</span><span class="eicon">${art(enemySprite(e),"enemy-illustration")}</span><span class="hp-track"><b style="width:${Math.max(0,e.hp/e.maxHp)*100}%"></b></span></div></div>`).join("");
  const shots=game.projectiles.map(p=>`<span class="projectile shot-${p.kind}" data-projectile="${p.uid}" aria-hidden="true"></span>`).join("");
@@ -705,7 +729,7 @@ function syncGameFrame(){
  for(const t of game.tokens){
   const id=String(t.uid);tokens.add(id);
   let el=tokenLayer.querySelector('[data-id="'+id+'"]');
-  if(!el){el=document.createElement("button");el.type="button";el.className="token"+(t.falling?" falling":"");el.textContent="✦";el.dataset.act="collect";el.dataset.id=id;el.setAttribute("aria-label","Зібрати 25 печаток");tokenLayer.append(el);}
+  if(!el){el=document.createElement("button");el.type="button";el.className=tokenClass(t);el.style.cssText=tokenMotion(t);el.textContent="✦";el.dataset.act="collect";el.dataset.id=id;el.setAttribute("aria-label","Зібрати 25 печаток");tokenLayer.append(el);}
   el.style.left=(t.col+.3)*100/9+"%";el.style.top=(t.lane+.15)*20+"%";
   // A seal about to fade blinks, so a missed one is never a surprise.
   el.classList.toggle("expiring",t.ttl<3.5);
@@ -1215,7 +1239,7 @@ function action(name,el){
  if(name==="play-portrait"){allowPortrait=true;applyDeviceMode();return;}
  if(name==="reward-pick"&&game?.rewardDrop){modal="reward";sound(1040,.3);render();return;}
  if(name==="reward-continue"&&game){collectReward(game);modal="";render();return;}
- if(name==="collect"&&game){collectToken(game,Number(el.dataset.id));sound(950,.12);toast="Отримано 25 печаток довіри!";syncGameFrame();return;}
+ if(name==="collect"&&game){flySealToCounter(el);collectToken(game,Number(el.dataset.id));sound(950,.12);toast="Отримано 25 печаток довіри!";syncGameFrame();return;}
  if(name==="guard"&&game){const ok=useGuard(game,Number(el.dataset.lane));if(ok)sound(260,.24);toast=ok?"Заборону застосовано!":"У босовій справі дочекайтеся фінальної фази.";syncGameFrame();return;}
  if(name==="speed"){speed=speed===1?2:speed===2?.5:1;const b=root.querySelector?.('[data-act="speed"]');if(b)b.textContent=speed===1?"▶ ×1":speed===2?"▶▶ ×2":"▶ ½";return;}
  if(name==="pause"){modal="pause";render();return;}

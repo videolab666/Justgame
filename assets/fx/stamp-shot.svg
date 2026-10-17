@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs>
+ <radialGradient id="paper" cx=".38" cy=".32" r=".75"><stop stop-color="#ffffff"/><stop offset="1" stop-color="#e9f1f5"/></radialGradient>
+ <radialGradient id="ink" cx=".4" cy=".35" r=".7"><stop stop-color="#3f9ad0"/><stop offset="1" stop-color="#1d5f93"/></radialGradient></defs>
+ <circle cx="32" cy="33.5" r="29" fill="#0e3a5a" opacity=".3"/>
+ <circle cx="32" cy="32" r="29" fill="url(#paper)" stroke="#1d5f93" stroke-width="3.2"/>
+ <circle cx="32" cy="32" r="23.5" fill="none" stroke="#2b7fb6" stroke-width="2.6"/>
+ <circle cx="32" cy="32" r="19" fill="none" stroke="#2b7fb6" stroke-width="3.4" stroke-dasharray="2.6 2.2"/>
+ <circle cx="32" cy="32" r="13.5" fill="url(#ink)"/>
+ <path d="M25.5 32.5l4.6 4.6 9-10" fill="none" stroke="#fff" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/>
+ <g fill="#2b7fb6"><circle cx="32" cy="6.8" r="1.8"/><circle cx="32" cy="57.2" r="1.8"/><circle cx="6.8" cy="32" r="1.8"/><circle cx="57.2" cy="32" r="1.8"/></g>
+ <path d="M14 20Q19 11 29 8.5" fill="none" stroke="#fff" stroke-opacity=".9" stroke-width="3" stroke-linecap="round"/>
+ <g fill="#1d5f93" opacity=".35"><circle cx="45" cy="47" r="1"/><circle cx="20" cy="45" r=".8"/><circle cx="44" cy="17" r=".7"/></g>
+</svg>
