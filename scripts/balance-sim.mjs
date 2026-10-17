@@ -205,7 +205,7 @@ function run(world, stage, seed) {
   let bankSum = 0, bankN = 0, minX = 99, peakEnemies = 0;
   while (g.phase === "playing" && g.time < 900) {
     const ne=g.spawned, nb=g.breaches; tick(g, dt); if(process.env.TRACE&&g.spawned>ne)for(let q=ne;q<g.spawned;q++)console.log(`t=${g.time.toFixed(1)} SPAWN ${g.plan[q].id} L${g.plan[q].lane}`); if(process.env.TRACE&&g.breaches>nb)console.log(`t=${g.time.toFixed(1)} BREACH ${g.lastThreat.id} L${g.lastThreat.lane}`);
-    for (const t of [...g.tokens]) if (11 - t.ttl >= sk.collectDelay) { if ((t.uid * 2654435761 % 1000) / 1000 >= sk.miss) collectToken(g, t.uid); else t.skip = 1; }
+    for (const t of [...g.tokens]) if (g.time - t.born >= sk.collectDelay) { if ((t.uid * 2654435761 % 1000) / 1000 >= sk.miss) collectToken(g, t.uid); else t.skip = 1; }
     if (g.time >= nextThink) { botStep(g, {}); nextThink = g.time + sk.think; }
     const alive = g.enemies.filter(e => e.hp > 0);
     peakEnemies = Math.max(peakEnemies, alive.length);

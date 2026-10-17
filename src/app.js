@@ -116,13 +116,14 @@ function installTip(){
   "Встанови гру на телефон — вона відкриватиметься на весь екран, без панелей браузера.";
  return '<div class="install-tip"><span>📲</span><p>'+text+'</p>'+(installPrompt?btn("install","Встановити гру","btn btn-primary"):"")+btn("install-close","✕","btn btn-quiet",'aria-label="Закрити підказку"')+'</div>';
 }
-/* ---- Seal motion: rise from the bottom edge (sky) or hop out (pop) -------
- * A re-render recreates the button, so the animation resumes from the
- * seal's age instead of restarting. */
-function tokenClass(t){return "token "+(t.how==="sky"?"rising":"pop");}
+/* ---- Seal motion: sky seals float up through the field (their height comes
+ * from game time, so they stop on pause); producer seals hop out. A
+ * re-render resumes the hop from the seal's age instead of restarting. */
+function tokenClass(t){return "token "+(t.rise?"rising":"pop");}
+function tokenTop(t){return (t.rise?t.y:t.lane+.15)*20;}
 function tokenMotion(t){
+ if(t.rise)return "";
  const age=Math.max(0,(game?.time??0)-(t.born??0));
- if(t.how==="sky")return "--rise:"+t.rise+"s;animation-delay:"+(-age).toFixed(2)+"s,"+(t.rise-age).toFixed(2)+"s";
  return "animation-delay:"+(-age).toFixed(2)+"s,"+(.6-age).toFixed(2)+"s";
 }
 /** A collected seal flies into the counter, like PvZ suns. */
@@ -303,7 +304,7 @@ function renderPlay(){
   const active=level.activeLanes.includes(lane);
   cells+=`<button type="button" role="gridcell" data-act="cell" data-lane="${lane}" data-col="${col}" class="cell ${active?"":"out"} ${focus.lane===lane&&focus.col===col?"cursor":""}" ${active?"":"disabled"} aria-label="Ряд ${lane+1}, колонка ${col+1}">${cellContent(lane,col)}</button>`;
  }
- const tokens=game.tokens.map(t=>`<button class="${tokenClass(t)}" type="button" aria-label="Зібрати 25 печаток" data-act="collect" data-id="${t.uid}" style="left:${(t.col+.3)*100/9}%;top:${(t.lane+.15)*100/5}%;${tokenMotion(t)}">✦</button>`).join("");
+ const tokens=game.tokens.map(t=>`<button class="${tokenClass(t)}" type="button" aria-label="Зібрати 25 печаток" data-act="collect" data-id="${t.uid}" style="left:${(t.col+.3)*100/9}%;top:${tokenTop(t)}%;${tokenMotion(t)}">✦</button>`).join("");
  const foes=game.enemies.map(e=>`<div data-enemy="${e.uid}" title="${E(e.name)}" data-trait="${E(e.trait)}" data-scheme="${E(e.scheme)}" class="enemy ${e.trait==="flying"?"flying":""} ${game.time-(e.attackUntil??-10)<0?"attacking":""} ${game.time-(e.lastHitAt??-10)<.18?"taking-hit":""} ${isDisguised(e)?"disguised":""} ${game.time<e.frozenUntil?"frozen":""} ${e.id==="boss"?"boss":""}" style="left:${e.x*100/9}%;top:${e.lane*20+.35}%">
  <div class="enemy-inner"><span class="kind">${enemyKindIcon(e)}</span><span class="mask-tag" aria-hidden="true">🎭 Маскування</span><span class="eicon">${art(enemySprite(e),"enemy-illustration")}</span><span class="hp-track"><b style="width:${Math.max(0,e.hp/e.maxHp)*100}%"></b></span></div></div>`).join("");
  const shots=game.projectiles.map(p=>`<span class="projectile shot-${p.kind}" data-projectile="${p.uid}" aria-hidden="true"></span>`).join("");
@@ -730,9 +731,9 @@ function syncGameFrame(){
   const id=String(t.uid);tokens.add(id);
   let el=tokenLayer.querySelector('[data-id="'+id+'"]');
   if(!el){el=document.createElement("button");el.type="button";el.className=tokenClass(t);el.style.cssText=tokenMotion(t);el.textContent="✦";el.dataset.act="collect";el.dataset.id=id;el.setAttribute("aria-label","Зібрати 25 печаток");tokenLayer.append(el);}
-  el.style.left=(t.col+.3)*100/9+"%";el.style.top=(t.lane+.15)*20+"%";
+  el.style.left=(t.col+.3)*100/9+"%";el.style.top=tokenTop(t)+"%";
   // A seal about to fade blinks, so a missed one is never a surprise.
-  el.classList.toggle("expiring",t.ttl<3.5);
+  el.classList.toggle("expiring",!t.rise&&t.ttl<3.5);
  }
  for(const el of Array.from(tokenLayer.children))if(!el.classList.contains("reward-drop")&&!tokens.has(el.dataset.id))el.remove();
  const fxs=new Set();

@@ -137,7 +137,7 @@ export function makeGame(level,deck,mode="normal",settings={},challenge=null){
 }
 // --- Guided first battle -------------------------------------------------
 export const TUTORIAL_START_SEALS=150;
-const TUTORIAL_UNIT="registrar",TUTORIAL_PRAISE=3,TUTORIAL_SKY=4,TUTORIAL_GO=5;
+const TUTORIAL_RISE=16,TUTORIAL_UNIT="registrar",TUTORIAL_PRAISE=3,TUTORIAL_SKY=4,TUTORIAL_GO=5;
 export const TUTORIAL_TEXT={
  pick:"Натисни на картку «Державний реєстратор», щоб узяти її.",
  place:"Тепер натисни на клітинку доріжки — і реєстратор стане на захист.",
@@ -170,8 +170,7 @@ export function tutorialEvent(g,event,id=TUTORIAL_UNIT){
 }
 function tutorialSeal(g){
  const lane=g.level.activeLanes[Math.floor(g.level.activeLanes.length/2)];
- createToken(g,lane,2+Math.floor(Math.random()*5),"sky");
- g.tokens[g.tokens.length-1].ttl=30;
+ createToken(g,lane,2+Math.floor(Math.random()*5),"sky",TUTORIAL_RISE);
  g.tutorial.nextSeal=g.time+TUTORIAL_SKY;
 }
 function tutorialTick(g,delta){
@@ -239,15 +238,16 @@ export function spawn(g,id,lane,x=9.3){
  }
  return enemy;
 }
-// How a seal appears: "sky" seals drift up from the field's bottom edge to
-// their cell (PvZ suns fall, ours rise) and stay collectable on the way;
-// producers and dropped loot "pop" out with a short hop.
-const SEAL_RISE_BASE=1,SEAL_RISE_PER_LANE=.85;
-function createToken(g,lane,col,how="pop"){
+// How a seal appears: "sky" seals float up through the whole field, from
+// below the bottom edge to above the top one (PvZ suns fall, ours rise),
+// collectable anywhere on the way; uncollected they float away. Producers
+// and dropped loot "pop" out with a short hop and wait in their cell.
+// t.y is the seal's height in rows (0 = top lane, 5 = bottom edge).
+export const SEAL_SKY_RISE=9,SEAL_SKY_FROM=5.1,SEAL_SKY_TO=-.7;
+function createToken(g,lane,col,how="pop",rise=SEAL_SKY_RISE){
  lane=cap(lane,0,4);
  const t={uid:uid(g),lane,col:cap(col,0,8),ttl:11,value:25,born:g.time,how};
- // The fade-out timer starts once a rising seal has reached its cell.
- if(how==="sky"){t.rise=SEAL_RISE_BASE+(5-lane)*SEAL_RISE_PER_LANE;t.ttl+=t.rise;}
+ if(how==="sky"){t.rise=rise;t.ttl=rise;t.y=SEAL_SKY_FROM;t.lane=4;}
  g.tokens.push(t);
  if(g.settings.autoCollect)collectToken(g,g.tokens[g.tokens.length-1].uid);
 }
@@ -958,7 +958,9 @@ export function tick(g,delta){
  delta=cap(delta,0,.13);
  g.time+=delta;g.elapsed+=delta;
  for(const k of Object.keys(g.cooldowns))g.cooldowns[k]=Math.max(0,g.cooldowns[k]-delta);
- for(const t of [...g.tokens]){t.ttl-=delta;if(t.ttl<=0){g.tokens.splice(g.tokens.indexOf(t),1);missedToken(g);}}
+ for(const t of [...g.tokens]){t.ttl-=delta;
+  if(t.rise){t.y=SEAL_SKY_FROM+(SEAL_SKY_TO-SEAL_SKY_FROM)*(1-Math.max(0,t.ttl)/t.rise);t.lane=cap(Math.floor(t.y),0,4);}
+  if(t.ttl<=0){g.tokens.splice(g.tokens.indexOf(t),1);missedToken(g);}}
  for(const fx of [...g.effects]){fx.ttl-=delta;if(fx.ttl<=0)g.effects.splice(g.effects.indexOf(fx),1);}
  if(g.tutorial)tutorialTick(g,delta);
  if(g.time>=g.nextSky){

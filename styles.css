@@ -902,10 +902,10 @@ body.mend .outro-character .game-art{height:30dvh;width:100%;object-fit:contain}
 @media(max-width:760px){.projectile.shot-stamp{width:22px;height:22px}}
 body.mb .projectile.shot-stamp{width:24px;height:24px}
 body.reduced-motion .projectile.shot-stamp{animation:none}
-/* Seals: sky seals rise from the bottom edge with a sway (collectable on the
-   way), producer seals hop out; a collected seal flies into the counter. */
-.token.rising{animation:token-rise var(--rise,3s) cubic-bezier(.3,.55,.4,1) both,token-hover 2s ease-in-out infinite}
-@keyframes token-rise{0%{top:102%;translate:0 0;opacity:0}8%{opacity:1}30%{translate:-7px 0}55%{translate:7px 0}80%{translate:-3px 0}100%{translate:0 0;opacity:1}}
+/* Seals: sky seals float bottom-to-top through the field with a sway (top is
+   set from game time), producer seals hop out; a collected seal flies into the counter. */
+.token.rising{animation:token-sway 2.4s ease-in-out infinite;transition:top 60ms linear}
+@keyframes token-sway{0%,100%{translate:-7px 0;rotate:-6deg}50%{translate:7px 0;rotate:6deg}}
 .token.pop{animation:token-pop .6s cubic-bezier(.3,1.4,.5,1) both,token-hover 2s ease-in-out infinite}
 @keyframes token-pop{0%{translate:0 45%;scale:.3;opacity:0}40%{translate:0 -85%;scale:1.12;opacity:1}100%{translate:0 0;scale:1;opacity:1}}
 .token-fly{position:fixed;z-index:200;pointer-events:none;display:grid;place-items:center;border-radius:50%;border:3px solid #bb8f25;background:radial-gradient(circle at 28% 27%,#fff1a6,#e6ac37);color:#7f5415;font-size:22px;box-shadow:0 0 14px #fff29b;transition:transform .5s cubic-bezier(.5,0,.75,.4),opacity .5s ease-in}
