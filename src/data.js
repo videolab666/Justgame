@@ -13,7 +13,7 @@ export const SCHEMES=["forgery","cyber","corruption","debt","bureaucracy"];
 const U=(id,name,icon,cost,cooldown,hp,kind,tool,damage,interval,unlock,desc)=>({id,name,icon,cost,cooldown,hp,kind,tool,damage,interval,unlock,desc});
 export const UNITS=[
 U("registrar","Державний реєстратор","🏛️",100,7,300,"shooter","registry",20,1.4,"start","Печатки перевірки проти підробок."),
-U("cnap","ДРАЦС","🏠",50,7,300,"income",null,25,24,"1-1","Виробляє печатки довіри."),
+U("cnap","ДРАЦС","🏠",50,7,300,"income",null,25,20,"1-1","Виробляє печатки довіри."),
 U("notary","Нотаріус","🖋️",50,35,4000,"wall","notary",10,1,"1-2","Міцно тримає оборону."),
 U("mine","Арешт майна","🔒",25,35,300,"mine","enforcement",1800,14,"1-4","Спрацьовує після підготовки."),
 U("notification","Сповіщення","📱",75,20,300,"reveal","digital",0,0,"1-3","Розкриває замаскованих шахраїв."),
@@ -35,14 +35,14 @@ U("legal_aid","Безоплатна правнича допомога","📘",12
 U("twofactor","Двофакторна автентифікація","🔐",100,20,300,"trap","digital",20,1,"3-10","Захист від кіберзагроз у клітинці."),
 U("shield","КЕП-щит","🛡️",125,35,3000,"shield","digital",0,0,"4-1","Захищає іншого юніта від перехоплення."),
 U("apostille","Апостиль","🕊️",150,35,300,"global","expert",50,8,"4-2","Працює по всьому полю."),
-U("digital_office","Цифровий офіс","🏙️",150,20,300,"upgrade",null,50,24,"4-5","Покращує роботу ДРАЦС.")
+U("digital_office","Цифровий офіс","🏙️",150,20,300,"upgrade",null,50,20,"4-5","Покращує роботу ДРАЦС.")
 ];
 export const UNIT_BY_ID=Object.fromEntries(UNITS.map(x=>[x.id,x]));
 // Full "how it plays" text for cards, coach marks and the almanac. Every
 // number here mirrors src/engine.js; keep them in sync when balancing.
 export const UNIT_HOW={
  registrar:"Стріляє печатками вздовж свого ряду: 20 шкоди раз на 1,4 секунди. Проти підробок ×2, проти кіберзагроз лише ×0,5.",
- cnap:"Одразу дає печатку, далі ще 25 печаток кожні 24 секунди. Ставте в перших колонках, поки вороги далеко.",
+ cnap:"Одразу дає печатку, далі ще 25 печаток кожні 20 секунд. Ставте в перших колонках, поки вороги далеко.",
  notary:"Стіна на 4000❤️ міцності: ворог зупиняється й гризе її, а підробкам нотаріус ще й відповідає. Рейдер не може його захопити. Стрибуни його перестрибують — їх зупиняє Нотаріальна контора.",
  mine:"Готова через 14 секунд після встановлення: перший ворог поруч отримує 1800 шкоди (боржники — 3600), і пастка зникає. Вражає й підземних, але не летючих.",
  notification:"Не атакує. Зриває маски з ворогів поруч (2 ряди вгору й униз, близько 2,5 клітинки) і розганяє туман — після цього стрільці їх бачать.",
@@ -64,7 +64,7 @@ export const UNIT_HOW={
  twofactor:"Пастка на підлозі: вороги йдуть по ній. Раз на секунду б'є кіберворогів у своїй клітинці (40 шкоди) і на мить зупиняє їх. Фішинг, дзвінки й блекаут її не вимикають. Добиває виснажені голови Гідри у своєму ряду.",
  shield:"Ставиться на іншого захисника: +3000 щита. Захищеного не вимкнуть фішингом і дзвінками, не підкуплять, не зламають і не захоплять.",
  apostille:"Б'є будь-якого ворога на полі, навіть летючого: 50 шкоди раз на 8 секунд.",
- digital_office:"Ставиться на ДРАЦС: тепер він дає дві печатки кожні 24 секунди."
+ digital_office:"Ставиться на ДРАЦС: тепер він дає дві печатки кожні 20 секунд."
 };
 const E=(id,name,icon,scheme,hp,speed,trait,shield=0,threat=1,tip="Обирайте відповідний правовий інструмент.")=>({id,name,icon,scheme,hp,speed,trait,shield,threat,tip});
 export const ENEMIES=[
@@ -90,9 +90,9 @@ E("queue","Черга-змія","🐍","bureaucracy",600,.4,"split",0,5,"Чим�
 ];
 export const ENEMY_BY_ID=Object.fromEntries(ENEMIES.map(x=>[x.id,x]));
 export const BOSSES=[
-{id:"baron",name:"Барон Рейдерон",icon:"🎩",scheme:"forgery",hp:12000,tip:"Захист майна починається з перевірки прав і документів."},
-{id:"count",name:"Граф Борговій",icon:"💰",scheme:"debt",hp:15000,tip:"Виконання рішення проводять уповноважені виконавці."},
-{id:"octopus",name:"Спрут Конверт",icon:"🐙",scheme:"corruption",hp:12000,tip:"Виявлення та запобігання корупції — важлива частина правопорядку."},
+{id:"baron",name:"Барон Рейдерон",icon:"🎩",scheme:"forgery",hp:9000,tip:"Захист майна починається з перевірки прав і документів."},
+{id:"count",name:"Граф Борговій",icon:"💰",scheme:"debt",hp:11000,tip:"Виконання рішення проводять уповноважені виконавці."},
+{id:"octopus",name:"Спрут Конверт",icon:"🐙",scheme:"corruption",hp:9000,tip:"Виявлення та запобігання корупції — важлива частина правопорядку."},
 {id:"hydra",name:"Гідра Фішингу",icon:"🐉",scheme:"cyber",hp:23000,tip:"Другий фактор та захист електронного підпису посилюють безпеку."}
 ];
 export const WORLDS=[
@@ -148,9 +148,9 @@ export function getLevel(world,stage){
   const special={blackout:((world===1&&[4,7].includes(stage))||(world===3&&stage===4)),fog:((world===0&&stage===6)||(world===3&&stage===8)),deadline:world===0&&stage===8,restricted:world===2&&stage===7};
   const count=stage<5?3:4;
   return {id,world,stage,name:w.titles[stage-1],mini,boss,bossData:boss?BOSSES[world]:null,
-  activeLanes:world===0&&stage===1?[2]:world===0&&stage===2?[1,2,3]:special.restricted?[1,2,3]:[0,1,2,3,4],
+  activeLanes:world===0&&stage===1?[2]:world===0&&stage>=2&&stage<=4?[1,2,3]:special.restricted?[1,2,3]:[0,1,2,3,4],
   enemies:levelEnemies(w,world,stage),
-  waves:count, special,startingSeals:stage===1?225:boss?350:175,
+  waves:count, special,startingSeals:stage===1?225:boss?400:250,
   tutorial:world===0&&stage<=4?["Обери картку захисника, а потім клітинку на полі.","Збирай золоті печатки, щоб ставити більше захисників.","Проти підробок особливо корисні реєстратори й нотаріуси.","Замаскованого маклера виявляє «Сповіщення»."][stage-1]:null};
 }
 function levelEnemies(w,world,stage){

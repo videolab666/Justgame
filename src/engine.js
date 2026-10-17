@@ -15,14 +15,20 @@ export const WAVE_SHARES={2:[.35,.65],3:[.18,.32,.5],4:[.12,.2,.28,.4]};
 export const STAGE_BUDGET=[6,8,13,16,20,23,26,27,27,20];
 export const WORLD_BUDGET=[1,.8,1.1,.85];
 // Seconds before the first spawn, so the player can place 2-3 cards first.
-export const FIRST_SPAWN={tutorial:8,normal:18};
+export const FIRST_SPAWN={tutorial:8,normal:16};
 // After the field is cleared the next wave is pulled forward to this lull.
-export const WAVE_LULL={tutorial:3,normal:7};
-export const BOSS_MIN_TIME=125;
+export const WAVE_LULL={tutorial:3,normal:6};
+export const BOSS_MIN_TIME=100;
+// Seconds between sky seals, and the scheduled gap between waves.
+// Every Nth defeated enemy drops a seal (0 = off): income that follows a
+// working defence, and a little reward pop on the field.
+export const KILL_SEAL_EVERY=2;
+export const SKY_INTERVAL={normal:7,blackout:10};
+export const WAVE_GAP={tutorial:14,normal:18};
 // Hand-tuned exceptions to the stage x world curve (balance bot, novice).
 // 1-4: last tutorial level, a schemer flood over five lanes plus the first
 // masked broker; the stage-4 budget fits the other worlds, not this one.
-export const LEVEL_BUDGET={"1-4":13};
+export const LEVEL_BUDGET={"1-4":10,"1-10":16,"2-4":8,"4-4":7};
 export function levelBudget(level){
  if(LEVEL_BUDGET[level.id])return LEVEL_BUDGET[level.id];
  // Blackout halves unpowered income and fire rate; fog hides the right half
@@ -93,7 +99,7 @@ export function makeWavePlan(level,seed=0){
    if(level.id==="3-5")list.push({time:last+6,id:"mini_boss",lane:2,wave:waves});
   }
   // Scheduled gap; tick() pulls it in once the field is clear.
-  t=last+(level.stage===1?14:24);
+  t=last+(level.stage===1?WAVE_GAP.tutorial:WAVE_GAP.normal);
  }
  return list.sort((a,b)=>a.time-b.time);
 }
@@ -114,7 +120,7 @@ export function makeGame(level,deck,mode="normal",settings={},challenge=null){
  const game={
   level,deck:[...deck],mode,settings,challenge,phase:"playing",time:0,elapsed:0,seal:(mode==="young"?300:level.startingSeals)+(settings.careerBonus||0),
   defenders:[],enemies:[],tokens:[],locks:[],effects:[],projectiles:[],particles:[],fallen:[],rollers:[],squashed:[],plan:makeWavePlan(level),
-  spawned:0,serial:1,nextSky:7,cooldowns:Object.fromEntries(deck.map(id=>[id,0])),
+  spawned:0,serial:1,nextSky:7,kills:0,cooldowns:Object.fromEntries(deck.map(id=>[id,0])),
   usedGuards:[false,false,false,false,false],breaches:0,defenderLosses:0,created:0,kills:0,
   stageWave:0,maxWave:level.waves,bossGuardReady:false,bossGuardUsed:false,
   lastThreat:null,lastHint:level.tutorial||"Підбирайте інструменти до типу правової загрози.",
@@ -526,6 +532,7 @@ export function damageEnemy(g,e,raw,tool=null,extra=1){
   for(let j=0;j<2;j++)spawn(g,"schemer",e.lane,e.x+(.2*j));
  }
  if(e.id==="bankrupt")createToken(g,e.lane,Math.floor(e.x));
+ else if(KILL_SEAL_EVERY&&!g.tutorial&&e.id!=="boss"&&++g.kills%KILL_SEAL_EVERY===0)createToken(g,e.lane,Math.floor(e.x));
  removeEnemy(g,e);
  return n;
 }
@@ -965,7 +972,7 @@ export function tick(g,delta){
  if(g.tutorial)tutorialTick(g,delta);
  if(g.time>=g.nextSky){
   if(!g.level.special.conveyor)createToken(g,Math.floor(Math.random()*5),Math.floor(Math.random()*9),"sky");
-  g.nextSky+=g.level.special.blackout?14:10;
+  g.nextSky+=g.level.special.blackout?SKY_INTERVAL.blackout:SKY_INTERVAL.normal;
  }
  // Rubber-band pacing: a cleared field shortens the wait for the next wave
  // (never lengthens it), so nobody watches an empty board for 20 s.

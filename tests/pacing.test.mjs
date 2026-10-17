@@ -50,7 +50,7 @@ test("a cleared field pulls the next wave in after a short lull",()=>{
 });
 test("the next wave is never pushed later and is announced in the HUD",()=>{
  const g=makeGame(getLevel(0,2),["registrar"]);g.nextSky=1e9;
- assert.match(waveStatus(g),/перша через 18 с/);
+ assert.match(waveStatus(g),new RegExp("перша через "+FIRST_SPAWN.normal+" секунд"));
  const before=g.plan.map(a=>a.time);
  for(let i=0;i<100;i++)tick(g,.1);
  g.plan.forEach((a,i)=>assert.ok(a.time<=before[i]));
